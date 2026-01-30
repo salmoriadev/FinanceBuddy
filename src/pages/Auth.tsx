@@ -179,7 +179,6 @@ export default function Auth() {
       </button>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="text-4xl mb-2">💰</div>
           <CardTitle className="text-2xl font-serif tracking-tight">
             FinanceApp
           </CardTitle>
