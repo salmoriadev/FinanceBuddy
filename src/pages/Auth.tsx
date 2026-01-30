@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,13 +24,48 @@ import {
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
+import { PasswordStrength } from "@/components/auth/PasswordStrength";
+import { passwordRules } from "@/lib/password";
 
-const authSchema = z.object({
+const loginSchema = z.object({
   email: z.string().email("Email inválido"),
-  password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
+  password: z.string().min(1, "Senha obrigatória"),
 });
 
-type AuthFormData = z.infer<typeof authSchema>;
+const signupSchema = z
+  .object({
+    email: z.string().email("Email inválido"),
+    password: z
+      .string()
+      .min(passwordRules.minLength, "A senha deve ter pelo menos 8 caracteres")
+      .refine(
+        (value) => passwordRules.upper.test(value),
+        "A senha deve conter uma letra maiúscula",
+      )
+      .refine(
+        (value) => passwordRules.lower.test(value),
+        "A senha deve conter uma letra minúscula",
+      )
+      .refine(
+        (value) => passwordRules.number.test(value),
+        "A senha deve conter um número",
+      )
+      .refine(
+        (value) => passwordRules.symbol.test(value),
+        "A senha deve conter um símbolo",
+      ),
+    confirmPassword: z.string().min(1, "Confirme a senha"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "As senhas não conferem",
+    path: ["confirmPassword"],
+  });
+
+type AuthFormData = {
+  email: string;
+  password: string;
+  confirmPassword?: string;
+};
 
 export default function Auth() {
   const { user, loading, signIn, signUp } = useAuth();
@@ -41,13 +76,29 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const toggleTheme = () => setTheme(isDark ? "light" : "dark");
 
+  const resolver = useMemo(
+    () => zodResolver(isLogin ? loginSchema : signupSchema),
+    [isLogin],
+  );
+
   const form = useForm<AuthFormData>({
-    resolver: zodResolver(authSchema),
+    resolver,
     defaultValues: {
       email: "",
       password: "",
+      confirmPassword: "",
     },
   });
+
+  useEffect(() => {
+    form.reset({
+      email: form.getValues("email") || "",
+      password: "",
+      confirmPassword: "",
+    });
+  }, [isLogin, form]);
+
+  const passwordValue = form.watch("password") || "";
 
   if (loading) {
     return (
@@ -67,10 +118,16 @@ export default function Auth() {
       if (isLogin) {
         const { error } = await signIn(data.email, data.password);
         if (error) {
-          if (error.message.includes("Invalid login credentials")) {
+          const message =
+            typeof error === "object" && error && "message" in error
+              ? String((error as { message?: string }).message || "")
+              : "";
+          if (message.includes("Invalid login credentials")) {
             toast.error("Email ou senha incorretos");
+          } else if (message.toLowerCase().includes("email not confirmed")) {
+            toast.error("Confirme seu email antes de entrar");
           } else {
-            toast.error(error.message);
+            toast.error(message || "Erro ao fazer login");
           }
         } else {
           toast.success("Login realizado com sucesso!");
@@ -78,13 +135,31 @@ export default function Auth() {
       } else {
         const { error } = await signUp(data.email, data.password);
         if (error) {
-          if (error.message.includes("already registered")) {
+          const message =
+            typeof error === "object" && error && "message" in error
+              ? String((error as { message?: string }).message || "")
+              : "";
+          const code =
+            typeof error === "object" && error && "code" in error
+              ? String((error as { code?: string }).code || "")
+              : "";
+          const isWeakPassword =
+            code === "weak_password" ||
+            message.toLowerCase().includes("weak_password") ||
+            message.toLowerCase().includes("password strength");
+          if (isWeakPassword) {
+            toast.error(
+              "Senha fraca. Use 8+ caracteres com maiúscula, minúscula, número e símbolo.",
+            );
+          } else if (message.includes("already registered")) {
             toast.error("Este email já está cadastrado");
           } else {
-            toast.error(error.message);
+            toast.error(message || "Erro ao criar conta");
           }
         } else {
-          toast.success("Conta criada com sucesso!");
+          toast.success(
+            "Conta criada! Verifique seu email para confirmar o acesso.",
+          );
         }
       }
     } finally {
@@ -168,6 +243,28 @@ export default function Auth() {
                   </FormItem>
                 )}
               />
+              {!isLogin && (
+                <>
+                  <PasswordStrength password={passwordValue} />
+                  <FormField
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirmar senha</FormLabel>
+                        <FormControl>
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="••••••"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

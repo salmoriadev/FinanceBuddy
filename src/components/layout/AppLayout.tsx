@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { useTheme } from "next-themes";
+import { ChangePasswordDialog } from "@/components/auth/ChangePasswordDialog";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -131,6 +132,9 @@ export function AppLayout({ children }: AppLayoutProps) {
             <p className="text-sm text-muted-foreground truncate mb-3 px-3">
               {user?.email}
             </p>
+            <div className="px-1">
+              <ChangePasswordDialog />
+            </div>
             <Button
               variant="ghost"
               className="w-full justify-start text-muted-foreground hover:text-foreground"
