@@ -9,12 +9,13 @@ interface PasswordStrengthProps {
 
 export function PasswordStrength({ password }: PasswordStrengthProps) {
   const { checks, strength, label } = getPasswordStrength(password);
-  const strengthColor =
-    strength <= 1
-      ? "bg-rose-500"
-      : strength === 2
-        ? "bg-amber-500"
-        : "bg-emerald-500";
+  const requirements = [
+    { key: "length", label: "8+ caracteres", color: "bg-rose-500" },
+    { key: "upper", label: "Maiúscula", color: "bg-orange-500" },
+    { key: "lower", label: "Minúscula", color: "bg-amber-500" },
+    { key: "number", label: "Número", color: "bg-lime-500" },
+    { key: "symbol", label: "Símbolo", color: "bg-emerald-500" },
+  ] as const;
 
   return (
     <div className="space-y-2">
@@ -22,37 +23,33 @@ export function PasswordStrength({ password }: PasswordStrengthProps) {
         <span>Força da senha</span>
         <span className="font-medium text-foreground">{label}</span>
       </div>
-      <div className="grid grid-cols-4 gap-1">
-        {Array.from({ length: 4 }).map((_, index) => (
+      <div className="grid grid-cols-5 gap-1">
+        {requirements.map((item) => (
           <div
-            key={index}
+            key={item.key}
             className={cn(
               "h-1.5 rounded-full transition-colors",
-              index < strength ? strengthColor : "bg-muted/60",
+              checks[item.key] ? item.color : "bg-muted/60",
             )}
           />
         ))}
       </div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
-        {[
-          { met: checks.length, label: "8+ caracteres" },
-          { met: checks.upper, label: "Maiúscula" },
-          { met: checks.lower, label: "Minúscula" },
-          { met: checks.number, label: "Número" },
-          { met: checks.symbol, label: "Símbolo" },
-        ].map((item) => (
+        {requirements.map((item) => (
           <div key={item.label} className="flex items-center gap-2">
             <span
               className={cn(
                 "flex h-4 w-4 items-center justify-center rounded-full border",
-                item.met
+                checks[item.key]
                   ? "border-emerald-500/60 text-emerald-500"
                   : "border-muted-foreground/40 text-muted-foreground/60",
               )}
             >
               <Check className="h-3 w-3" />
             </span>
-            <span className={cn(item.met ? "text-foreground" : undefined)}>
+            <span
+              className={cn(checks[item.key] ? "text-foreground" : undefined)}
+            >
               {item.label}
             </span>
           </div>
