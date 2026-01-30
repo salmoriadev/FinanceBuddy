@@ -14,45 +14,6 @@ interface ExpenseChartProps {
   data: CategorySpending[];
 }
 
-const renderLabel = (props: {
-  name?: string;
-  percent?: number;
-  cx?: number;
-  cy?: number;
-  midAngle?: number;
-  innerRadius?: number;
-  outerRadius?: number;
-}) => {
-  const {
-    name = "",
-    percent = 0,
-    cx = 0,
-    cy = 0,
-    midAngle = 0,
-    innerRadius = 0,
-    outerRadius = 0,
-  } = props;
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.6;
-  const angle = (-midAngle * Math.PI) / 180;
-  const x = cx + radius * Math.cos(angle);
-  const y = cy + radius * Math.sin(angle);
-  const safeName = name.length > 12 ? `${name.slice(0, 12)}…` : name;
-  const label = `${safeName} ${Math.round(percent * 100)}%`;
-
-  return (
-    <text
-      x={x}
-      y={y}
-      fill="hsl(var(--foreground))"
-      textAnchor="middle"
-      dominantBaseline="central"
-      className="text-xs font-medium"
-    >
-      {label}
-    </text>
-  );
-};
-
 export function ExpenseChart({ data }: ExpenseChartProps) {
   if (data.length === 0) {
     return (
@@ -78,7 +39,7 @@ export function ExpenseChart({ data }: ExpenseChartProps) {
       </CardHeader>
       <CardContent>
         <div className="flex flex-col items-center gap-4">
-          <div className="h-[280px]">
+          <div className="h-[280px] w-full max-w-[360px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
