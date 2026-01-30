@@ -69,36 +69,72 @@ export function ExpenseChart({ data }: ExpenseChartProps) {
     );
   }
 
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-lg">Gastos por Categoria</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={data}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={2}
-                dataKey="value"
-                nameKey="name"
-                label={renderLabel}
-                labelLine={false}
-              >
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value: number) => [formatCurrency(value), "Valor"]}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_190px] gap-4 items-center">
+          <div className="h-[280px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={data}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={2}
+                  dataKey="value"
+                  nameKey="name"
+                  label={false}
+                  labelLine={false}
+                >
+                  {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value: number) => [
+                    formatCurrency(value),
+                    "Valor",
+                  ]}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="space-y-3 text-sm">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              Legenda
+            </p>
+            <div className="space-y-2">
+              {data.map((item) => {
+                const percent = total > 0 ? (item.value / total) * 100 : 0;
+                return (
+                  <div
+                    key={item.name}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className="truncate text-muted-foreground">
+                        {item.name}
+                      </span>
+                    </div>
+                    <span className="font-medium text-foreground tabular-nums">
+                      {percent.toFixed(0)}%
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
