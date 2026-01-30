@@ -77,7 +77,7 @@ export function ExpenseChart({ data }: ExpenseChartProps) {
         <CardTitle className="text-lg">Gastos por Categoria</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_190px] gap-4 items-center">
+        <div className="flex flex-col items-center gap-4">
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -106,27 +106,20 @@ export function ExpenseChart({ data }: ExpenseChartProps) {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="space-y-3 text-sm">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              Legenda
-            </p>
-            <div className="space-y-2">
+          <div className="w-full">
+            <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
               {data.map((item) => {
                 const percent = total > 0 ? (item.value / total) * 100 : 0;
                 return (
                   <div
                     key={item.name}
-                    className="flex items-center justify-between gap-3"
+                    className="flex items-center gap-2 rounded-full border border-border/60 px-3 py-1 text-muted-foreground"
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span className="truncate text-muted-foreground">
-                        {item.name}
-                      </span>
-                    </div>
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <span className="max-w-[140px] truncate">{item.name}</span>
                     <span className="font-medium text-foreground tabular-nums">
                       {percent.toFixed(0)}%
                     </span>
