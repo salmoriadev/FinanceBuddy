@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Trash2, TrendingDown, TrendingUp, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -55,21 +55,33 @@ export function TransactionList({
                   <RefreshCw className="h-3 w-3 text-muted-foreground" />
                 )}
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 text-xs sm:text-sm text-muted-foreground">
                 {transaction.category && (
-                  <>
+                  <div className="flex items-center gap-2">
                     <span
                       className="w-2 h-2 rounded-full"
                       style={{ backgroundColor: transaction.category.color }}
                     />
-                    <span>{transaction.category.name}</span>
-                    <span>•</span>
-                  </>
+                    <span className="leading-tight">
+                      {transaction.category.name}
+                    </span>
+                  </div>
                 )}
-                <span>
-                  {format(parseDateInput(transaction.date), "d 'de' MMM", {
-                    locale: ptBR,
-                  })}
+                {transaction.category && (
+                  <span className="hidden sm:inline">•</span>
+                )}
+                <span
+                  className={cn(
+                    "text-xs sm:text-sm",
+                    transaction.category ? "mt-1 sm:mt-0" : undefined,
+                  )}
+                >
+                  {(() => {
+                    const parsed = parseDateInput(transaction.date);
+                    return isValid(parsed)
+                      ? format(parsed, "d 'de' MMM", { locale: ptBR })
+                      : "Data inválida";
+                  })()}
                 </span>
               </div>
             </div>

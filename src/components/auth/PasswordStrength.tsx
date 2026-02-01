@@ -7,15 +7,25 @@ interface PasswordStrengthProps {
   password: string;
 }
 
+const REQUIREMENTS = [
+  { key: "length", label: "8+ caracteres" },
+  { key: "lower", label: "Minúscula" },
+  { key: "upper", label: "Maiúscula" },
+  { key: "number", label: "Número" },
+  { key: "symbol", label: "Símbolo" },
+] as const;
+
+const STRENGTH_COLORS = [
+  "bg-rose-500",
+  "bg-orange-500",
+  "bg-amber-400",
+  "bg-lime-500",
+  "bg-emerald-500",
+];
+
 export function PasswordStrength({ password }: PasswordStrengthProps) {
-  const { checks, strength, label } = getPasswordStrength(password);
-  const requirements = [
-    { key: "length", label: "8+ caracteres", color: "bg-rose-500" },
-    { key: "upper", label: "Maiúscula", color: "bg-orange-500" },
-    { key: "lower", label: "Minúscula", color: "bg-amber-500" },
-    { key: "number", label: "Número", color: "bg-lime-500" },
-    { key: "symbol", label: "Símbolo", color: "bg-emerald-500" },
-  ] as const;
+  const { checks, score, label } = getPasswordStrength(password);
+  const filledBars = Math.min(score, STRENGTH_COLORS.length);
 
   return (
     <div className="space-y-2">
@@ -24,18 +34,18 @@ export function PasswordStrength({ password }: PasswordStrengthProps) {
         <span className="font-medium text-foreground">{label}</span>
       </div>
       <div className="grid grid-cols-5 gap-1">
-        {requirements.map((item) => (
+        {STRENGTH_COLORS.map((color, index) => (
           <div
-            key={item.key}
+            key={color}
             className={cn(
               "h-1.5 rounded-full transition-colors",
-              checks[item.key] ? item.color : "bg-muted/60",
+              index < filledBars ? color : "bg-muted/60",
             )}
           />
         ))}
       </div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
-        {requirements.map((item) => (
+        {REQUIREMENTS.map((item) => (
           <div key={item.label} className="flex items-center gap-2">
             <span
               className={cn(

@@ -202,10 +202,9 @@ export default function Goals() {
                         <FormLabel>Valor Alvo (R$)</FormLabel>
                         <FormControl>
                           <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            placeholder="0.00"
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="0,00"
                             {...field}
                           />
                         </FormControl>
@@ -221,10 +220,9 @@ export default function Goals() {
                         <FormLabel>Valor Inicial (R$)</FormLabel>
                         <FormControl>
                           <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            placeholder="0.00"
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="0,00"
                             {...field}
                           />
                         </FormControl>
@@ -374,9 +372,8 @@ export default function Goals() {
                     {editingGoal === goal.id ? (
                       <div className="flex gap-2">
                         <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
+                          type="text"
+                          inputMode="decimal"
                           placeholder="Valor do depósito"
                           value={depositAmount}
                           onChange={(e) => setDepositAmount(e.target.value)}
