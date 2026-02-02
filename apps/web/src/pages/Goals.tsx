@@ -356,7 +356,13 @@ export default function Goals() {
                           {formatPercent(percentage, 0)}
                         </span>
                       </div>
-                      <Progress value={percentage} className="h-3" />
+                      <Progress
+                        value={percentage}
+                        className="h-3"
+                        style={{
+                          ["--progress-color" as string]: goal.color,
+                        }}
+                      />
                       <p className="text-sm text-muted-foreground mt-2">
                         Meta: {formatCurrency(Number(goal.target_amount))}
                         {!isComplete &&

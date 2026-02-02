@@ -73,6 +73,10 @@ export function BudgetProgress({ budgets }: BudgetProgressProps) {
                   isOverBudget && "[&>div]:bg-rose-500",
                   isNearLimit && "[&>div]:bg-amber-500",
                 )}
+                style={{
+                  ["--progress-color" as string]:
+                    budget.category?.color || "#6366f1",
+                }}
               />
               {statusLabel && (
                 <p
