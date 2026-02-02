@@ -10,6 +10,8 @@ datasource db {
 enum TransactionType {
   income
   expense
+
+  @@map("transaction_type")
 }
 
 model Category {
