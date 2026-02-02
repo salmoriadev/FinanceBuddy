@@ -63,52 +63,72 @@ ALTER TABLE public.budgets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.savings_goals ENABLE ROW LEVEL SECURITY;
 
 -- Base policies (hardened policies are added in security_hardening migration)
-CREATE POLICY IF NOT EXISTS "Users can view their own categories" ON public.categories
+DROP POLICY IF EXISTS "Users can view their own categories" ON public.categories;
+DROP POLICY IF EXISTS "Users can create their own categories" ON public.categories;
+DROP POLICY IF EXISTS "Users can update their own categories" ON public.categories;
+DROP POLICY IF EXISTS "Users can delete their own categories" ON public.categories;
+
+CREATE POLICY "Users can view their own categories" ON public.categories
   FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can create their own categories" ON public.categories
+CREATE POLICY "Users can create their own categories" ON public.categories
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can update their own categories" ON public.categories
+CREATE POLICY "Users can update their own categories" ON public.categories
   FOR UPDATE USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can delete their own categories" ON public.categories
+CREATE POLICY "Users can delete their own categories" ON public.categories
   FOR DELETE USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can view their own transactions" ON public.transactions
+DROP POLICY IF EXISTS "Users can view their own transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Users can create their own transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Users can update their own transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Users can delete their own transactions" ON public.transactions;
+
+CREATE POLICY "Users can view their own transactions" ON public.transactions
   FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can create their own transactions" ON public.transactions
+CREATE POLICY "Users can create their own transactions" ON public.transactions
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can update their own transactions" ON public.transactions
+CREATE POLICY "Users can update their own transactions" ON public.transactions
   FOR UPDATE USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can delete their own transactions" ON public.transactions
+CREATE POLICY "Users can delete their own transactions" ON public.transactions
   FOR DELETE USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can view their own budgets" ON public.budgets
+DROP POLICY IF EXISTS "Users can view their own budgets" ON public.budgets;
+DROP POLICY IF EXISTS "Users can create their own budgets" ON public.budgets;
+DROP POLICY IF EXISTS "Users can update their own budgets" ON public.budgets;
+DROP POLICY IF EXISTS "Users can delete their own budgets" ON public.budgets;
+
+CREATE POLICY "Users can view their own budgets" ON public.budgets
   FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can create their own budgets" ON public.budgets
+CREATE POLICY "Users can create their own budgets" ON public.budgets
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can update their own budgets" ON public.budgets
+CREATE POLICY "Users can update their own budgets" ON public.budgets
   FOR UPDATE USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can delete their own budgets" ON public.budgets
+CREATE POLICY "Users can delete their own budgets" ON public.budgets
   FOR DELETE USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can view their own savings goals" ON public.savings_goals
+DROP POLICY IF EXISTS "Users can view their own savings goals" ON public.savings_goals;
+DROP POLICY IF EXISTS "Users can create their own savings goals" ON public.savings_goals;
+DROP POLICY IF EXISTS "Users can update their own savings goals" ON public.savings_goals;
+DROP POLICY IF EXISTS "Users can delete their own savings goals" ON public.savings_goals;
+
+CREATE POLICY "Users can view their own savings goals" ON public.savings_goals
   FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can create their own savings goals" ON public.savings_goals
+CREATE POLICY "Users can create their own savings goals" ON public.savings_goals
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can update their own savings goals" ON public.savings_goals
+CREATE POLICY "Users can update their own savings goals" ON public.savings_goals
   FOR UPDATE USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can delete their own savings goals" ON public.savings_goals
+CREATE POLICY "Users can delete their own savings goals" ON public.savings_goals
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Indexes

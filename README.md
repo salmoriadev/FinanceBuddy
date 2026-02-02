@@ -1,73 +1,84 @@
-# Welcome to your Lovable project
+# FinanceBuddy
 
-## Project info
+Arquitetura em 3 camadas com foco em performance, segurança e portfólio:
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
-
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+React (SPA) -> API NestJS -> Postgres (Supabase)
+                  ^
+                  | JWT (Supabase Auth)
 ```
 
-**Edit a file directly in GitHub**
+## Estrutura do monorepo
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```
+apps/
+  web/   # Frontend (React + Vite)
+  api/   # Backend (NestJS + Prisma)
+```
 
-**Use GitHub Codespaces**
+## Tecnologias
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+**Web**
+- React + TypeScript + Vite
+- Tailwind + shadcn-ui
+- React Query
 
-## What technologies are used for this project?
+**API**
+- NestJS + TypeScript
+- Prisma ORM
+- JWT guard (Auth própria)
+- Swagger/OpenAPI
+- Jest + Supertest
 
-This project is built with:
+## Como rodar (local)
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```bash
+npm install
 
-## How can I deploy this project?
+# Frontend
+npm run dev:web
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+# API
+npm run dev:api
+```
 
-## Can I connect a custom domain to my Lovable project?
+### Variaveis de ambiente
 
-Yes, you can!
+**apps/web/.env**
+```
+VITE_API_URL=http://localhost:4000/api/v1
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+**apps/api/.env**
+```
+DATABASE_URL=postgresql://...
+AUTH_JWT_SECRET=...
+AUTH_JWT_ISSUER=financebuddy
+AUTH_JWT_AUD=financebuddy
+PASSWORD_PEPPER=...
+ARGON2_MEMORY_KIB=19456
+ARGON2_TIME_COST=2
+ARGON2_PARALLELISM=1
+ACCESS_TOKEN_TTL_MINUTES=15
+REFRESH_TOKEN_TTL_DAYS=30
+CORS_ORIGIN=http://localhost:8080
+PORT=4000
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+> O backend usa o Postgres do seu Supabase. Rode as migrations SQL em `supabase/migrations/`.
+
+## API Docs
+
+- Swagger: `http://localhost:4000/docs`
+- Health: `http://localhost:4000/api/v1/health`
+
+## Observacao
+
+O backend implementa **auth propria** (JWT + refresh token). O Supabase e usado apenas como **Postgres** gerenciado.
+
+## Testes
+
+```bash
+npm run test:web
+npm run test:api
+```

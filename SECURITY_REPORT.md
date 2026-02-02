@@ -1,87 +1,60 @@
 # Security Report — FinanceBuddy
 
-Date: 2026-01-30
+Date: 2026-02-02
 
 ## Scope
-- Frontend: React/Vite app (`src/`)
-- Data access: Supabase client/hooks (`src/hooks/*`, `src/integrations/supabase/*`)
-- Database: Supabase migrations (`supabase/migrations/*`)
+- Frontend: React/Vite app (`apps/web`)
+- API: NestJS + Prisma (`apps/api`)
+- Database: Supabase Postgres (migrations em `supabase/migrations`)
 
 ## Executive Summary
-The application is well-structured and uses Supabase with Row Level Security (RLS). I implemented additional safeguards at the application layer (user-bound mutations, stronger input validation), and added database hardening (constraints + stricter policies). I also restored a base schema migration to ensure new environments come up correctly.
+O sistema passou a usar **auth própria na API** (JWT + refresh token) com **hash Argon2id** e validações de senha. O frontend não acessa mais o banco diretamente. A API aplica validação e escopo por usuário e o banco mantém constraints e políticas de segurança.
 
 ## Changes Implemented (Security Hardening)
-1. **Base schema migration added**
-   - Ensures all core tables + RLS exist on new environments.
-   - File: `supabase/migrations/20260130090000_base_schema.sql`
+1. **Auth própria com hash lento (Argon2id + pepper opcional)**
+   - Senha nunca é armazenada em texto; tokens de refresh são hashados.
+   - Arquivos: `apps/api/src/modules/auth/*`
 
-2. **Defense-in-depth filters on mutations**
-   - Update/Delete operations now require `user_id` equality in addition to `id` filters.
-   - Files updated:
-     - `src/hooks/useTransactions.tsx`
-     - `src/hooks/useBudgets.tsx`
-     - `src/hooks/useSavingsGoals.tsx`
-     - `src/hooks/useInvestments.tsx`
+2. **JWT guard com validação de issuer/audience**
+   - Tokens válidos obrigatórios em todas as rotas privadas.
+   - Arquivo: `apps/api/src/common/guards/jwt-auth.guard.ts`
 
-3. **Input validation for monetary fields**
-   - Amount fields validate non-negative/positive values using a shared parser.
-   - Files updated:
-     - `src/lib/number.ts`
-     - `src/components/transactions/TransactionForm.tsx`
-     - `src/pages/Budgets.tsx`
-     - `src/pages/Goals.tsx`
-     - `src/pages/Investments.tsx`
+3. **Rate limiting global**
+   - Protege endpoints de brute force.
+   - Arquivo: `apps/api/src/app.module.ts`
 
-4. **Stricter DB constraints + RLS policies**
-   - Added numeric CHECK constraints and stricter policies (category ownership checks, WITH CHECK on updates).
-   - File: `supabase/migrations/20260130235500_security_hardening.sql`
+4. **Checagem de ownership em transações/orçamentos**
+   - Categoria só pode ser usada se pertencer ao usuário.
+   - Arquivos: `apps/api/src/modules/transactions/*`, `apps/api/src/modules/budgets/*`
 
-5. **Secret management for production**
-   - Moved Supabase keys to `.env` (git-ignored) and added `.env.example`.
-   - Added a runtime guard to fail fast if env vars are missing.
-   - Files updated:
-     - `.gitignore`
-     - `.env.example`
-     - `src/integrations/supabase/client.ts`
+5. **Migrations de auth**
+   - Novas tabelas `users` e `refresh_tokens` com índices.
+   - Arquivo: `supabase/migrations/20260202120000_add_auth_tables.sql`
 
 ## Findings & Recommendations
 
 ### High
-- **RLS reliance without application-level guardrails (fixed)**
-  - Previously, update/delete mutations only filtered by `id`.
-  - Fix applied: `user_id` filter added to every update/delete mutation.
+- **Sem MFA habilitado**
+  - Recomendação: implementar MFA TOTP na API e UI.
 
 ### Medium
-- **Category ownership not enforced in DB (fixed)**
-  - A user could link transactions/budgets to another user’s category if RLS didn’t check it.
-  - Fix added in migration: category ownership checks on INSERT/UPDATE policies.
-
-- **Lack of numeric constraints in DB (fixed)**
-  - DB allowed negative amounts and other invalid values.
-  - Fix added: CHECK constraints in hardening migration.
-
-- **Token storage in localStorage**
-  - Supabase auth stores tokens in localStorage; increases exposure in XSS scenarios.
-  - Recommendation: deploy with a strict Content Security Policy (CSP) and avoid unsafe inline scripts.
+- **Tokens em storage do navegador (access token)**
+  - Access token fica em localStorage por conveniência.
+  - Recomendação: manter access token em memória e usar refresh via cookie httpOnly.
 
 ### Low
-- **Client-side aggregates**
-  - Reports compute aggregates in the client by scanning all rows.
-  - Recommendation: add server-side views/functions for aggregation to scale beyond a few thousand rows.
-
-- **Formatting logic spread across pages**
-  - Currency/date formatting is repeated.
-  - Recommendation: centralize format helpers for consistency and maintainability. (Work in progress; currency is already centralized.)
+- **Agregações no client**
+  - Relatórios ainda são calculados no frontend.
+  - Recomendação: mover agregações para endpoints dedicados na API.
 
 ## Cryptography & Data Protection
-- Supabase provides encryption at rest by default.
-- For highly sensitive notes or fields, consider client-side encryption or Supabase Vault/pgcrypto.
-- Ensure backups are enabled in Supabase for data durability.
+- Hash de senha: **Argon2id** com parâmetros configuráveis.
+- Refresh token: hash SHA-256 armazenado (token nunca persistido em claro).
+- Supabase Postgres mantém criptografia em repouso.
 
 ## Required Actions to Apply Hardening
-Run these migrations in Supabase (in order):
+Execute as migrations (ordem):
 1. `supabase/migrations/20260130090000_base_schema.sql`
 2. `supabase/migrations/20260130231500_add_investments.sql`
 3. `supabase/migrations/20260130235500_security_hardening.sql`
-
-If you need, I can provide a single merged SQL file to run once.
+4. `supabase/migrations/20260202120000_add_auth_tables.sql`
