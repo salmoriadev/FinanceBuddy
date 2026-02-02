@@ -18,15 +18,31 @@ export class HttpExceptionFilter implements ExceptionFilter {
       ? exception.getStatus()
       : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message = isHttpException
-      ? exception.getResponse()
-      : "Erro interno";
+    const rawResponse = isHttpException ? exception.getResponse() : "Erro interno";
+    const message = this.normalizeMessage(rawResponse);
 
     response.status(status).json({
       statusCode: status,
       path: request.url,
       message,
+      details: rawResponse,
       timestamp: new Date().toISOString(),
     });
+  }
+
+  private normalizeMessage(response: unknown): string {
+    if (typeof response === "string") {
+      return response;
+    }
+    if (response && typeof response === "object") {
+      const value = (response as { message?: unknown }).message;
+      if (Array.isArray(value)) {
+        return value.map((item) => String(item)).join(", ");
+      }
+      if (typeof value === "string") {
+        return value;
+      }
+    }
+    return "Erro interno";
   }
 }

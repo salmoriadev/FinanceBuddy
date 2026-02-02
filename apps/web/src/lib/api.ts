@@ -63,10 +63,21 @@ export async function apiRequest<T>(
   const payload = isJson ? await response.json() : await response.text();
 
   if (!response.ok) {
-    const message =
-      typeof payload === "string"
-        ? payload
-        : (payload as { message?: string }).message || "Erro na API";
+    const message = (() => {
+      if (typeof payload === "string") {
+        return payload;
+      }
+      if (payload && typeof payload === "object") {
+        const maybeMessage = (payload as { message?: unknown }).message;
+        if (Array.isArray(maybeMessage)) {
+          return maybeMessage.map((item) => String(item)).join(", ");
+        }
+        if (typeof maybeMessage === "string") {
+          return maybeMessage;
+        }
+      }
+      return "Erro na API";
+    })();
     throw new ApiError(message, response.status, payload);
   }
 
