@@ -17,6 +17,7 @@ async function bootstrap() {
   app.enableCors({
     origin: corsOrigin ? corsOrigin.split(",").map((v) => v.trim()) : true,
     credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
   });
 
   app.use(helmet());
