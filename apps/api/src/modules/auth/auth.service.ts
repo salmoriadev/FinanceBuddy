@@ -13,6 +13,8 @@ import { AuthRepository } from "./auth.repository";
 import { RegisterDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
 import { ChangePasswordDto } from "./dto/change-password.dto";
+import { CategoriesService } from "../categories/categories.service";
+import { DEFAULT_CATEGORIES } from "../categories/default-categories";
 
 const PASSWORD_RULES = {
   minLength: 8,
@@ -27,6 +29,7 @@ export class AuthService {
   constructor(
     private readonly repository: AuthRepository,
     private readonly configService: ConfigService,
+    private readonly categoriesService: CategoriesService,
   ) {}
 
   async register(dto: RegisterDto, req: Request) {
@@ -45,6 +48,8 @@ export class AuthService {
       passwordAlgo: "argon2id",
     });
 
+    await this.ensureDefaultCategories(user.id);
+
     const tokens = await this.issueTokens(user.id, user.email, req);
     return { user: this.safeUser(user), ...tokens };
   }
@@ -62,6 +67,7 @@ export class AuthService {
     }
 
     await this.repository.updateLastLogin(user.id);
+    await this.ensureDefaultCategories(user.id);
     const tokens = await this.issueTokens(user.id, user.email, req);
     return { user: this.safeUser(user), ...tokens };
   }
@@ -144,6 +150,20 @@ export class AuthService {
 
   private safeUser(user: { id: string; email: string }) {
     return { id: user.id, email: user.email };
+  }
+
+  private async ensureDefaultCategories(userId: string) {
+    try {
+      const existing = await this.categoriesService.findAll(userId);
+      if (existing.length > 0) return;
+      await Promise.all(
+        DEFAULT_CATEGORIES.map((category) =>
+          this.categoriesService.create(userId, category),
+        ),
+      );
+    } catch {
+      // seeding failure should not block auth flow
+    }
   }
 
   private getAccessTtlMinutes() {
