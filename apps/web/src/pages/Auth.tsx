@@ -26,6 +26,7 @@ import { Loader2, Eye, EyeOff, Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { PasswordStrength } from "@/components/auth/PasswordStrength";
 import { passwordRules } from "@/lib/password";
+import { ApiError } from "@/lib/api";
 
 const loginSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -100,6 +101,33 @@ export default function Auth() {
 
   const passwordValue = form.watch("password") || "";
 
+  const formatAuthError = (error: Error, mode: "login" | "signup") => {
+    if (error instanceof ApiError) {
+      if (mode === "login" && error.status === 401) {
+        return "Email ou senha incorretos";
+      }
+      if (mode === "signup" && error.status === 409) {
+        return "Este email já está cadastrado";
+      }
+      if (error.status === 429) {
+        return "Muitas tentativas. Tente novamente em alguns minutos.";
+      }
+      if (error.status >= 500) {
+        return "Serviço indisponível. Tente novamente.";
+      }
+      if (error.message && error.message !== "Erro na API") {
+        return error.message;
+      }
+    }
+
+    const message = error.message?.toLowerCase() || "";
+    if (message.includes("fetch") || message.includes("network")) {
+      return "Não foi possível conectar ao servidor.";
+    }
+
+    return "Não foi possível concluir a solicitação.";
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -118,32 +146,14 @@ export default function Auth() {
       if (isLogin) {
         const { error } = await signIn(data.email, data.password);
         if (error) {
-          const message =
-            typeof error === "object" && error && "message" in error
-              ? String((error as { message?: string }).message || "")
-              : "";
-          if (message.toLowerCase().includes("credenciais")) {
-            toast.error("Email ou senha incorretos");
-          } else {
-            toast.error(message || "Erro ao fazer login");
-          }
+          toast.error(formatAuthError(error, "login"));
         } else {
           toast.success("Login realizado com sucesso!");
         }
       } else {
         const { error } = await signUp(data.email, data.password);
         if (error) {
-          const message =
-            typeof error === "object" && error && "message" in error
-              ? String((error as { message?: string }).message || "")
-              : "";
-          if (message.toLowerCase().includes("senha")) {
-            toast.error(message);
-          } else if (message.toLowerCase().includes("email já cadastrado")) {
-            toast.error("Este email já está cadastrado");
-          } else {
-            toast.error(message || "Erro ao criar conta");
-          }
+          toast.error(formatAuthError(error, "signup"));
         } else {
           toast.success("Conta criada com sucesso!");
         }
