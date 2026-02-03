@@ -15,7 +15,11 @@ async function bootstrap() {
 
   const corsOrigin = configService.get<string>("CORS_ORIGIN");
   const isProd = configService.get<string>("NODE_ENV") === "production";
-  app.set("trust proxy", 1);
+  const adapter = app.getHttpAdapter();
+  const instance = adapter?.getInstance?.();
+  if (instance?.set) {
+    instance.set("trust proxy", 1);
+  }
   app.enableCors({
     origin:
       corsOrigin && corsOrigin.length > 0
