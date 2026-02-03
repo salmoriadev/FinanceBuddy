@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { TransactionType } from "@/types/finance";
 import { parseDateInput } from "@/lib/date";
 import { useI18n } from "@/hooks/useI18n";
+import { useCategoryLabels } from "@/hooks/useCategoryLabels";
 
 export default function Transactions() {
   const { user, loading } = useAuth();
@@ -36,6 +37,7 @@ export default function Transactions() {
     useTransactions();
   const { categories } = useCategories();
   const { t } = useI18n();
+  const { labelForCategory } = useCategoryLabels();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [filterType, setFilterType] = useState<"all" | TransactionType>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
@@ -191,7 +193,7 @@ export default function Transactions() {
                             className="w-2 h-2 rounded-full"
                             style={{ backgroundColor: cat.color }}
                           />
-                          {cat.name}
+                          {labelForCategory(cat)}
                         </span>
                       </SelectItem>
                     ))}

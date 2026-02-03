@@ -1,9 +1,8 @@
 import * as React from "react";
-import { format } from "date-fns";
-
 import { Input } from "@/components/ui/input";
-import { formatDateInput, toIsoDate } from "@/lib/date";
+import { parseDateInput } from "@/lib/date";
 import { usePreferences } from "@/hooks/usePreferences";
+import { format, isValid } from "date-fns";
 
 type DateInputProps = Omit<React.ComponentProps<typeof Input>, "type">;
 
@@ -20,25 +19,11 @@ const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
         if (/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) {
           return value;
         }
-        const iso = toIsoDate(value);
-        return /^\\d{4}-\\d{2}-\\d{2}$/.test(iso) ? iso : "";
+        const parsed = parseDateInput(value);
+        return isValid(parsed) ? format(parsed, "yyyy-MM-dd") : "";
       }
       return "";
     }, [value]);
-
-    const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      const iso = event.target.value;
-      const formatted = iso ? formatDateInput(iso) : "";
-      const syntheticEvent = {
-        ...event,
-        target: { ...event.target, value: formatted },
-      } as React.ChangeEvent<HTMLInputElement>;
-      onChange?.(syntheticEvent);
-    };
-
-    const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
-      onBlur?.(event);
-    };
 
     return (
       <Input
@@ -47,8 +32,8 @@ const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
         type="date"
         lang={language}
         value={inputValue}
-        onChange={handleChange}
-        onBlur={handleBlur}
+        onChange={onChange}
+        onBlur={onBlur}
       />
     );
   },

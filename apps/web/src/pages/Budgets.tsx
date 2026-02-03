@@ -41,6 +41,7 @@ import { parseDateInput } from "@/lib/date";
 import { parseCurrency } from "@/lib/number";
 import { useFormatter } from "@/hooks/useFormatter";
 import { useI18n } from "@/hooks/useI18n";
+import { useCategoryLabels } from "@/hooks/useCategoryLabels";
 
 const buildBudgetSchema = (t: (key: string) => string) =>
   z.object({
@@ -63,6 +64,7 @@ export default function Budgets() {
   const { transactions } = useTransactions();
   const { formatCurrency, monthsLong, locale } = useFormatter();
   const { t } = useI18n();
+  const { labelForCategory } = useCategoryLabels();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const schema = useMemo(() => buildBudgetSchema(t), [t]);
@@ -199,7 +201,7 @@ export default function Budgets() {
                                     className="w-3 h-3 rounded-full"
                                     style={{ backgroundColor: cat.color }}
                                   />
-                                  {cat.name}
+                                {labelForCategory(cat)}
                                 </span>
                               </SelectItem>
                             ))}
@@ -315,7 +317,7 @@ export default function Budgets() {
                             }}
                           />
                           <span className="font-medium">
-                            {budget.category?.name}
+                            {budget.category ? labelForCategory(budget.category) : null}
                           </span>
                         </div>
                         <Button

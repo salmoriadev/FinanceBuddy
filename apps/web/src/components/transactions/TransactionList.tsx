@@ -5,6 +5,7 @@ import { Transaction } from "@/types/finance";
 import { cn } from "@/lib/utils";
 import { useFormatter } from "@/hooks/useFormatter";
 import { useI18n } from "@/hooks/useI18n";
+import { useCategoryLabels } from "@/hooks/useCategoryLabels";
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -20,6 +21,7 @@ const TransactionRow = memo(function TransactionRow({
 }) {
   const { formatCurrency, formatShortDate } = useFormatter();
   const { t } = useI18n();
+  const { labelForCategory } = useCategoryLabels();
   const formattedDate = useMemo(() => {
     const formatted = formatShortDate(transaction.date);
     return formatted || t("common.invalidDate");
@@ -59,7 +61,7 @@ const TransactionRow = memo(function TransactionRow({
                   style={{ backgroundColor: transaction.category.color }}
                 />
                 <span className="leading-tight">
-                  {transaction.category.name}
+                  {labelForCategory(transaction.category)}
                 </span>
               </div>
             )}

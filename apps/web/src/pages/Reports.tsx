@@ -31,6 +31,7 @@ import { useInvestments } from "@/hooks/useInvestments";
 import { calculatePortfolioSummary } from "@/domain/investments/strategy";
 import { useFormatter } from "@/hooks/useFormatter";
 import { useI18n } from "@/hooks/useI18n";
+import { useCategoryLabels } from "@/hooks/useCategoryLabels";
 
 export default function Reports() {
   const { user, loading } = useAuth();
@@ -38,6 +39,7 @@ export default function Reports() {
   const { investments } = useInvestments();
   const { formatCurrency, formatPercent, formatCompactCurrency, monthsShort } = useFormatter();
   const { t } = useI18n();
+  const { labelFor } = useCategoryLabels();
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear.toString());
 
@@ -101,7 +103,9 @@ export default function Reports() {
 
     const byCategory = expenses.reduce(
       (acc, t) => {
-        const catName = t.category?.name || t("common.other");
+        const catName = t.category
+          ? labelFor(t.category.name, t.category.type)
+          : t("common.other");
         const catColor = t.category?.color || "#6366f1";
         if (!acc[catName]) {
           acc[catName] = { name: catName, value: 0, color: catColor };

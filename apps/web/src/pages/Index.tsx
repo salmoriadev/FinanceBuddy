@@ -17,6 +17,7 @@ import { CategorySpending, MonthlyData } from "@/types/finance";
 import { parseDateInput } from "@/lib/date";
 import { useFormatter } from "@/hooks/useFormatter";
 import { useI18n } from "@/hooks/useI18n";
+import { useCategoryLabels } from "@/hooks/useCategoryLabels";
 
 export default function Index() {
   const { user, loading: authLoading } = useAuth();
@@ -29,6 +30,7 @@ export default function Index() {
   const { goals } = useSavingsGoals();
   const { formatCurrency, formatPercent, monthsShort } = useFormatter();
   const { t: tText } = useI18n();
+  const { labelFor } = useCategoryLabels();
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -72,7 +74,9 @@ export default function Index() {
 
     const byCategory = expenses.reduce(
       (acc, t) => {
-        const catName = t.category?.name || tText("common.none");
+        const catName = t.category
+          ? labelFor(t.category.name, t.category.type)
+          : tText("common.none");
         const catColor = t.category?.color || "#6366f1";
         if (!acc[catName]) {
           acc[catName] = { name: catName, value: 0, color: catColor };

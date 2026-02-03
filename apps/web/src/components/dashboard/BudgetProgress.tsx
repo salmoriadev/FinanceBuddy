@@ -4,6 +4,7 @@ import { Budget } from "@/types/finance";
 import { cn } from "@/lib/utils";
 import { useFormatter } from "@/hooks/useFormatter";
 import { useI18n } from "@/hooks/useI18n";
+import { useCategoryLabels } from "@/hooks/useCategoryLabels";
 
 interface BudgetProgressProps {
   budgets: (Budget & { spent: number })[];
@@ -12,6 +13,7 @@ interface BudgetProgressProps {
 export function BudgetProgress({ budgets }: BudgetProgressProps) {
   const { formatCurrency } = useFormatter();
   const { t } = useI18n();
+  const { labelForCategory } = useCategoryLabels();
 
   if (budgets.length === 0) {
     return (
@@ -57,7 +59,9 @@ export function BudgetProgress({ budgets }: BudgetProgressProps) {
                       backgroundColor: budget.category?.color || "#6366f1",
                     }}
                   />
-                  {budget.category?.name || t("transactions.form.category")}
+                  {budget.category
+                    ? labelForCategory(budget.category)
+                    : t("transactions.form.category")}
                 </span>
                 <span
                   className={cn(

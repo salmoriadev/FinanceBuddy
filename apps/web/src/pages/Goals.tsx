@@ -28,7 +28,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { toast } from "sonner";
-import { formatDateInput, isValidDateInput, toIsoDate } from "@/lib/date";
+import { isValidDateInput, toIsoDate } from "@/lib/date";
 import { parseCurrency } from "@/lib/number";
 import { useFormatter } from "@/hooks/useFormatter";
 import { useI18n } from "@/hooks/useI18n";

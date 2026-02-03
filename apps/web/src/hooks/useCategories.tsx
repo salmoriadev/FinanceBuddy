@@ -3,18 +3,12 @@ import { useAuth } from "./useAuth";
 import { Category, TransactionType } from "@/types/finance";
 import { apiRequest } from "@/lib/api";
 import { ApiCategory, mapCategory } from "@/lib/api-mappers";
-
-const normalizeCategoryName = (value: string) =>
-  value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
+import { normalizeCategoryKey } from "@/lib/category-labels";
 
 const dedupeCategories = (items: Category[]) => {
   const unique = new Map<string, Category>();
   items.forEach((category) => {
-    const key = `${category.type}:${normalizeCategoryName(category.name)}`;
+    const key = `${category.type}:${normalizeCategoryKey(category.name)}`;
     if (!unique.has(key)) {
       unique.set(key, category);
     }

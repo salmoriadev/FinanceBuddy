@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/form";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { formatDateInput, isValidDateInput, toIsoDate } from "@/lib/date";
+import { isValidDateInput, toIsoDate } from "@/lib/date";
 import { parseCurrency } from "@/lib/number";
 import { Investment } from "@/types/finance";
 import {
@@ -124,9 +124,9 @@ export default function Investments() {
       category: editingInvestment.category ?? "",
       invested_amount: editingInvestment.invested_amount.toString(),
       current_value: editingInvestment.current_value.toString(),
-      start_date: editingInvestment.start_date
-        ? formatDateInput(editingInvestment.start_date)
-        : "",
+    start_date: editingInvestment.start_date
+      ? toIsoDate(editingInvestment.start_date)
+      : "",
       notes: editingInvestment.notes ?? "",
     });
   }, [editingInvestment, editForm]);

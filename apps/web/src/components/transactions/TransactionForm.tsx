@@ -24,9 +24,12 @@ import { Switch } from "@/components/ui/switch";
 import { Category, TransactionType } from "@/types/finance";
 import { Loader2 } from "lucide-react";
 import { parseCurrency } from "@/lib/number";
-import { formatDateInput, isValidDateInput, toIsoDate } from "@/lib/date";
+import { isValidDateInput, toIsoDate } from "@/lib/date";
 import { suggestCategory } from "@/domain/categories/matching";
 import { useI18n } from "@/hooks/useI18n";
+import { useCategoryLabels } from "@/hooks/useCategoryLabels";
+import { normalizeCategoryKey } from "@/lib/category-labels";
+import { format } from "date-fns";
 
 const buildTransactionSchema = (t: (key: string) => string) =>
   z.object({
@@ -70,6 +73,7 @@ export function TransactionForm({
   isLoading,
 }: TransactionFormProps) {
   const { t } = useI18n();
+  const { labelForCategory } = useCategoryLabels();
   const schema = useMemo(() => buildTransactionSchema(t), [t]);
   const [categoryTouched, setCategoryTouched] = useState(false);
   const form = useForm<TransactionFormData>({
@@ -79,7 +83,7 @@ export function TransactionForm({
       amount: "",
       type: "expense",
       category_id: "",
-      date: formatDateInput(new Date()),
+      date: format(new Date(), "yyyy-MM-dd"),
       is_recurring: false,
     },
   });
@@ -87,9 +91,18 @@ export function TransactionForm({
   const selectedType = form.watch("type");
   const descriptionValue = form.watch("description");
   const categoryValue = form.watch("category_id");
-  const filteredCategories = categories.filter(
-    (cat) => cat.type === selectedType,
-  );
+  const filteredCategories = useMemo(() => {
+    const unique = new Map<string, Category>();
+    categories
+      .filter((cat) => cat.type === selectedType)
+      .forEach((cat) => {
+        const key = `${cat.type}:${normalizeCategoryKey(cat.name)}`;
+        if (!unique.has(key)) {
+          unique.set(key, cat);
+        }
+      });
+    return Array.from(unique.values());
+  }, [categories, selectedType]);
 
   const suggestedCategory = useMemo(
     () =>
@@ -186,7 +199,7 @@ export function TransactionForm({
                             className="w-3 h-3 rounded-full"
                             style={{ backgroundColor: cat.color }}
                           />
-                          {cat.name}
+                          {labelForCategory(cat)}
                         </span>
                       </SelectItem>
                     ))}
