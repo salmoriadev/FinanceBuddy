@@ -121,10 +121,10 @@ export default function Transactions() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
               Transações
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Gerencie suas receitas e despesas
             </p>
           </div>
@@ -197,22 +197,28 @@ export default function Transactions() {
                 </Select>
               </div>
             </div>
-            <div className="flex flex-col lg:flex-row gap-2">
+            <div className="flex flex-col lg:flex-row gap-3">
               <Input
                 placeholder="Buscar por descrição ou categoria"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="lg:max-w-sm"
               />
-              <div className="flex flex-col sm:flex-row gap-2">
-                <DateInput
-                  value={filterFrom}
-                  onChange={(e) => setFilterFrom(e.target.value)}
-                />
-                <DateInput
-                  value={filterTo}
-                  onChange={(e) => setFilterTo(e.target.value)}
-                />
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">De</span>
+                  <DateInput
+                    value={filterFrom}
+                    onChange={(e) => setFilterFrom(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">Até</span>
+                  <DateInput
+                    value={filterTo}
+                    onChange={(e) => setFilterTo(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
           </CardHeader>

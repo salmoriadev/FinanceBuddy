@@ -148,16 +148,18 @@ export default function Goals() {
     (sum, g) => sum + Number(g.current_amount),
     0,
   );
+  const overallProgress =
+    totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
 
   return (
     <AppLayout>
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
               Metas de Economia
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Acompanhe seus objetivos financeiros
             </p>
           </div>
@@ -302,6 +304,25 @@ export default function Goals() {
             </CardContent>
           </Card>
         </div>
+        <Card>
+          <CardContent className="p-6 space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Progresso geral</span>
+              <span className="font-medium">
+                {formatPercent(overallProgress, 0)}
+              </span>
+            </div>
+            <Progress value={overallProgress} className="h-3" />
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{formatCurrency(totalSaved)}</span>
+              <span>
+                {totalTarget > 0
+                  ? `Meta ${formatCurrency(totalTarget)}`
+                  : "Defina uma meta"}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
 
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
