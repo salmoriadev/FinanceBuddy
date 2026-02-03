@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ChangePasswordDialog } from "@/components/auth/ChangePasswordDialog";
 
 export default function Settings() {
   const { user, loading, updateProfile } = useAuth();
@@ -88,6 +89,12 @@ export default function Settings() {
                 </label>
                 <Input value={user.email} disabled />
               </div>
+              <div className="pt-2">
+                <ChangePasswordDialog
+                  triggerVariant="outline"
+                  triggerClassName="w-full justify-center"
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -144,13 +151,6 @@ export default function Settings() {
                     </SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
-                  {t("settings.dateFormat")}
-                </label>
-                <Input value="DD/MM/YYYY" disabled />
               </div>
             </CardContent>
           </Card>

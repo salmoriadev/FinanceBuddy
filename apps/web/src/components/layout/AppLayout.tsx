@@ -19,7 +19,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { useTheme } from "next-themes";
-import { ChangePasswordDialog } from "@/components/auth/ChangePasswordDialog";
 import { useI18n } from "@/hooks/useI18n";
 
 interface AppLayoutProps {
@@ -131,7 +130,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             })}
           </nav>
 
-          <div className="border-t border-border pt-4 mt-4 space-y-3">
+          <div className="border-t border-border pt-4 mt-auto space-y-3 pb-2">
             <div className="px-3">
               {user?.name ? (
                 <>
@@ -148,12 +147,9 @@ export function AppLayout({ children }: AppLayoutProps) {
                 </p>
               )}
             </div>
-            <div className="px-1">
-              <ChangePasswordDialog />
-            </div>
             <Button
               variant="ghost"
-              className="w-full justify-start text-muted-foreground hover:text-foreground"
+              className="w-full justify-start text-foreground/70 hover:text-foreground"
               onClick={signOut}
             >
               <LogOut className="h-5 w-5 mr-3" />

@@ -62,7 +62,17 @@ const buildChangePasswordSchema = (t: (key: string) => string) =>
 
 type ChangePasswordFormData = z.infer<ReturnType<typeof buildChangePasswordSchema>>;
 
-export function ChangePasswordDialog() {
+type ChangePasswordDialogProps = {
+  triggerVariant?: React.ComponentProps<typeof Button>["variant"];
+  triggerSize?: React.ComponentProps<typeof Button>["size"];
+  triggerClassName?: string;
+};
+
+export function ChangePasswordDialog({
+  triggerVariant = "ghost",
+  triggerSize,
+  triggerClassName,
+}: ChangePasswordDialogProps) {
   const { user, changePassword } = useAuth();
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -118,8 +128,9 @@ export function ChangePasswordDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
-          variant="ghost"
-          className="w-full justify-start text-muted-foreground hover:text-foreground"
+          variant={triggerVariant}
+          size={triggerSize}
+          className={triggerClassName}
           disabled={!user?.email}
         >
           {t("nav.changePassword")}
