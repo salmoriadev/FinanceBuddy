@@ -20,6 +20,12 @@ interface MonthlyChartProps {
 export function MonthlyChart({ data }: MonthlyChartProps) {
   const { formatCurrency, formatCompactCurrency } = useFormatter();
   const { t } = useI18n();
+  const tooltipStyle = {
+    backgroundColor: "hsl(var(--card))",
+    border: "1px solid hsl(var(--border))",
+    borderRadius: "8px",
+    color: "hsl(var(--foreground))",
+  } as const;
 
   if (data.length === 0) {
     return (
@@ -74,11 +80,9 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
               />
               <Tooltip
                 formatter={(value: number) => [formatCurrency(value)]}
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                }}
+                contentStyle={tooltipStyle}
+                labelStyle={{ color: "hsl(var(--foreground))" }}
+                itemStyle={{ color: "hsl(var(--foreground))" }}
               />
               <Legend />
               <Area

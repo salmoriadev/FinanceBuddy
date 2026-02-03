@@ -40,6 +40,12 @@ export default function Reports() {
   const { formatCurrency, formatPercent, formatCompactCurrency, monthsShort } = useFormatter();
   const { t } = useI18n();
   const { labelFor } = useCategoryLabels();
+  const tooltipStyle = {
+    backgroundColor: "hsl(var(--card))",
+    border: "1px solid hsl(var(--border))",
+    borderRadius: "8px",
+    color: "hsl(var(--foreground))",
+  } as const;
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear.toString());
 
@@ -370,11 +376,9 @@ export default function Reports() {
                       />
                       <Tooltip
                         formatter={(value: number) => [formatCurrency(value)]}
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                        }}
+                        contentStyle={tooltipStyle}
+                        labelStyle={{ color: "hsl(var(--foreground))" }}
+                        itemStyle={{ color: "hsl(var(--foreground))" }}
                       />
                       <Legend />
                       <Bar
@@ -432,11 +436,9 @@ export default function Reports() {
                       formatCurrency(value),
                       t("reports.balance"),
                     ]}
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
+                    contentStyle={tooltipStyle}
+                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
                   />
                   <Line
                     type="monotone"
