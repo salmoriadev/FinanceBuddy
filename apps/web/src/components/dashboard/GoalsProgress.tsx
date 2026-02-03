@@ -2,24 +2,28 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { SavingsGoal } from "@/types/finance";
 import { Target } from "lucide-react";
-import { formatCurrency, formatPercent } from "@/lib/format";
+import { useFormatter } from "@/hooks/useFormatter";
+import { useI18n } from "@/hooks/useI18n";
 
 interface GoalsProgressProps {
   goals: SavingsGoal[];
 }
 
 export function GoalsProgress({ goals }: GoalsProgressProps) {
+  const { formatCurrency, formatPercent } = useFormatter();
+  const { t } = useI18n();
+
   if (goals.length === 0) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Target className="h-5 w-5" />
-            Metas de Economia
+            {t("goals.title")}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-8">
-          <p className="text-muted-foreground text-sm">Nenhuma meta definida</p>
+          <p className="text-muted-foreground text-sm">{t("goals.none")}</p>
         </CardContent>
       </Card>
     );
@@ -30,7 +34,7 @@ export function GoalsProgress({ goals }: GoalsProgressProps) {
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <Target className="h-5 w-5" />
-          Metas de Economia
+          {t("goals.title")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -58,7 +62,9 @@ export function GoalsProgress({ goals }: GoalsProgressProps) {
               />
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>{formatCurrency(goal.current_amount)}</span>
-                <span>Faltam {formatCurrency(remaining)}</span>
+                <span>
+                  {t("goals.remaining")} {formatCurrency(remaining)}
+                </span>
               </div>
             </div>
           );

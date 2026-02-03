@@ -4,6 +4,24 @@ import { Category, TransactionType } from "@/types/finance";
 import { apiRequest } from "@/lib/api";
 import { ApiCategory, mapCategory } from "@/lib/api-mappers";
 
+const normalizeCategoryName = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+const dedupeCategories = (items: Category[]) => {
+  const unique = new Map<string, Category>();
+  items.forEach((category) => {
+    const key = `${category.type}:${normalizeCategoryName(category.name)}`;
+    if (!unique.has(key)) {
+      unique.set(key, category);
+    }
+  });
+  return Array.from(unique.values());
+};
+
 export function useCategories() {
   const { user, accessToken } = useAuth();
   const queryClient = useQueryClient();
@@ -14,7 +32,8 @@ export function useCategories() {
     queryFn: async () => {
       if (!user || !token) return [];
       const data = await apiRequest<ApiCategory[]>("/categories", { token });
-      return data.map(mapCategory) as Category[];
+      const mapped = data.map(mapCategory) as Category[];
+      return dedupeCategories(mapped);
     },
     enabled: !!user && !!token,
     staleTime: 5 * 60_000,

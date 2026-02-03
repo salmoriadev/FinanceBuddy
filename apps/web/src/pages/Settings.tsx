@@ -1,0 +1,167 @@
+import { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { useI18n } from "@/hooks/useI18n";
+import { usePreferences } from "@/hooks/usePreferences";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+export default function Settings() {
+  const { user, loading, updateProfile } = useAuth();
+  const { t } = useI18n();
+  const { locale, currency } = usePreferences();
+  const [name, setName] = useState("");
+  const [selectedLocale, setSelectedLocale] = useState(locale);
+  const [selectedCurrency, setSelectedCurrency] = useState(currency);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setName(user?.name ?? "");
+    setSelectedLocale(locale);
+    setSelectedCurrency(currency);
+  }, [user?.name, locale, currency]);
+
+  if (loading) {
+    return null;
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  const handleSave = async () => {
+    setSaving(true);
+    const { error } = await updateProfile({
+      name: name.trim() ? name.trim() : null,
+      locale: selectedLocale,
+      currency: selectedCurrency,
+    });
+    if (error) {
+      toast.error(t("settings.error"));
+    } else {
+      toast.success(t("settings.saved"));
+    }
+    setSaving(false);
+  };
+
+  return (
+    <AppLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+            {t("settings.title")}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {t("settings.subtitle")}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">{t("settings.account")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  {t("settings.name")}
+                </label>
+                <Input
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder={t("settings.namePlaceholder")}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  {t("settings.email")}
+                </label>
+                <Input value={user.email} disabled />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">
+                {t("settings.preferences")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  {t("settings.language")}
+                </label>
+                <Select
+                  value={selectedLocale}
+                  onValueChange={(value) =>
+                    setSelectedLocale(value as "en" | "pt-BR")
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="en">
+                      {t("settings.language.en")}
+                    </SelectItem>
+                    <SelectItem value="pt-BR">
+                      {t("settings.language.pt")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  {t("settings.currency")}
+                </label>
+                <Select
+                  value={selectedCurrency}
+                  onValueChange={(value) =>
+                    setSelectedCurrency(value as "BRL" | "USD")
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BRL">
+                      {t("settings.currency.brl")}
+                    </SelectItem>
+                    <SelectItem value="USD">
+                      {t("settings.currency.usd")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  {t("settings.dateFormat")}
+                </label>
+                <Input value="DD/MM/YYYY" disabled />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="flex justify-end">
+          <Button onClick={handleSave} disabled={saving}>
+            {t("settings.save")}
+          </Button>
+        </div>
+      </div>
+    </AppLayout>
+  );
+}

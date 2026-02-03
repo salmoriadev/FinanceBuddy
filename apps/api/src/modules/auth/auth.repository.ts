@@ -37,6 +37,17 @@ export class AuthRepository {
     });
   }
 
+  updateProfile(userId: string, data: {
+    name?: string | null;
+    locale?: string;
+    currency?: string;
+  }) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data,
+    });
+  }
+
   createRefreshToken(data: {
     userId: string;
     tokenHash: string;

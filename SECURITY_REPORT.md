@@ -31,6 +31,18 @@ O sistema passou a usar **auth própria na API** (JWT + refresh token) com **has
    - Novas tabelas `users` e `refresh_tokens` com índices.
    - Arquivo: `supabase/migrations/20260202120000_add_auth_tables.sql`
 
+6. **CORS restrito por allowlist**
+   - Em produção, bloqueia origens não configuradas.
+   - Arquivo: `apps/api/src/main.ts`
+
+7. **Proxy-aware IP + cookies**
+   - `trust proxy` habilitado para logs e cookies seguros atrás de proxies.
+   - Arquivo: `apps/api/src/main.ts`
+
+8. **Erro interno sem detalhes em produção**
+   - Evita vazamento de detalhes de exceções 5xx.
+   - Arquivo: `apps/api/src/common/filters/http-exception.filter.ts`
+
 ## Findings & Recommendations
 
 ### High

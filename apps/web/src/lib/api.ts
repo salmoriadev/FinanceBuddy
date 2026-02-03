@@ -11,7 +11,9 @@ export class ApiError extends Error {
 }
 
 const DEFAULT_API_URL = "http://localhost:4000/api/v1";
-const API_URL = import.meta.env.VITE_API_URL || DEFAULT_API_URL;
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV ? DEFAULT_API_URL : "");
 
 const buildUrl = (path: string) => {
   const trimmed = API_URL.replace(/\/$/, "");
@@ -29,7 +31,10 @@ export async function apiRequest<T>(
   } = {},
 ): Promise<T> {
   if (!API_URL) {
-    throw new ApiError("API_URL não configurada", 500);
+    throw new ApiError(
+      "API_URL not configured. Set VITE_API_URL to your backend URL.",
+      500,
+    );
   }
 
   const { method = "GET", body, token, signal } = options;
@@ -76,7 +81,7 @@ export async function apiRequest<T>(
           return maybeMessage;
         }
       }
-      return "Erro na API";
+      return "API error";
     })();
     throw new ApiError(message, response.status, payload);
   }

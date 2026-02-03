@@ -19,15 +19,5 @@ export const getPasswordStrength = (value: string) => {
   const score = Object.values(checks).filter(Boolean).length;
   const strength =
     score === 0 ? 0 : score <= 2 ? 1 : score === 3 ? 2 : score === 4 ? 3 : 4;
-  const label =
-    strength === 0
-      ? "Muito fraca"
-      : strength === 1
-        ? "Fraca"
-        : strength === 2
-          ? "Média"
-          : strength === 3
-            ? "Boa"
-            : "Forte";
-  return { checks, score, strength, label };
+  return { checks, score, strength };
 };

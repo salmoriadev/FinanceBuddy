@@ -32,6 +32,9 @@ model Category {
 model User {
   id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email        String    @db.Citext
+  name         String?   @db.Text
+  locale       String    @default("en")
+  currency     String    @default("BRL")
   passwordHash String    @map("password_hash")
   passwordAlgo String    @map("password_algo")
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -62,20 +65,24 @@ model RefreshToken {
 }
 
 model Transaction {
-  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId      String          @map("user_id") @db.Uuid
-  categoryId  String?         @map("category_id") @db.Uuid
-  description String
-  amount      Decimal         @db.Decimal(12, 2)
-  type        TransactionType
-  date        DateTime        @db.Date
-  isRecurring Boolean         @default(false) @map("is_recurring")
-  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String          @map("user_id") @db.Uuid
+  categoryId         String?         @map("category_id") @db.Uuid
+  recurrenceParentId String?         @map("recurrence_parent_id") @db.Uuid
+  description        String
+  amount             Decimal         @db.Decimal(12, 2)
+  type               TransactionType
+  date               DateTime        @db.Date
+  isRecurring        Boolean         @default(false) @map("is_recurring")
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  category Category? @relation(fields: [categoryId], references: [id])
+  category          Category?     @relation(fields: [categoryId], references: [id])
+  recurrenceParent  Transaction?  @relation("TransactionRecurrence", fields: [recurrenceParentId], references: [id])
+  recurringChildren Transaction[] @relation("TransactionRecurrence")
 
   @@index([userId, date], map: "idx_transactions_user_date")
   @@index([categoryId], map: "idx_transactions_category")
+  @@index([recurrenceParentId], map: "idx_transactions_recurrence_parent")
   @@map("transactions")
 }
 

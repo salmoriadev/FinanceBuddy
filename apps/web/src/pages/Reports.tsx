@@ -28,13 +28,16 @@ import { ExpenseChart } from "@/components/dashboard/ExpenseChart";
 import { CategorySpending } from "@/types/finance";
 import { parseDateInput } from "@/lib/date";
 import { useInvestments } from "@/hooks/useInvestments";
-import { formatCurrency, formatPercent, MONTHS_SHORT } from "@/lib/format";
 import { calculatePortfolioSummary } from "@/domain/investments/strategy";
+import { useFormatter } from "@/hooks/useFormatter";
+import { useI18n } from "@/hooks/useI18n";
 
 export default function Reports() {
   const { user, loading } = useAuth();
   const { transactions, isLoading } = useTransactions();
   const { investments } = useInvestments();
+  const { formatCurrency, formatPercent, formatCompactCurrency, monthsShort } = useFormatter();
+  const { t } = useI18n();
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear.toString());
 
@@ -49,7 +52,7 @@ export default function Reports() {
   const monthlyData = useMemo(() => {
     const year = parseInt(selectedYear);
 
-    return MONTHS_SHORT.map((month, index) => {
+    return monthsShort.map((month, index) => {
       const monthTransactions = transactions.filter((t) => {
         const date = parseDateInput(t.date);
         return date.getMonth() === index && date.getFullYear() === year;
@@ -65,7 +68,7 @@ export default function Reports() {
 
       return { month, income, expense, balance: income - expense };
     });
-  }, [transactions, selectedYear]);
+  }, [transactions, selectedYear, monthsShort]);
 
   const yearlyStats = useMemo(() => {
     const year = parseInt(selectedYear);
@@ -98,7 +101,7 @@ export default function Reports() {
 
     const byCategory = expenses.reduce(
       (acc, t) => {
-        const catName = t.category?.name || "Outros";
+        const catName = t.category?.name || t("common.other");
         const catColor = t.category?.color || "#6366f1";
         if (!acc[catName]) {
           acc[catName] = { name: catName, value: 0, color: catColor };
@@ -110,7 +113,7 @@ export default function Reports() {
     );
 
     return Object.values(byCategory).sort((a, b) => b.value - a.value);
-  }, [transactions, selectedYear]);
+  }, [transactions, selectedYear, t]);
 
   const currentMonthStats = useMemo(() => {
     const now = new Date();
@@ -171,10 +174,10 @@ export default function Reports() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-              Relatórios
+              {t("reports.title")}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Análise detalhada das suas finanças
+              {t("reports.subtitle")}
             </p>
           </div>
 
@@ -198,7 +201,7 @@ export default function Reports() {
             <CardContent className="p-6">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                 <TrendingUp className="h-4 w-4 text-emerald-600" />
-                Receitas {selectedYear}
+                {t("reports.income")} {selectedYear}
               </div>
               <p className="text-2xl font-bold text-emerald-600">
                 {formatCurrency(yearlyStats.income)}
@@ -209,7 +212,7 @@ export default function Reports() {
             <CardContent className="p-6">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                 <TrendingDown className="h-4 w-4 text-rose-600" />
-                Despesas {selectedYear}
+                {t("reports.expense")} {selectedYear}
               </div>
               <p className="text-2xl font-bold text-rose-600">
                 {formatCurrency(yearlyStats.expense)}
@@ -219,10 +222,12 @@ export default function Reports() {
           <Card>
             <CardContent className="p-6">
               <p className="text-sm text-muted-foreground mb-1">
-                Balanço {selectedYear}
+                {t("reports.balance")} {selectedYear}
               </p>
               <p
-                className={`text-2xl font-bold ${yearlyStats.balance >= 0 ? "text-emerald-600" : "text-rose-600"}`}
+                className={`text-2xl font-bold ${
+                  yearlyStats.balance >= 0 ? "text-emerald-600" : "text-rose-600"
+                }`}
               >
                 {formatCurrency(yearlyStats.balance)}
               </p>
@@ -231,7 +236,7 @@ export default function Reports() {
           <Card>
             <CardContent className="p-6">
               <p className="text-sm text-muted-foreground mb-1">
-                Taxa de Economia
+                {t("reports.savingsRate")}
               </p>
               <p className="text-2xl font-bold">
                 {formatPercent(yearlyStats.savingsRate, 1)}
@@ -242,32 +247,42 @@ export default function Reports() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Investimentos (carteira atual)</CardTitle>
+            <CardTitle>{t("reports.investments")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground">Total Investido</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("investments.totalInvested")}
+                </p>
                 <p className="text-xl font-bold">
                   {formatCurrency(investmentStats.invested)}
                 </p>
               </div>
               <div className="p-4 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground">Valor Atual</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("investments.currentValue")}
+                </p>
                 <p className="text-xl font-bold text-emerald-600">
                   {formatCurrency(investmentStats.current)}
                 </p>
               </div>
               <div className="p-4 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground">Rendimento</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("investments.return")}
+                </p>
                 <p
-                  className={`text-xl font-bold ${investmentStats.profit >= 0 ? "text-emerald-600" : "text-rose-600"}`}
+                  className={`text-xl font-bold ${
+                    investmentStats.profit >= 0
+                      ? "text-emerald-600"
+                      : "text-rose-600"
+                  }`}
                 >
                   {investmentStats.profit >= 0 ? "+" : ""}
                   {formatCurrency(investmentStats.profit)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {formatPercent(investmentStats.roi, 1)} acumulado
+                  {formatPercent(investmentStats.roi, 1)} {t("common.accumulated")}
                 </p>
               </div>
             </div>
@@ -276,29 +291,39 @@ export default function Reports() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Comparativo Mensal vs Anterior</CardTitle>
+            <CardTitle>{t("reports.compareTitle")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="p-4 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground">Mês Atual</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("reports.currentMonth")}
+                </p>
                 <p className="text-xl font-bold">
                   {formatCurrency(currentMonthStats.currentExpense)}
                 </p>
               </div>
               <div className="p-4 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground">Mês Anterior</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("reports.previousMonth")}
+                </p>
                 <p className="text-xl font-bold">
                   {formatCurrency(currentMonthStats.lastExpense)}
                 </p>
               </div>
               <div className="p-4 bg-muted/50 rounded-lg">
-                <p className="text-sm text-muted-foreground">Variação</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("reports.variation")}
+                </p>
                 <p
-                  className={`text-xl font-bold ${currentMonthStats.variation <= 0 ? "text-emerald-600" : "text-rose-600"}`}
+                  className={`text-xl font-bold ${
+                    currentMonthStats.variation <= 0
+                      ? "text-emerald-600"
+                      : "text-rose-600"
+                  }`}
                 >
                   {currentMonthStats.variation > 0 ? "+" : ""}
-                  {currentMonthStats.variation.toFixed(1)}%
+                  {formatPercent(currentMonthStats.variation, 1)}
                 </p>
               </div>
             </div>
@@ -308,7 +333,7 @@ export default function Reports() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Receitas vs Despesas por Mês</CardTitle>
+              <CardTitle>{t("reports.incomeVsExpense")}</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -336,7 +361,7 @@ export default function Reports() {
                           fontSize: 12,
                         }}
                         tickFormatter={(value) =>
-                          `R$${(value / 1000).toFixed(0)}k`
+                          formatCompactCurrency(Number(value))
                         }
                       />
                       <Tooltip
@@ -350,13 +375,13 @@ export default function Reports() {
                       <Legend />
                       <Bar
                         dataKey="income"
-                        name="Receitas"
+                        name={t("reports.income")}
                         fill="#10b981"
                         radius={[4, 4, 0, 0]}
                       />
                       <Bar
                         dataKey="expense"
-                        name="Despesas"
+                        name={t("reports.expense")}
                         fill="#ef4444"
                         radius={[4, 4, 0, 0]}
                       />
@@ -372,7 +397,7 @@ export default function Reports() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Evolução do Balanço Mensal</CardTitle>
+            <CardTitle>{t("reports.balanceEvolution")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
@@ -394,12 +419,14 @@ export default function Reports() {
                       fill: "hsl(var(--muted-foreground))",
                       fontSize: 12,
                     }}
-                    tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`}
+                    tickFormatter={(value) =>
+                      formatCompactCurrency(Number(value))
+                    }
                   />
                   <Tooltip
                     formatter={(value: number) => [
                       formatCurrency(value),
-                      "Balanço",
+                      t("reports.balance"),
                     ]}
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",
@@ -410,7 +437,7 @@ export default function Reports() {
                   <Line
                     type="monotone"
                     dataKey="balance"
-                    name="Balanço"
+                    name={t("reports.balance")}
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
                     dot={{ fill: "hsl(var(--primary))" }}

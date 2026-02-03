@@ -28,13 +28,13 @@ export class JwtAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers?.authorization as string | undefined;
     if (!authHeader?.startsWith("Bearer ")) {
-      throw new UnauthorizedException("Token ausente");
+      throw new UnauthorizedException("Missing access token");
     }
 
     const token = authHeader.replace("Bearer ", "");
     const jwtSecret = this.configService.get<string>("AUTH_JWT_SECRET");
     if (!jwtSecret) {
-      throw new UnauthorizedException("JWT secret não configurado");
+      throw new UnauthorizedException("JWT secret is not configured");
     }
 
     try {
@@ -47,17 +47,17 @@ export class JwtAuthGuard implements CanActivate {
         const aud = payload.aud;
         const audList = Array.isArray(aud) ? aud : aud ? [aud] : [];
         if (!audList.includes(expectedAud)) {
-          throw new UnauthorizedException("Token com audience inválido");
+          throw new UnauthorizedException("Token audience is invalid");
         }
       }
 
       const expectedIss = this.configService.get<string>("AUTH_JWT_ISSUER");
       if (expectedIss && payload.iss !== expectedIss) {
-        throw new UnauthorizedException("Token com issuer inválido");
+        throw new UnauthorizedException("Token issuer is invalid");
       }
 
       if (!payload.sub) {
-        throw new UnauthorizedException("Token inválido");
+        throw new UnauthorizedException("Invalid token");
       }
 
       const user: AuthUser = {
@@ -67,7 +67,7 @@ export class JwtAuthGuard implements CanActivate {
       request.user = user;
       return true;
     } catch (error) {
-      throw new UnauthorizedException("Token inválido");
+      throw new UnauthorizedException("Invalid token");
     }
   }
 }

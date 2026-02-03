@@ -17,7 +17,7 @@ export class BudgetsService {
       dto.categoryId,
     );
     if (!category) {
-      throw new ForbiddenException("Categoria inválida para o usuário");
+      throw new ForbiddenException("Category not available for this user");
     }
     return this.repository.create(userId, {
       categoryId: dto.categoryId,
@@ -34,7 +34,7 @@ export class BudgetsService {
         dto.categoryId,
       );
       if (!category) {
-        throw new ForbiddenException("Categoria inválida para o usuário");
+        throw new ForbiddenException("Category not available for this user");
       }
     }
     const updated = await this.repository.update(userId, id, {
@@ -44,7 +44,7 @@ export class BudgetsService {
       year: dto.year,
     });
     if (!updated) {
-      throw new NotFoundException("Orçamento não encontrado");
+      throw new NotFoundException("Budget not found");
     }
     return updated;
   }
@@ -52,7 +52,7 @@ export class BudgetsService {
   async delete(userId: string, id: string) {
     const result = await this.repository.delete(userId, id);
     if (result.count === 0) {
-      throw new NotFoundException("Orçamento não encontrado");
+      throw new NotFoundException("Budget not found");
     }
     return { deleted: true };
   }

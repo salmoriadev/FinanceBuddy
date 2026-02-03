@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Plus, Loader2, Trash2, Edit2 } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -30,29 +30,37 @@ import {
 import { toast } from "sonner";
 import { formatDateInput, isValidDateInput, toIsoDate } from "@/lib/date";
 import { parseCurrency } from "@/lib/number";
-import { formatCurrency, formatPercent } from "@/lib/format";
+import { useFormatter } from "@/hooks/useFormatter";
+import { useI18n } from "@/hooks/useI18n";
 
-const goalSchema = z.object({
-  name: z.string().min(1, "Nome obrigatório"),
-  target_amount: z
-    .string()
-    .min(1, "Valor obrigatório")
-    .refine(
-      (value) => parseCurrency(value) > 0,
-      "Valor deve ser maior que zero",
-    ),
-  current_amount: z
-    .string()
-    .optional()
-    .refine((value) => !value || parseCurrency(value) >= 0, "Valor inválido"),
-  target_date: z
-    .string()
-    .optional()
-    .refine((value) => !value || isValidDateInput(value), "Data inválida"),
-  color: z.string().optional(),
-});
+const buildGoalSchema = (t: (key: string) => string) =>
+  z.object({
+    name: z.string().min(1, t("goals.validation.nameRequired")),
+    target_amount: z
+      .string()
+      .min(1, t("goals.validation.amountRequired"))
+      .refine(
+        (value) => parseCurrency(value) > 0,
+        t("goals.validation.amountPositive"),
+      ),
+    current_amount: z
+      .string()
+      .optional()
+      .refine(
+        (value) => !value || parseCurrency(value) >= 0,
+        t("goals.validation.amountInvalid"),
+      ),
+    target_date: z
+      .string()
+      .optional()
+      .refine(
+        (value) => !value || isValidDateInput(value),
+        t("goals.validation.dateInvalid"),
+      ),
+    color: z.string().optional(),
+  });
 
-type GoalFormData = z.infer<typeof goalSchema>;
+type GoalFormData = z.infer<ReturnType<typeof buildGoalSchema>>;
 
 const colors = [
   "#10b981",
@@ -69,12 +77,15 @@ export default function Goals() {
   const { user, loading } = useAuth();
   const { goals, isLoading, addGoal, updateGoal, deleteGoal } =
     useSavingsGoals();
+  const { formatCurrency, formatPercent, formatDate } = useFormatter();
+  const { t } = useI18n();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<string | null>(null);
   const [depositAmount, setDepositAmount] = useState("");
 
+  const schema = useMemo(() => buildGoalSchema(t), [t]);
   const form = useForm<GoalFormData>({
-    resolver: zodResolver(goalSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       name: "",
       target_amount: "",
@@ -107,16 +118,16 @@ export default function Goals() {
       });
       setIsDialogOpen(false);
       form.reset();
-      toast.success("Meta criada com sucesso!");
+      toast.success(t("goals.toast.addSuccess"));
     } catch {
-      toast.error("Erro ao criar meta");
+      toast.error(t("goals.toast.addError"));
     }
   };
 
   const handleDeposit = async (goalId: string, currentAmount: number) => {
     const amount = parseCurrency(depositAmount);
     if (isNaN(amount) || amount <= 0) {
-      toast.error("Valor inválido");
+      toast.error(t("goals.toast.invalidAmount"));
       return;
     }
 
@@ -127,16 +138,16 @@ export default function Goals() {
       });
       setEditingGoal(null);
       setDepositAmount("");
-      toast.success("Depósito realizado!");
+      toast.success(t("goals.toast.depositSuccess"));
     } catch {
-      toast.error("Erro ao depositar");
+      toast.error(t("goals.toast.depositError"));
     }
   };
 
   const handleDelete = (id: string) => {
     deleteGoal.mutate(id, {
-      onSuccess: () => toast.success("Meta excluída"),
-      onError: () => toast.error("Erro ao excluir"),
+      onSuccess: () => toast.success(t("goals.toast.deleteSuccess")),
+      onError: () => toast.error(t("goals.toast.deleteError")),
     });
   };
 
@@ -157,10 +168,10 @@ export default function Goals() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-              Metas de Economia
+              {t("goals.title")}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Acompanhe seus objetivos financeiros
+              {t("goals.subtitle")}
             </p>
           </div>
 
@@ -168,12 +179,12 @@ export default function Goals() {
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
-                Nova Meta
+                {t("goals.new")}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Nova Meta</DialogTitle>
+                <DialogTitle>{t("goals.form.title")}</DialogTitle>
               </DialogHeader>
               <Form {...form}>
                 <form
@@ -185,10 +196,10 @@ export default function Goals() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nome da Meta</FormLabel>
+                        <FormLabel>{t("goals.form.nameLabel")}</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Ex: Viagem de férias"
+                            placeholder={t("goals.form.namePlaceholder")}
                             {...field}
                           />
                         </FormControl>
@@ -201,12 +212,12 @@ export default function Goals() {
                     name="target_amount"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Valor Alvo (R$)</FormLabel>
+                        <FormLabel>{t("goals.form.targetAmountLabel")}</FormLabel>
                         <FormControl>
                           <Input
                             type="text"
                             inputMode="decimal"
-                            placeholder="0,00"
+                            placeholder={t("common.currencyPlaceholder")}
                             {...field}
                           />
                         </FormControl>
@@ -219,12 +230,12 @@ export default function Goals() {
                     name="current_amount"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Valor Inicial (R$)</FormLabel>
+                        <FormLabel>{t("goals.form.initialAmountLabel")}</FormLabel>
                         <FormControl>
                           <Input
                             type="text"
                             inputMode="decimal"
-                            placeholder="0,00"
+                            placeholder={t("common.currencyPlaceholder")}
                             {...field}
                           />
                         </FormControl>
@@ -237,9 +248,12 @@ export default function Goals() {
                     name="target_date"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Data Limite (opcional)</FormLabel>
+                        <FormLabel>{t("goals.form.targetDateLabel")}</FormLabel>
                         <FormControl>
-                          <DateInput {...field} />
+                          <DateInput
+                            {...field}
+                            placeholder={t("common.datePlaceholder")}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -250,7 +264,7 @@ export default function Goals() {
                     name="color"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Cor</FormLabel>
+                        <FormLabel>{t("goals.form.colorLabel")}</FormLabel>
                         <div className="flex gap-2">
                           {colors.map((color) => (
                             <button
@@ -278,7 +292,7 @@ export default function Goals() {
                     {addGoal.isPending && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     )}
-                    Criar Meta
+                    {t("goals.form.submit")}
                   </Button>
                 </form>
               </Form>
@@ -289,7 +303,7 @@ export default function Goals() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground">Total das Metas</p>
+              <p className="text-sm text-muted-foreground">{t("goals.total")}</p>
               <p className="text-2xl font-bold">
                 {formatCurrency(totalTarget)}
               </p>
@@ -297,7 +311,7 @@ export default function Goals() {
           </Card>
           <Card>
             <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground">Total Economizado</p>
+              <p className="text-sm text-muted-foreground">{t("goals.saved")}</p>
               <p className="text-2xl font-bold text-emerald-600">
                 {formatCurrency(totalSaved)}
               </p>
@@ -307,7 +321,9 @@ export default function Goals() {
         <Card>
           <CardContent className="p-6 space-y-3">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Progresso geral</span>
+              <span className="text-muted-foreground">
+                {t("goals.progressSummary")}
+              </span>
               <span className="font-medium">
                 {formatPercent(overallProgress, 0)}
               </span>
@@ -317,8 +333,8 @@ export default function Goals() {
               <span>{formatCurrency(totalSaved)}</span>
               <span>
                 {totalTarget > 0
-                  ? `Meta ${formatCurrency(totalTarget)}`
-                  : "Defina uma meta"}
+                  ? `${t("goals.targetLabel")} ${formatCurrency(totalTarget)}`
+                  : t("goals.defineGoal")}
               </span>
             </div>
           </CardContent>
@@ -331,7 +347,7 @@ export default function Goals() {
         ) : goals.length === 0 ? (
           <Card>
             <CardContent className="flex items-center justify-center py-12">
-              <p className="text-muted-foreground">Nenhuma meta criada ainda</p>
+              <p className="text-muted-foreground">{t("goals.none")}</p>
             </CardContent>
           </Card>
         ) : (
@@ -385,13 +401,13 @@ export default function Goals() {
                         }}
                       />
                       <p className="text-sm text-muted-foreground mt-2">
-                        Meta: {formatCurrency(Number(goal.target_amount))}
+                        {t("goals.targetLabel")}: {formatCurrency(Number(goal.target_amount))}
                         {!isComplete &&
-                          ` (faltam ${formatCurrency(remaining)})`}
+                          ` (${t("goals.remaining")} ${formatCurrency(remaining)})`}
                       </p>
                       {goal.target_date && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          Prazo: {formatDateInput(goal.target_date)}
+                          {t("goals.deadline")}: {formatDate(goal.target_date)}
                         </p>
                       )}
                     </div>
@@ -401,7 +417,7 @@ export default function Goals() {
                         <Input
                           type="text"
                           inputMode="decimal"
-                          placeholder="Valor do depósito"
+                          placeholder={t("goals.depositPlaceholder")}
                           value={depositAmount}
                           onChange={(e) => setDepositAmount(e.target.value)}
                         />
@@ -414,7 +430,7 @@ export default function Goals() {
                           {updateGoal.isPending ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
-                            "Depositar"
+                            t("goals.depositAction")
                           )}
                         </Button>
                       </div>
@@ -427,8 +443,8 @@ export default function Goals() {
                       >
                         <Edit2 className="h-4 w-4 mr-2" />
                         {isComplete
-                          ? "Meta Completa! 🎉"
-                          : "Adicionar Depósito"}
+                          ? t("goals.complete")
+                          : t("goals.addDeposit")}
                       </Button>
                     )}
                   </CardContent>

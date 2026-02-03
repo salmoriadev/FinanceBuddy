@@ -14,6 +14,7 @@ import { AuthService } from "./auth.service";
 import { RegisterDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
 import { ChangePasswordDto } from "./dto/change-password.dto";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { User } from "../../common/decorators/user.decorator";
 
@@ -64,8 +65,20 @@ export class AuthController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Get("me")
-  me(@User() user: { id: string; email?: string }) {
-    return { user };
+  async me(@User() user: { id: string }) {
+    const profile = await this.authService.getProfile(user.id);
+    return { user: profile };
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Patch("profile")
+  async updateProfile(
+    @User() user: { id: string },
+    @Body() dto: UpdateProfileDto,
+  ) {
+    const profile = await this.authService.updateProfile(user.id, dto);
+    return { user: profile };
   }
 
   @ApiBearerAuth()

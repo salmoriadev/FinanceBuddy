@@ -44,6 +44,55 @@ export class TransactionsRepository {
     });
   }
 
+  findRecurringTemplates(userId: string) {
+    return this.prisma.transaction.findMany({
+      where: {
+        userId,
+        isRecurring: true,
+        recurrenceParentId: null,
+      },
+    });
+  }
+
+  findLastOccurrenceDate(userId: string, templateId: string) {
+    return this.prisma.transaction
+      .findFirst({
+        where: {
+          userId,
+          OR: [{ id: templateId }, { recurrenceParentId: templateId }],
+        },
+        orderBy: { date: "desc" },
+        select: { date: true },
+      })
+      .then((result) => result?.date ?? null);
+  }
+
+  createRecurringOccurrences(
+    userId: string,
+    template: {
+      id: string;
+      description: string;
+      amount: unknown;
+      type: "income" | "expense";
+      categoryId: string | null;
+    },
+    dates: Date[],
+  ) {
+    if (dates.length === 0) return Promise.resolve({ count: 0 });
+    return this.prisma.transaction.createMany({
+      data: dates.map((date) => ({
+        userId,
+        description: template.description,
+        amount: Number(template.amount),
+        type: template.type,
+        categoryId: template.categoryId,
+        date,
+        isRecurring: false,
+        recurrenceParentId: template.id,
+      })),
+    });
+  }
+
   update(userId: string, id: string, data: {
     description?: string;
     amount?: number;

@@ -31,12 +31,13 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDateInput, isValidDateInput, toIsoDate } from "@/lib/date";
 import { parseCurrency } from "@/lib/number";
-import { formatCurrency, formatPercent } from "@/lib/format";
 import { Investment } from "@/types/finance";
 import {
   calculateInvestmentSummary,
   calculatePortfolioSummary,
 } from "@/domain/investments/strategy";
+import { useFormatter } from "@/hooks/useFormatter";
+import { useI18n } from "@/hooks/useI18n";
 
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (!error) return fallback;
@@ -49,28 +50,35 @@ const getErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
-const investmentSchema = z.object({
-  name: z.string().min(1, "Nome obrigatório"),
-  category: z.string().optional(),
-  invested_amount: z
-    .string()
-    .min(1, "Valor obrigatório")
-    .refine(
-      (value) => parseCurrency(value) > 0,
-      "Valor deve ser maior que zero",
-    ),
-  current_value: z
-    .string()
-    .min(1, "Valor obrigatório")
-    .refine((value) => parseCurrency(value) >= 0, "Valor inválido"),
-  start_date: z
-    .string()
-    .optional()
-    .refine((value) => !value || isValidDateInput(value), "Data inválida"),
-  notes: z.string().optional(),
-});
+const buildInvestmentSchema = (t: (key: string) => string) =>
+  z.object({
+    name: z.string().min(1, t("investments.validation.nameRequired")),
+    category: z.string().optional(),
+    invested_amount: z
+      .string()
+      .min(1, t("investments.validation.amountRequired"))
+      .refine(
+        (value) => parseCurrency(value) > 0,
+        t("investments.validation.amountPositive"),
+      ),
+    current_value: z
+      .string()
+      .min(1, t("investments.validation.amountRequired"))
+      .refine(
+        (value) => parseCurrency(value) >= 0,
+        t("investments.validation.amountInvalid"),
+      ),
+    start_date: z
+      .string()
+      .optional()
+      .refine(
+        (value) => !value || isValidDateInput(value),
+        t("investments.validation.dateInvalid"),
+      ),
+    notes: z.string().optional(),
+  });
 
-type InvestmentFormData = z.infer<typeof investmentSchema>;
+type InvestmentFormData = z.infer<ReturnType<typeof buildInvestmentSchema>>;
 
 const emptyFormValues: InvestmentFormData = {
   name: "",
@@ -90,18 +98,22 @@ export default function Investments() {
     updateInvestment,
     deleteInvestment,
   } = useInvestments();
+  const { formatCurrency, formatPercent, formatDate } = useFormatter();
+  const { t } = useI18n();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(
     null,
   );
 
+  const schema = useMemo(() => buildInvestmentSchema(t), [t]);
+
   const addForm = useForm<InvestmentFormData>({
-    resolver: zodResolver(investmentSchema),
+    resolver: zodResolver(schema),
     defaultValues: emptyFormValues,
   });
 
   const editForm = useForm<InvestmentFormData>({
-    resolver: zodResolver(investmentSchema),
+    resolver: zodResolver(schema),
     defaultValues: emptyFormValues,
   });
 
@@ -148,9 +160,9 @@ export default function Investments() {
       });
       setIsDialogOpen(false);
       addForm.reset();
-      toast.success("Investimento adicionado!");
+      toast.success(t("investments.toast.addSuccess"));
     } catch (error) {
-      toast.error(getErrorMessage(error, "Erro ao adicionar investimento"));
+      toast.error(getErrorMessage(error, t("investments.toast.addError")));
     }
   };
 
@@ -167,16 +179,16 @@ export default function Investments() {
         notes: data.notes || null,
       });
       setEditingInvestment(null);
-      toast.success("Investimento atualizado!");
+      toast.success(t("investments.toast.updateSuccess"));
     } catch (error) {
-      toast.error(getErrorMessage(error, "Erro ao atualizar investimento"));
+      toast.error(getErrorMessage(error, t("investments.toast.updateError")));
     }
   };
 
   const handleDelete = (id: string) => {
     deleteInvestment.mutate(id, {
-      onSuccess: () => toast.success("Investimento excluído"),
-      onError: () => toast.error("Erro ao excluir"),
+      onSuccess: () => toast.success(t("investments.toast.deleteSuccess")),
+      onError: () => toast.error(t("investments.toast.deleteError")),
     });
   };
 
@@ -186,10 +198,10 @@ export default function Investments() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-              Investimentos
+              {t("investments.title")}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Acompanhe aportes e rendimentos
+              {t("investments.subtitle")}
             </p>
           </div>
 
@@ -197,12 +209,12 @@ export default function Investments() {
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
-                Novo Investimento
+                {t("investments.new")}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>Novo Investimento</DialogTitle>
+                <DialogTitle>{t("investments.form.title")}</DialogTitle>
               </DialogHeader>
               <Form {...addForm}>
                 <form
@@ -214,9 +226,12 @@ export default function Investments() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nome do Ativo</FormLabel>
+                        <FormLabel>{t("investments.form.asset")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="Ex: Tesouro Selic" {...field} />
+                          <Input
+                            placeholder={t("investments.form.assetPlaceholder")}
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -227,9 +242,12 @@ export default function Investments() {
                     name="category"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Categoria (opcional)</FormLabel>
+                        <FormLabel>{t("investments.form.category")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="Ex: Renda fixa" {...field} />
+                          <Input
+                            placeholder={t("investments.form.categoryPlaceholder")}
+                            {...field}
+                          />
                         </FormControl>
                       </FormItem>
                     )}
@@ -240,12 +258,12 @@ export default function Investments() {
                       name="invested_amount"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Valor Investido (R$)</FormLabel>
+                          <FormLabel>{t("investments.form.invested")}</FormLabel>
                           <FormControl>
                             <Input
                               type="text"
                               inputMode="decimal"
-                              placeholder="0,00"
+                              placeholder={t("common.currencyPlaceholder")}
                               {...field}
                             />
                           </FormControl>
@@ -258,12 +276,12 @@ export default function Investments() {
                       name="current_value"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Valor Atual (R$)</FormLabel>
+                          <FormLabel>{t("investments.form.current")}</FormLabel>
                           <FormControl>
                             <Input
                               type="text"
                               inputMode="decimal"
-                              placeholder="0,00"
+                              placeholder={t("common.currencyPlaceholder")}
                               {...field}
                             />
                           </FormControl>
@@ -277,9 +295,12 @@ export default function Investments() {
                     name="start_date"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Data do Primeiro Aporte</FormLabel>
+                        <FormLabel>{t("investments.form.startDate")}</FormLabel>
                         <FormControl>
-                          <DateInput {...field} />
+                          <DateInput
+                            {...field}
+                            placeholder={t("common.datePlaceholder")}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -290,10 +311,10 @@ export default function Investments() {
                     name="notes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Observações</FormLabel>
+                        <FormLabel>{t("investments.form.notes")}</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="Ex: aporte mensal"
+                            placeholder={t("investments.form.notesPlaceholder")}
                             {...field}
                           />
                         </FormControl>
@@ -308,7 +329,7 @@ export default function Investments() {
                     {addInvestment.isPending && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     )}
-                    Salvar Investimento
+                    {t("investments.form.submit")}
                   </Button>
                 </form>
               </Form>
@@ -319,7 +340,9 @@ export default function Investments() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground">Total Investido</p>
+              <p className="text-sm text-muted-foreground">
+                {t("investments.totalInvested")}
+              </p>
               <p className="text-2xl font-bold">
                 {formatCurrency(totals.invested)}
               </p>
@@ -327,7 +350,9 @@ export default function Investments() {
           </Card>
           <Card>
             <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground">Valor Atual</p>
+              <p className="text-sm text-muted-foreground">
+                {t("investments.currentValue")}
+              </p>
               <p className="text-2xl font-bold text-emerald-600">
                 {formatCurrency(totals.current)}
               </p>
@@ -335,7 +360,9 @@ export default function Investments() {
           </Card>
           <Card>
             <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground">Rendimento</p>
+              <p className="text-sm text-muted-foreground">
+                {t("investments.return")}
+              </p>
               <p
                 className={cn(
                   "text-2xl font-bold",
@@ -346,7 +373,7 @@ export default function Investments() {
                 {formatCurrency(totals.profit)}
               </p>
               <p className="text-xs text-muted-foreground">
-                {formatPercent(totals.roi, 1)} acumulado
+                {formatPercent(totals.roi, 1)} {t("common.accumulated")}
               </p>
             </CardContent>
           </Card>
@@ -354,7 +381,7 @@ export default function Investments() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Carteira</CardTitle>
+            <CardTitle>{t("investments.portfolio")}</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -364,7 +391,7 @@ export default function Investments() {
             ) : investments.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">
-                  Nenhum investimento cadastrado
+                  {t("investments.empty")}
                 </p>
               </div>
             ) : (
@@ -390,7 +417,7 @@ export default function Investments() {
                             )}
                             {investment.start_date && (
                               <span>
-                                Desde {formatDateInput(investment.start_date)}
+                                {t("common.since")} {formatDate(investment.start_date)}
                               </span>
                             )}
                           </div>
@@ -415,19 +442,25 @@ export default function Investments() {
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                         <div>
-                          <p className="text-muted-foreground">Investido</p>
+                          <p className="text-muted-foreground">
+                            {t("investments.form.invested")}
+                          </p>
                           <p className="font-semibold">
                             {formatCurrency(Number(investment.invested_amount))}
                           </p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground">Valor Atual</p>
+                          <p className="text-muted-foreground">
+                            {t("investments.currentValue")}
+                          </p>
                           <p className="font-semibold">
                             {formatCurrency(Number(investment.current_value))}
                           </p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground">Rendimento</p>
+                          <p className="text-muted-foreground">
+                            {t("investments.return")}
+                          </p>
                           <p
                             className={cn(
                               "font-semibold",
@@ -440,7 +473,7 @@ export default function Investments() {
                             {formatCurrency(summary.profit)}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {formatPercent(summary.roi, 1)}
+                            {formatPercent(summary.roi, 1)} {t("common.accumulated")}
                           </p>
                         </div>
                       </div>
@@ -464,7 +497,7 @@ export default function Investments() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Editar Investimento</DialogTitle>
+            <DialogTitle>{t("investments.form.editTitle")}</DialogTitle>
           </DialogHeader>
           <Form {...editForm}>
             <form
@@ -476,9 +509,12 @@ export default function Investments() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nome do Ativo</FormLabel>
+                    <FormLabel>{t("investments.form.asset")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex: Tesouro Selic" {...field} />
+                      <Input
+                        placeholder={t("investments.form.assetPlaceholder")}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -489,9 +525,12 @@ export default function Investments() {
                 name="category"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Categoria</FormLabel>
+                    <FormLabel>{t("investments.form.category")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex: Renda fixa" {...field} />
+                      <Input
+                        placeholder={t("investments.form.categoryPlaceholder")}
+                        {...field}
+                      />
                     </FormControl>
                   </FormItem>
                 )}
@@ -502,12 +541,12 @@ export default function Investments() {
                   name="invested_amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Valor Investido (R$)</FormLabel>
+                      <FormLabel>{t("investments.form.invested")}</FormLabel>
                       <FormControl>
                         <Input
                           type="text"
                           inputMode="decimal"
-                          placeholder="0,00"
+                          placeholder={t("common.currencyPlaceholder")}
                           {...field}
                         />
                       </FormControl>
@@ -520,12 +559,12 @@ export default function Investments() {
                   name="current_value"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Valor Atual (R$)</FormLabel>
+                      <FormLabel>{t("investments.form.current")}</FormLabel>
                       <FormControl>
                         <Input
                           type="text"
                           inputMode="decimal"
-                          placeholder="0,00"
+                          placeholder={t("common.currencyPlaceholder")}
                           {...field}
                         />
                       </FormControl>
@@ -539,9 +578,12 @@ export default function Investments() {
                 name="start_date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Data do Primeiro Aporte</FormLabel>
+                    <FormLabel>{t("investments.form.startDate")}</FormLabel>
                     <FormControl>
-                      <DateInput {...field} />
+                      <DateInput
+                        {...field}
+                        placeholder={t("common.datePlaceholder")}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -552,9 +594,12 @@ export default function Investments() {
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Observações</FormLabel>
+                    <FormLabel>{t("investments.form.notes")}</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Ex: aporte mensal" {...field} />
+                      <Textarea
+                        placeholder={t("investments.form.notesPlaceholder")}
+                        {...field}
+                      />
                     </FormControl>
                   </FormItem>
                 )}
@@ -567,7 +612,7 @@ export default function Investments() {
                 {updateInvestment.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Salvar Alterações
+                {t("investments.form.update")}
               </Button>
             </form>
           </Form>

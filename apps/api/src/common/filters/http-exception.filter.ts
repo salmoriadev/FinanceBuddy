@@ -18,14 +18,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
       ? exception.getStatus()
       : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const rawResponse = isHttpException ? exception.getResponse() : "Erro interno";
+    const rawResponse = isHttpException
+      ? exception.getResponse()
+      : "Internal server error";
     const message = this.normalizeMessage(rawResponse);
+    const isProd = process.env.NODE_ENV === "production";
+    const includeDetails = !isProd || status < HttpStatus.INTERNAL_SERVER_ERROR;
 
     response.status(status).json({
       statusCode: status,
       path: request.url,
       message,
-      details: rawResponse,
+      details: includeDetails ? rawResponse : undefined,
       timestamp: new Date().toISOString(),
     });
   }
@@ -43,6 +47,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
         return value;
       }
     }
-    return "Erro interno";
+    return "Internal server error";
   }
 }

@@ -1,6 +1,6 @@
 import * as React from "react";
 import * as RechartsPrimitive from "recharts";
-import { formatNumber } from "@/lib/format";
+import { useFormatter } from "@/hooks/useFormatter";
 
 import { cn } from "@/lib/utils";
 
@@ -131,6 +131,7 @@ const ChartTooltipContent = React.forwardRef<
     ref,
   ) => {
     const { config } = useChart();
+    const { formatNumber } = useFormatter();
 
     const tooltipLabel = React.useMemo(() => {
       if (hideLabel || !payload?.length) {

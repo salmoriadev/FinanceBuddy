@@ -12,6 +12,7 @@ import {
   X,
   Sun,
   Moon,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,33 +20,35 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { useTheme } from "next-themes";
 import { ChangePasswordDialog } from "@/components/auth/ChangePasswordDialog";
+import { useI18n } from "@/hooks/useI18n";
 
 interface AppLayoutProps {
   children: ReactNode;
 }
-
-const navItems = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/transactions", label: "Transações", icon: ArrowLeftRight },
-  { path: "/budgets", label: "Orçamentos", icon: PiggyBank },
-  { path: "/goals", label: "Metas", icon: Target },
-  { path: "/reports", label: "Relatórios", icon: BarChart3 },
-  { path: "/investments", label: "Investimentos", icon: LineChart },
-];
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { signOut, user } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { theme, resolvedTheme, setTheme } = useTheme();
+  const { t } = useI18n();
   const isDark = theme === "dark" || resolvedTheme === "dark";
   const toggleTheme = () => setTheme(isDark ? "light" : "dark");
+  const navItems = [
+    { path: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
+    { path: "/transactions", label: t("nav.transactions"), icon: ArrowLeftRight },
+    { path: "/budgets", label: t("nav.budgets"), icon: PiggyBank },
+    { path: "/goals", label: t("nav.goals"), icon: Target },
+    { path: "/reports", label: t("nav.reports"), icon: BarChart3 },
+    { path: "/investments", label: t("nav.investments"), icon: LineChart },
+    { path: "/settings", label: t("nav.settings"), icon: Settings },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile Header */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-card/90 backdrop-blur-xl border-b border-border/60 px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-foreground">FinanceApp</h1>
+        <h1 className="text-lg font-semibold text-foreground">FinanceBuddy</h1>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={toggleTheme}>
             {isDark ? (
@@ -89,10 +92,10 @@ export function AppLayout({ children }: AppLayoutProps) {
             <div className="flex items-center justify-between gap-2">
               <div>
                 <h1 className="text-xl font-semibold tracking-tight text-foreground">
-                  FinanceApp
+                  FinanceBuddy
                 </h1>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Gestão Financeira
+                  {t("app.tagline")}
                 </p>
               </div>
               <Button variant="ghost" size="icon" onClick={toggleTheme}>
@@ -128,10 +131,23 @@ export function AppLayout({ children }: AppLayoutProps) {
             })}
           </nav>
 
-          <div className="border-t border-border pt-4 mt-4">
-            <p className="text-sm text-muted-foreground truncate mb-3 px-3">
-              {user?.email}
-            </p>
+          <div className="border-t border-border pt-4 mt-4 space-y-3">
+            <div className="px-3">
+              {user?.name ? (
+                <>
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {user.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {user.email}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground truncate">
+                  {user?.email}
+                </p>
+              )}
+            </div>
             <div className="px-1">
               <ChangePasswordDialog />
             </div>
@@ -141,7 +157,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               onClick={signOut}
             >
               <LogOut className="h-5 w-5 mr-3" />
-              Sair
+              {t("nav.signOut")}
             </Button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/hooks/useI18n";
 
 interface StatCardProps {
   title: string;
@@ -20,6 +21,7 @@ export function StatCard({
   trend,
   variant = "default",
 }: StatCardProps) {
+  const { t } = useI18n();
   return (
     <Card>
       <CardContent className="p-6">
@@ -44,7 +46,7 @@ export function StatCard({
                 )}
               >
                 {trend.isPositive ? "+" : ""}
-                {trend.value}% vs mês anterior
+                {trend.value}% {t("common.vsLastMonth")}
               </p>
             )}
           </div>

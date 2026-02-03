@@ -12,6 +12,19 @@ export class CategoriesRepository {
     });
   }
 
+  findByName(userId: string, name: string, type: "income" | "expense") {
+    return this.prisma.category.findFirst({
+      where: {
+        userId,
+        type,
+        name: {
+          equals: name,
+          mode: "insensitive",
+        },
+      },
+    });
+  }
+
   create(userId: string, data: {
     name: string;
     color: string;

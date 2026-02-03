@@ -44,7 +44,9 @@ const normalizeText = (value: string) =>
 const TYPE_KEYWORDS: Record<InvestmentType, string[]> = {
   fixed: [
     "renda fixa",
-    "tesouro",
+    "fixed income",
+    "bond",
+    "treasury",
     "cdb",
     "lci",
     "lca",
@@ -52,15 +54,30 @@ const TYPE_KEYWORDS: Record<InvestmentType, string[]> = {
     "ipca",
     "selic",
     "prefixado",
+    "certificate",
+    "cd",
+    "bonds",
   ],
-  variable: ["acao", "acoes", "fii", "stocks", "etf", "bdr", "bolsa"],
-  crypto: ["cripto", "bitcoin", "btc", "ethereum", "eth", "altcoin"],
+  variable: [
+    "acao",
+    "acoes",
+    "fii",
+    "stocks",
+    "stock",
+    "equity",
+    "etf",
+    "reit",
+    "bdr",
+    "bolsa",
+    "shares",
+  ],
+  crypto: ["cripto", "crypto", "bitcoin", "btc", "ethereum", "eth", "altcoin"],
   custom: [],
 };
 
 class FixedIncomeStrategy implements InvestmentReturnStrategy {
   readonly type: InvestmentType = "fixed";
-  readonly label = "Renda fixa";
+  readonly label = "Fixed income";
 
   calculate(input: InvestmentReturnInput) {
     return buildSummary(this.type, this.label, input);
@@ -69,7 +86,7 @@ class FixedIncomeStrategy implements InvestmentReturnStrategy {
 
 class VariableIncomeStrategy implements InvestmentReturnStrategy {
   readonly type: InvestmentType = "variable";
-  readonly label = "Renda variavel";
+  readonly label = "Variable income";
 
   calculate(input: InvestmentReturnInput) {
     return buildSummary(this.type, this.label, input);
@@ -78,7 +95,7 @@ class VariableIncomeStrategy implements InvestmentReturnStrategy {
 
 class CryptoStrategy implements InvestmentReturnStrategy {
   readonly type: InvestmentType = "crypto";
-  readonly label = "Cripto";
+  readonly label = "Crypto";
 
   calculate(input: InvestmentReturnInput) {
     return buildSummary(this.type, this.label, input);
@@ -87,7 +104,7 @@ class CryptoStrategy implements InvestmentReturnStrategy {
 
 class CustomStrategy implements InvestmentReturnStrategy {
   readonly type: InvestmentType = "custom";
-  readonly label = "Personalizado";
+  readonly label = "Custom";
 
   calculate(input: InvestmentReturnInput) {
     return buildSummary(this.type, this.label, input);
@@ -148,7 +165,7 @@ export const calculatePortfolioSummary = (
     (sum, item) => sum + Number(item.current_value),
     0,
   );
-  return buildSummary("custom", "Carteira", {
+  return buildSummary("custom", "Portfolio", {
     investedAmount: invested,
     currentValue: current,
   });

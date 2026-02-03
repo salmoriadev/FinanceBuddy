@@ -30,7 +30,7 @@ export class GoalsService {
       color: dto.color,
     });
     if (!updated) {
-      throw new NotFoundException("Meta não encontrada");
+      throw new NotFoundException("Goal not found");
     }
     return updated;
   }
@@ -38,7 +38,7 @@ export class GoalsService {
   async delete(userId: string, id: string) {
     const result = await this.repository.delete(userId, id);
     if (result.count === 0) {
-      throw new NotFoundException("Meta não encontrada");
+      throw new NotFoundException("Goal not found");
     }
     return { deleted: true };
   }

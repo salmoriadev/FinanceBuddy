@@ -2,17 +2,18 @@ import { Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { getPasswordStrength } from "@/lib/password";
+import { useI18n } from "@/hooks/useI18n";
 
 interface PasswordStrengthProps {
   password: string;
 }
 
 const REQUIREMENTS = [
-  { key: "length", label: "8+ caracteres" },
-  { key: "lower", label: "Minúscula" },
-  { key: "upper", label: "Maiúscula" },
-  { key: "number", label: "Número" },
-  { key: "symbol", label: "Símbolo" },
+  { key: "length", labelKey: "password.requirement.length" },
+  { key: "lower", labelKey: "password.requirement.lower" },
+  { key: "upper", labelKey: "password.requirement.upper" },
+  { key: "number", labelKey: "password.requirement.number" },
+  { key: "symbol", labelKey: "password.requirement.symbol" },
 ] as const;
 
 const STRENGTH_COLORS = [
@@ -24,14 +25,25 @@ const STRENGTH_COLORS = [
 ];
 
 export function PasswordStrength({ password }: PasswordStrengthProps) {
-  const { checks, score, label } = getPasswordStrength(password);
+  const { t } = useI18n();
+  const { checks, score, strength } = getPasswordStrength(password);
   const filledBars = Math.min(score, STRENGTH_COLORS.length);
+  const strengthLabel =
+    strength === 0
+      ? t("password.veryWeak")
+      : strength === 1
+        ? t("password.weak")
+        : strength === 2
+          ? t("password.medium")
+          : strength === 3
+            ? t("password.good")
+            : t("password.strong");
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>Força da senha</span>
-        <span className="font-medium text-foreground">{label}</span>
+        <span>{t("password.strength")}</span>
+        <span className="font-medium text-foreground">{strengthLabel}</span>
       </div>
       <div className="grid grid-cols-5 gap-1">
         {STRENGTH_COLORS.map((color, index) => (
@@ -46,7 +58,7 @@ export function PasswordStrength({ password }: PasswordStrengthProps) {
       </div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
         {REQUIREMENTS.map((item) => (
-          <div key={item.label} className="flex items-center gap-2">
+          <div key={item.labelKey} className="flex items-center gap-2">
             <span
               className={cn(
                 "flex h-4 w-4 items-center justify-center rounded-full border",
@@ -60,7 +72,7 @@ export function PasswordStrength({ password }: PasswordStrengthProps) {
             <span
               className={cn(checks[item.key] ? "text-foreground" : undefined)}
             >
-              {item.label}
+              {t(item.labelKey)}
             </span>
           </div>
         ))}

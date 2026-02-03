@@ -10,22 +10,26 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MonthlyData } from "@/types/finance";
-import { formatCurrency } from "@/lib/format";
+import { useFormatter } from "@/hooks/useFormatter";
+import { useI18n } from "@/hooks/useI18n";
 
 interface MonthlyChartProps {
   data: MonthlyData[];
 }
 
 export function MonthlyChart({ data }: MonthlyChartProps) {
+  const { formatCurrency, formatCompactCurrency } = useFormatter();
+  const { t } = useI18n();
+
   if (data.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Evolução Mensal</CardTitle>
+          <CardTitle className="text-lg">{t("dashboard.monthlyEvolution")}</CardTitle>
         </CardHeader>
         <CardContent className="h-[300px] flex items-center justify-center">
           <p className="text-muted-foreground text-sm">
-            Nenhum dado disponível
+            {t("dashboard.noData")}
           </p>
         </CardContent>
       </Card>
@@ -35,7 +39,7 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Evolução Mensal</CardTitle>
+        <CardTitle className="text-lg">{t("dashboard.monthlyEvolution")}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="h-[300px]">
@@ -66,7 +70,7 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
               <YAxis
                 tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                 axisLine={{ stroke: "hsl(var(--border))" }}
-                tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`}
+                tickFormatter={(value) => formatCompactCurrency(Number(value))}
               />
               <Tooltip
                 formatter={(value: number) => [formatCurrency(value)]}
@@ -80,7 +84,7 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
               <Area
                 type="monotone"
                 dataKey="income"
-                name="Receitas"
+                name={t("dashboard.income")}
                 stroke="#10b981"
                 fillOpacity={1}
                 fill="url(#colorIncome)"
@@ -88,7 +92,7 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
               <Area
                 type="monotone"
                 dataKey="expense"
-                name="Despesas"
+                name={t("dashboard.expenses")}
                 stroke="#ef4444"
                 fillOpacity={1}
                 fill="url(#colorExpense)"

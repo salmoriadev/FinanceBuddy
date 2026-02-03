@@ -14,8 +14,15 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   const corsOrigin = configService.get<string>("CORS_ORIGIN");
+  const isProd = configService.get<string>("NODE_ENV") === "production";
+  app.set("trust proxy", 1);
   app.enableCors({
-    origin: corsOrigin ? corsOrigin.split(",").map((v) => v.trim()) : true,
+    origin:
+      corsOrigin && corsOrigin.length > 0
+        ? corsOrigin.split(",").map((v) => v.trim()).filter(Boolean)
+        : isProd
+          ? false
+          : true,
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
   });
@@ -36,7 +43,7 @@ async function bootstrap() {
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle("FinanceBuddy API")
-    .setDescription("API de gestão financeira pessoal")
+    .setDescription("Personal finance management API")
     .setVersion("1.0")
     .addBearerAuth()
     .build();

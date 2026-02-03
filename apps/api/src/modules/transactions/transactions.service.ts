@@ -1,14 +1,19 @@
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { TransactionsRepository } from "./transactions.repository";
+import { RecurringTransactionsService } from "./recurring.service";
 import { CreateTransactionDto } from "./dto/create-transaction.dto";
 import { UpdateTransactionDto } from "./dto/update-transaction.dto";
 import { TransactionsQueryDto } from "./dto/transactions-query.dto";
 
 @Injectable()
 export class TransactionsService {
-  constructor(private readonly repository: TransactionsRepository) {}
+  constructor(
+    private readonly repository: TransactionsRepository,
+    private readonly recurring: RecurringTransactionsService,
+  ) {}
 
-  findAll(userId: string, query?: TransactionsQueryDto) {
+  async findAll(userId: string, query?: TransactionsQueryDto) {
+    await this.recurring.ensureRecurringTransactions(userId);
     return this.repository.findAllByUser(userId, {
       limit: query?.limit,
       offset: query?.offset,
@@ -22,7 +27,7 @@ export class TransactionsService {
         dto.categoryId,
       );
       if (!category) {
-        throw new ForbiddenException("Categoria inválida para o usuário");
+        throw new ForbiddenException("Category not available for this user");
       }
     }
     return this.repository.create(userId, {
@@ -42,7 +47,7 @@ export class TransactionsService {
         dto.categoryId,
       );
       if (!category) {
-        throw new ForbiddenException("Categoria inválida para o usuário");
+        throw new ForbiddenException("Category not available for this user");
       }
     }
     const updated = await this.repository.update(userId, id, {
@@ -54,7 +59,7 @@ export class TransactionsService {
       isRecurring: dto.isRecurring,
     });
     if (!updated) {
-      throw new NotFoundException("Transação não encontrada");
+      throw new NotFoundException("Transaction not found");
     }
     return updated;
   }
@@ -62,7 +67,7 @@ export class TransactionsService {
   async delete(userId: string, id: string) {
     const result = await this.repository.delete(userId, id);
     if (result.count === 0) {
-      throw new NotFoundException("Transação não encontrada");
+      throw new NotFoundException("Transaction not found");
     }
     return { deleted: true };
   }

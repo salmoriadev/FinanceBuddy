@@ -1,12 +1,10 @@
 import { memo, useMemo } from "react";
-import { format, isValid } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { Trash2, TrendingDown, TrendingUp, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Transaction } from "@/types/finance";
 import { cn } from "@/lib/utils";
-import { parseDateInput } from "@/lib/date";
-import { formatCurrency } from "@/lib/format";
+import { useFormatter } from "@/hooks/useFormatter";
+import { useI18n } from "@/hooks/useI18n";
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -20,15 +18,15 @@ const TransactionRow = memo(function TransactionRow({
   transaction: Transaction;
   onDelete: (id: string) => void;
 }) {
+  const { formatCurrency, formatShortDate } = useFormatter();
+  const { t } = useI18n();
   const formattedDate = useMemo(() => {
-    const parsed = parseDateInput(transaction.date);
-    return isValid(parsed)
-      ? format(parsed, "d 'de' MMM", { locale: ptBR })
-      : "Data inválida";
-  }, [transaction.date]);
+    const formatted = formatShortDate(transaction.date);
+    return formatted || t("common.invalidDate");
+  }, [transaction.date, formatShortDate, t]);
 
   return (
-    <div className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-card/80 hover:bg-muted/40 transition-colors">
+    <div className="flex items-center justify-between p-4 rounded-xl border border-border/70 bg-card/90 hover:bg-muted/50 transition-colors">
       <div className="flex items-center gap-4">
         <div
           className={cn(
@@ -109,10 +107,11 @@ export const TransactionList = memo(function TransactionList({
   transactions,
   onDelete,
 }: TransactionListProps) {
+  const { t } = useI18n();
   if (transactions.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Nenhuma transação encontrada</p>
+        <p className="text-muted-foreground">{t("transactions.none")}</p>
       </div>
     );
   }

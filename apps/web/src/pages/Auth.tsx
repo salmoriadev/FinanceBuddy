@@ -27,40 +27,46 @@ import { useTheme } from "next-themes";
 import { PasswordStrength } from "@/components/auth/PasswordStrength";
 import { passwordRules } from "@/lib/password";
 import { ApiError } from "@/lib/api";
+import { useI18n } from "@/hooks/useI18n";
 
-const loginSchema = z.object({
-  email: z.string().email("Email inválido"),
-  password: z.string().min(1, "Senha obrigatória"),
-});
-
-const signupSchema = z
-  .object({
-    email: z.string().email("Email inválido"),
-    password: z
-      .string()
-      .min(passwordRules.minLength, "A senha deve ter pelo menos 8 caracteres")
-      .refine(
-        (value) => passwordRules.upper.test(value),
-        "A senha deve conter uma letra maiúscula",
-      )
-      .refine(
-        (value) => passwordRules.lower.test(value),
-        "A senha deve conter uma letra minúscula",
-      )
-      .refine(
-        (value) => passwordRules.number.test(value),
-        "A senha deve conter um número",
-      )
-      .refine(
-        (value) => passwordRules.symbol.test(value),
-        "A senha deve conter um símbolo",
-      ),
-    confirmPassword: z.string().min(1, "Confirme a senha"),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "As senhas não conferem",
-    path: ["confirmPassword"],
+const buildLoginSchema = (t: (key: string) => string) =>
+  z.object({
+    email: z.string().email(t("auth.emailInvalid")),
+    password: z.string().min(1, t("auth.passwordRequired")),
   });
+
+const buildSignupSchema = (t: (key: string) => string) =>
+  z
+    .object({
+      email: z.string().email(t("auth.emailInvalid")),
+      password: z
+        .string()
+        .min(
+          passwordRules.minLength,
+          t("auth.passwordMinLength"),
+        )
+        .refine(
+          (value) => passwordRules.upper.test(value),
+          t("auth.passwordUpper"),
+        )
+        .refine(
+          (value) => passwordRules.lower.test(value),
+          t("auth.passwordLower"),
+        )
+        .refine(
+          (value) => passwordRules.number.test(value),
+          t("auth.passwordNumber"),
+        )
+        .refine(
+          (value) => passwordRules.symbol.test(value),
+          t("auth.passwordSymbol"),
+        ),
+      confirmPassword: z.string().min(1, t("auth.passwordConfirmRequired")),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: t("auth.passwordMismatch"),
+      path: ["confirmPassword"],
+    });
 
 type AuthFormData = {
   email: string;
@@ -71,6 +77,7 @@ type AuthFormData = {
 export default function Auth() {
   const { user, loading, signIn, signUp } = useAuth();
   const { theme, resolvedTheme, setTheme } = useTheme();
+  const { t } = useI18n();
   const isDark = theme === "dark" || resolvedTheme === "dark";
   const [isLogin, setIsLogin] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,8 +85,11 @@ export default function Auth() {
   const toggleTheme = () => setTheme(isDark ? "light" : "dark");
 
   const resolver = useMemo(
-    () => zodResolver(isLogin ? loginSchema : signupSchema),
-    [isLogin],
+    () =>
+      zodResolver(
+        isLogin ? buildLoginSchema(t) : buildSignupSchema(t),
+      ),
+    [isLogin, t],
   );
 
   const form = useForm<AuthFormData>({
@@ -103,29 +113,37 @@ export default function Auth() {
 
   const formatAuthError = (error: Error, mode: "login" | "signup") => {
     if (error instanceof ApiError) {
+      const lowerMessage = error.message?.toLowerCase?.() || "";
+      if (
+        lowerMessage.includes("cannot post") ||
+        lowerMessage.includes("not found") ||
+        lowerMessage.includes("api_url not configured")
+      ) {
+        return t("auth.serviceUnavailable");
+      }
       if (mode === "login" && error.status === 401) {
-        return "Email ou senha incorretos";
+        return t("auth.invalidCredentials");
       }
       if (mode === "signup" && error.status === 409) {
-        return "Este email já está cadastrado";
+        return t("auth.emailExists");
       }
       if (error.status === 429) {
-        return "Muitas tentativas. Tente novamente em alguns minutos.";
+        return t("auth.tooManyAttempts");
       }
       if (error.status >= 500) {
-        return "Serviço indisponível. Tente novamente.";
+        return t("auth.serviceUnavailable");
       }
-      if (error.message && error.message !== "Erro na API") {
+      if (error.message && error.message !== "API error") {
         return error.message;
       }
     }
 
     const message = error.message?.toLowerCase() || "";
     if (message.includes("fetch") || message.includes("network")) {
-      return "Não foi possível conectar ao servidor.";
+      return t("auth.networkError");
     }
 
-    return "Não foi possível concluir a solicitação.";
+    return t("auth.genericError");
   };
 
   if (loading) {
@@ -148,14 +166,14 @@ export default function Auth() {
         if (error) {
           toast.error(formatAuthError(error, "login"));
         } else {
-          toast.success("Login realizado com sucesso!");
+          toast.success(t("auth.loginSuccess"));
         }
       } else {
         const { error } = await signUp(data.email, data.password);
         if (error) {
           toast.error(formatAuthError(error, "signup"));
         } else {
-          toast.success("Conta criada com sucesso!");
+          toast.success(t("auth.signupSuccess"));
         }
       }
     } finally {
@@ -169,19 +187,17 @@ export default function Auth() {
         type="button"
         onClick={toggleTheme}
         className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-sm transition hover:bg-muted"
-        aria-label="Alternar tema"
+        aria-label={t("common.toggleTheme")}
       >
         {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       </button>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-semibold tracking-tight">
-            FinanceApp
+            FinanceBuddy
           </CardTitle>
           <CardDescription>
-            {isLogin
-              ? "Entre na sua conta para continuar"
-              : "Crie sua conta para começar"}
+            {isLogin ? t("auth.loginTitle") : t("auth.signupTitle")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -192,11 +208,11 @@ export default function Auth() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>{t("auth.email")}</FormLabel>
                     <FormControl>
                       <Input
                         type="email"
-                        placeholder="seu@email.com"
+                        placeholder={t("auth.emailPlaceholder")}
                         {...field}
                       />
                     </FormControl>
@@ -209,12 +225,12 @@ export default function Auth() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Senha</FormLabel>
+                    <FormLabel>{t("auth.password")}</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
                           type={showPassword ? "text" : "password"}
-                          placeholder="••••••"
+                          placeholder={t("auth.passwordPlaceholder")}
                           className="pr-10"
                           {...field}
                         />
@@ -222,9 +238,7 @@ export default function Auth() {
                           type="button"
                           onClick={() => setShowPassword((prev) => !prev)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          aria-label={
-                            showPassword ? "Esconder senha" : "Mostrar senha"
-                          }
+                          aria-label={showPassword ? t("password.hide") : t("password.show")}
                         >
                           {showPassword ? (
                             <EyeOff className="h-4 w-4" />
@@ -246,11 +260,11 @@ export default function Auth() {
                     name="confirmPassword"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Confirmar senha</FormLabel>
+                        <FormLabel>{t("auth.confirmPassword")}</FormLabel>
                         <FormControl>
                           <Input
                             type={showPassword ? "text" : "password"}
-                            placeholder="••••••"
+                            placeholder={t("auth.passwordPlaceholder")}
                             {...field}
                           />
                         </FormControl>
@@ -264,7 +278,7 @@ export default function Auth() {
                 {isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                {isLogin ? "Entrar" : "Criar Conta"}
+                {isLogin ? t("auth.signIn") : t("auth.signUp")}
               </Button>
             </form>
           </Form>
@@ -275,7 +289,7 @@ export default function Auth() {
               onClick={() => setIsLogin(!isLogin)}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              {isLogin ? "Não tem conta? Cadastre-se" : "Já tem conta? Entre"}
+              {isLogin ? t("auth.noAccount") : t("auth.haveAccount")}
             </button>
           </div>
         </CardContent>

@@ -4,6 +4,13 @@ import { TtlCache } from "../../common/cache/ttl-cache";
 import { CreateCategoryDto } from "./dto/create-category.dto";
 import { UpdateCategoryDto } from "./dto/update-category.dto";
 
+const normalizeCategoryName = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
 @Injectable()
 export class CategoriesService {
   private readonly cache = new TtlCache<
@@ -19,12 +26,39 @@ export class CategoriesService {
       return cached;
     }
     const categories = await this.repository.findAllByUser(userId);
-    this.cache.set(userId, categories);
-    return categories;
+    const unique = new Map<string, (typeof categories)[number]>();
+    categories.forEach((category) => {
+      const key = `${category.type}:${normalizeCategoryName(category.name)}`;
+      if (!unique.has(key)) {
+        unique.set(key, category);
+      }
+    });
+    const result = Array.from(unique.values());
+    this.cache.set(userId, result);
+    return result;
   }
 
   async create(userId: string, dto: CreateCategoryDto) {
-    const created = await this.repository.create(userId, dto);
+    const name = dto.name.trim();
+    const existing = await this.repository.findByName(userId, name, dto.type);
+    if (existing) {
+      return existing;
+    }
+
+    const normalizedName = normalizeCategoryName(name);
+    const all = await this.repository.findAllByUser(userId);
+    const normalizedMatch = all.find(
+      (category) =>
+        category.type === dto.type &&
+        normalizeCategoryName(category.name) === normalizedName,
+    );
+    if (normalizedMatch) {
+      return normalizedMatch;
+    }
+    const created = await this.repository.create(userId, {
+      ...dto,
+      name,
+    });
     this.cache.delete(userId);
     return created;
   }
@@ -32,7 +66,7 @@ export class CategoriesService {
   async update(userId: string, id: string, dto: UpdateCategoryDto) {
     const updated = await this.repository.update(userId, id, dto);
     if (!updated) {
-      throw new NotFoundException("Categoria não encontrada");
+      throw new NotFoundException("Category not found");
     }
     this.cache.delete(userId);
     return updated;
@@ -41,7 +75,7 @@ export class CategoriesService {
   async delete(userId: string, id: string) {
     const result = await this.repository.delete(userId, id);
     if (result.count === 0) {
-      throw new NotFoundException("Categoria não encontrada");
+      throw new NotFoundException("Category not found");
     }
     this.cache.delete(userId);
     return { deleted: true };

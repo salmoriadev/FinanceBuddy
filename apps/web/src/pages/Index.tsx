@@ -15,7 +15,8 @@ import { TransactionList } from "@/components/transactions/TransactionList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CategorySpending, MonthlyData } from "@/types/finance";
 import { parseDateInput } from "@/lib/date";
-import { formatCurrency, formatPercent, MONTHS_SHORT } from "@/lib/format";
+import { useFormatter } from "@/hooks/useFormatter";
+import { useI18n } from "@/hooks/useI18n";
 
 export default function Index() {
   const { user, loading: authLoading } = useAuth();
@@ -26,6 +27,8 @@ export default function Index() {
   } = useTransactions();
   const { budgets } = useBudgets();
   const { goals } = useSavingsGoals();
+  const { formatCurrency, formatPercent, monthsShort } = useFormatter();
+  const { t: tText } = useI18n();
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -69,7 +72,7 @@ export default function Index() {
 
     const byCategory = expenses.reduce(
       (acc, t) => {
-        const catName = t.category?.name || "Outros";
+        const catName = t.category?.name || tText("common.none");
         const catColor = t.category?.color || "#6366f1";
         if (!acc[catName]) {
           acc[catName] = { name: catName, value: 0, color: catColor };
@@ -81,12 +84,12 @@ export default function Index() {
     );
 
     return Object.values(byCategory).sort((a, b) => b.value - a.value);
-  }, [transactions]);
+  }, [transactions, tText]);
 
   const monthlyData = useMemo((): MonthlyData[] => {
     const currentYear = new Date().getFullYear();
 
-    return MONTHS_SHORT.map((month, index) => {
+    return monthsShort.map((month, index) => {
       const monthTransactions = transactions.filter((t) => {
         const date = parseDateInput(t.date);
         return date.getMonth() === index && date.getFullYear() === currentYear;
@@ -102,7 +105,7 @@ export default function Index() {
 
       return { month, income, expense };
     }).filter((d) => d.income > 0 || d.expense > 0);
-  }, [transactions]);
+  }, [transactions, monthsShort]);
 
   const budgetsWithSpent = useMemo(() => {
     const now = new Date();
@@ -155,34 +158,34 @@ export default function Index() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-            Dashboard
+            {tText("dashboard.title")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Visão geral das suas finanças
+            {tText("dashboard.subtitle")}
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="Saldo do Mês"
+            title={tText("dashboard.balance")}
             value={formatCurrency(stats.balance)}
             icon={<Wallet className="h-6 w-6" />}
             variant={stats.balance >= 0 ? "success" : "danger"}
           />
           <StatCard
-            title="Receitas"
+            title={tText("dashboard.income")}
             value={formatCurrency(stats.income)}
             icon={<TrendingUp className="h-6 w-6" />}
             variant="success"
           />
           <StatCard
-            title="Despesas"
+            title={tText("dashboard.expenses")}
             value={formatCurrency(stats.expense)}
             icon={<TrendingDown className="h-6 w-6" />}
             variant="danger"
           />
           <StatCard
-            title="Economia"
+            title={tText("dashboard.savings")}
             value={formatPercent(
               stats.income > 0 ? (stats.balance / stats.income) * 100 : 0,
             )}
@@ -202,7 +205,9 @@ export default function Index() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Transações Recentes</CardTitle>
+            <CardTitle className="text-lg">
+              {tText("dashboard.recentTransactions")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <TransactionList

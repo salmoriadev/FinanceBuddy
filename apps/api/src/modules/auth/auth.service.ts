@@ -13,8 +13,9 @@ import { AuthRepository } from "./auth.repository";
 import { RegisterDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
 import { ChangePasswordDto } from "./dto/change-password.dto";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { CategoriesService } from "../categories/categories.service";
-import { DEFAULT_CATEGORIES } from "../categories/default-categories";
+import { getDefaultCategories } from "../categories/default-categories";
 
 const PASSWORD_RULES = {
   minLength: 8,
@@ -38,7 +39,7 @@ export class AuthService {
 
     const existing = await this.repository.findUserByEmail(email);
     if (existing) {
-      throw new ConflictException("Email já cadastrado");
+      throw new ConflictException("Email already registered");
     }
 
     const passwordHash = await this.hashPassword(dto.password);
@@ -48,7 +49,7 @@ export class AuthService {
       passwordAlgo: "argon2id",
     });
 
-    await this.ensureDefaultCategories(user.id);
+    await this.ensureDefaultCategories(user.id, user.locale);
 
     const tokens = await this.issueTokens(user.id, user.email, req);
     return { user: this.safeUser(user), ...tokens };
@@ -58,16 +59,16 @@ export class AuthService {
     const email = dto.email.toLowerCase().trim();
     const user = await this.repository.findUserByEmail(email);
     if (!user) {
-      throw new UnauthorizedException("Credenciais inválidas");
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     const valid = await this.verifyPassword(dto.password, user.passwordHash);
     if (!valid) {
-      throw new UnauthorizedException("Credenciais inválidas");
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     await this.repository.updateLastLogin(user.id);
-    await this.ensureDefaultCategories(user.id);
+    await this.ensureDefaultCategories(user.id, user.locale);
     const tokens = await this.issueTokens(user.id, user.email, req);
     return { user: this.safeUser(user), ...tokens };
   }
@@ -75,22 +76,22 @@ export class AuthService {
   async refresh(req: Request) {
     const refreshToken = this.getRefreshTokenFromRequest(req);
     if (!refreshToken) {
-      throw new UnauthorizedException("Refresh token ausente");
+      throw new UnauthorizedException("Refresh token missing");
     }
 
     const tokenHash = this.hashRefreshToken(refreshToken);
     const stored = await this.repository.findRefreshTokenByHash(tokenHash);
     if (!stored || stored.revokedAt) {
-      throw new UnauthorizedException("Refresh token inválido");
+      throw new UnauthorizedException("Refresh token invalid");
     }
 
     if (stored.expiresAt.getTime() < Date.now()) {
-      throw new UnauthorizedException("Refresh token expirado");
+      throw new UnauthorizedException("Refresh token expired");
     }
 
     const user = await this.repository.findUserById(stored.userId);
     if (!user) {
-      throw new UnauthorizedException("Usuário inválido");
+      throw new UnauthorizedException("Invalid user");
     }
 
     await this.repository.revokeRefreshToken(stored.id);
@@ -112,15 +113,38 @@ export class AuthService {
     this.assertPasswordStrength(dto.newPassword);
     const user = await this.repository.findUserById(userId);
     if (!user) {
-      throw new UnauthorizedException("Usuário inválido");
+      throw new UnauthorizedException("Invalid user");
     }
     const valid = await this.verifyPassword(dto.currentPassword, user.passwordHash);
     if (!valid) {
-      throw new UnauthorizedException("Senha atual inválida");
+      throw new UnauthorizedException("Current password is invalid");
     }
     const passwordHash = await this.hashPassword(dto.newPassword);
     await this.repository.updatePassword(userId, passwordHash, "argon2id");
     await this.repository.revokeUserTokens(userId);
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.repository.findUserById(userId);
+    if (!user) {
+      throw new UnauthorizedException("Invalid user");
+    }
+    return this.safeUser(user);
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.repository.findUserById(userId);
+    if (!user) {
+      throw new UnauthorizedException("Invalid user");
+    }
+
+    const updated = await this.repository.updateProfile(userId, {
+      name: dto.name?.trim() || null,
+      locale: dto.locale,
+      currency: dto.currency,
+    });
+
+    return this.safeUser(updated);
   }
 
   setRefreshCookie(res: Response, refreshToken: string) {
@@ -148,16 +172,29 @@ export class AuthService {
     });
   }
 
-  private safeUser(user: { id: string; email: string }) {
-    return { id: user.id, email: user.email };
+  private safeUser(user: {
+    id: string;
+    email: string;
+    name?: string | null;
+    locale?: string | null;
+    currency?: string | null;
+  }) {
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name ?? null,
+      locale: user.locale ?? "en",
+      currency: user.currency ?? "BRL",
+    };
   }
 
-  private async ensureDefaultCategories(userId: string) {
+  private async ensureDefaultCategories(userId: string, locale?: string | null) {
     try {
       const existing = await this.categoriesService.findAll(userId);
       if (existing.length > 0) return;
+      const defaults = getDefaultCategories(locale ?? undefined);
       await Promise.all(
-        DEFAULT_CATEGORIES.map((category) =>
+        defaults.map((category) =>
           this.categoriesService.create(userId, category),
         ),
       );
@@ -213,7 +250,7 @@ export class AuthService {
   private getJwtSecret() {
     const secret = this.configService.get<string>("AUTH_JWT_SECRET");
     if (!secret) {
-      throw new Error("AUTH_JWT_SECRET não configurado");
+      throw new Error("AUTH_JWT_SECRET is not set");
     }
     return secret;
   }
@@ -262,19 +299,21 @@ export class AuthService {
 
   private assertPasswordStrength(password: string) {
     if (password.length < PASSWORD_RULES.minLength) {
-      throw new BadRequestException("Senha deve ter no mínimo 8 caracteres");
+      throw new BadRequestException(
+        "Password must be at least 8 characters long",
+      );
     }
     if (!PASSWORD_RULES.upper.test(password)) {
-      throw new BadRequestException("Senha deve ter letra maiúscula");
+      throw new BadRequestException("Password must include an uppercase letter");
     }
     if (!PASSWORD_RULES.lower.test(password)) {
-      throw new BadRequestException("Senha deve ter letra minúscula");
+      throw new BadRequestException("Password must include a lowercase letter");
     }
     if (!PASSWORD_RULES.number.test(password)) {
-      throw new BadRequestException("Senha deve ter número");
+      throw new BadRequestException("Password must include a number");
     }
     if (!PASSWORD_RULES.symbol.test(password)) {
-      throw new BadRequestException("Senha deve ter símbolo");
+      throw new BadRequestException("Password must include a symbol");
     }
   }
 

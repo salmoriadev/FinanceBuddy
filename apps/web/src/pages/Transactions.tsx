@@ -28,12 +28,14 @@ import {
 import { toast } from "sonner";
 import { TransactionType } from "@/types/finance";
 import { parseDateInput } from "@/lib/date";
+import { useI18n } from "@/hooks/useI18n";
 
 export default function Transactions() {
   const { user, loading } = useAuth();
   const { transactions, isLoading, addTransaction, deleteTransaction } =
     useTransactions();
   const { categories } = useCategories();
+  const { t } = useI18n();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [filterType, setFilterType] = useState<"all" | TransactionType>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
@@ -103,18 +105,18 @@ export default function Transactions() {
     try {
       await addTransaction.mutateAsync(data);
       setIsDialogOpen(false);
-      toast.success("Transação adicionada com sucesso!");
+      toast.success(t("transactions.toast.addSuccess"));
     } catch {
-      toast.error("Erro ao adicionar transação");
+      toast.error(t("transactions.toast.addError"));
     }
   };
 
   const handleDeleteTransaction = useCallback((id: string) => {
     deleteTransaction.mutate(id, {
-      onSuccess: () => toast.success("Transação excluída"),
-      onError: () => toast.error("Erro ao excluir transação"),
+      onSuccess: () => toast.success(t("transactions.toast.deleteSuccess")),
+      onError: () => toast.error(t("transactions.toast.deleteError")),
     });
-  }, [deleteTransaction]);
+  }, [deleteTransaction, t]);
 
   return (
     <AppLayout>
@@ -122,10 +124,10 @@ export default function Transactions() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-              Transações
+              {t("transactions.title")}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Gerencie suas receitas e despesas
+              {t("transactions.subtitle")}
             </p>
           </div>
 
@@ -133,12 +135,12 @@ export default function Transactions() {
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
-                Nova Transação
+                {t("transactions.new")}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>Nova Transação</DialogTitle>
+                <DialogTitle>{t("transactions.form.title")}</DialogTitle>
               </DialogHeader>
               <TransactionForm
                 categories={categories}
@@ -154,7 +156,7 @@ export default function Transactions() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Filter className="h-5 w-5" />
-                Filtros
+                {t("transactions.filters")}
               </CardTitle>
               <div className="flex flex-wrap gap-2">
                 <Select
@@ -164,12 +166,12 @@ export default function Transactions() {
                   }
                 >
                   <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Tipo" />
+                    <SelectValue placeholder={t("transactions.filter.typePlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="income">Receitas</SelectItem>
-                    <SelectItem value="expense">Despesas</SelectItem>
+                    <SelectItem value="all">{t("transactions.typeAll")}</SelectItem>
+                    <SelectItem value="income">{t("transactions.type.income")}</SelectItem>
+                    <SelectItem value="expense">{t("transactions.type.expense")}</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -178,10 +180,10 @@ export default function Transactions() {
                   onValueChange={setFilterCategory}
                 >
                   <SelectTrigger className="w-[160px]">
-                    <SelectValue placeholder="Categoria" />
+                    <SelectValue placeholder={t("transactions.filter.categoryPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todas</SelectItem>
+                    <SelectItem value="all">{t("transactions.categoryAll")}</SelectItem>
                     {categories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>
                         <span className="flex items-center gap-2">
@@ -199,24 +201,30 @@ export default function Transactions() {
             </div>
             <div className="flex flex-col lg:flex-row gap-3">
               <Input
-                placeholder="Buscar por descrição ou categoria"
+                placeholder={t("transactions.searchPlaceholder")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="lg:max-w-sm"
               />
               <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted-foreground">De</span>
+                  <span className="text-xs text-muted-foreground">
+                    {t("transactions.dateFrom")}
+                  </span>
                   <DateInput
                     value={filterFrom}
                     onChange={(e) => setFilterFrom(e.target.value)}
+                    placeholder={t("common.datePlaceholder")}
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted-foreground">Até</span>
+                  <span className="text-xs text-muted-foreground">
+                    {t("transactions.dateTo")}
+                  </span>
                   <DateInput
                     value={filterTo}
                     onChange={(e) => setFilterTo(e.target.value)}
+                    placeholder={t("common.datePlaceholder")}
                   />
                 </div>
               </div>

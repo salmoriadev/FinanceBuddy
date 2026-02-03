@@ -26,26 +26,30 @@ import { Loader2 } from "lucide-react";
 import { parseCurrency } from "@/lib/number";
 import { formatDateInput, isValidDateInput, toIsoDate } from "@/lib/date";
 import { suggestCategory } from "@/domain/categories/matching";
+import { useI18n } from "@/hooks/useI18n";
 
-const transactionSchema = z.object({
-  description: z.string().min(1, "Descrição obrigatória"),
-  amount: z
-    .string()
-    .min(1, "Valor obrigatório")
-    .refine(
-      (value) => parseCurrency(value) > 0,
-      "Valor deve ser maior que zero",
-    ),
-  type: z.enum(["income", "expense"]),
-  category_id: z.string().optional(),
-  date: z
-    .string()
-    .min(1, "Data obrigatória")
-    .refine(isValidDateInput, "Data inválida"),
-  is_recurring: z.boolean(),
-});
+const buildTransactionSchema = (t: (key: string) => string) =>
+  z.object({
+    description: z
+      .string()
+      .min(1, t("transactions.validation.descriptionRequired")),
+    amount: z
+      .string()
+      .min(1, t("transactions.validation.amountRequired"))
+      .refine(
+        (value) => parseCurrency(value) > 0,
+        t("transactions.validation.amountPositive"),
+      ),
+    type: z.enum(["income", "expense"]),
+    category_id: z.string().optional(),
+    date: z
+      .string()
+      .min(1, t("transactions.validation.dateRequired"))
+      .refine(isValidDateInput, t("transactions.validation.dateInvalid")),
+    is_recurring: z.boolean(),
+  });
 
-type TransactionFormData = z.infer<typeof transactionSchema>;
+type TransactionFormData = z.infer<ReturnType<typeof buildTransactionSchema>>;
 
 interface TransactionFormProps {
   categories: Category[];
@@ -65,9 +69,11 @@ export function TransactionForm({
   onSubmit,
   isLoading,
 }: TransactionFormProps) {
+  const { t } = useI18n();
+  const schema = useMemo(() => buildTransactionSchema(t), [t]);
   const [categoryTouched, setCategoryTouched] = useState(false);
   const form = useForm<TransactionFormData>({
-    resolver: zodResolver(transactionSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       description: "",
       amount: "",
@@ -133,7 +139,7 @@ export function TransactionForm({
             name="type"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tipo</FormLabel>
+                <FormLabel>{t("transactions.form.type")}</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
@@ -141,8 +147,12 @@ export function TransactionForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="expense">Despesa</SelectItem>
-                    <SelectItem value="income">Receita</SelectItem>
+                    <SelectItem value="expense">
+                      {t("transactions.type.expense")}
+                    </SelectItem>
+                    <SelectItem value="income">
+                      {t("transactions.type.income")}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -155,7 +165,7 @@ export function TransactionForm({
             name="category_id"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Categoria</FormLabel>
+                <FormLabel>{t("transactions.form.category")}</FormLabel>
                 <Select
                   onValueChange={(value) => {
                     setCategoryTouched(true);
@@ -165,7 +175,7 @@ export function TransactionForm({
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione..." />
+                      <SelectValue placeholder={t("common.select")} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -193,9 +203,12 @@ export function TransactionForm({
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Descrição</FormLabel>
+              <FormLabel>{t("transactions.form.description")}</FormLabel>
               <FormControl>
-                <Input placeholder="Ex: Supermercado" {...field} />
+                <Input
+                  placeholder={t("transactions.form.descriptionPlaceholder")}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -208,12 +221,12 @@ export function TransactionForm({
             name="amount"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Valor (R$)</FormLabel>
+                <FormLabel>{t("transactions.form.amount")}</FormLabel>
                 <FormControl>
                   <Input
                     type="text"
                     inputMode="decimal"
-                    placeholder="0,00"
+                    placeholder={t("common.currencyPlaceholder")}
                     {...field}
                   />
                 </FormControl>
@@ -227,9 +240,12 @@ export function TransactionForm({
             name="date"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Data</FormLabel>
+                <FormLabel>{t("transactions.form.date")}</FormLabel>
                 <FormControl>
-                  <DateInput {...field} />
+                  <DateInput
+                    {...field}
+                    placeholder={t("common.datePlaceholder")}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -244,10 +260,10 @@ export function TransactionForm({
             <FormItem className="flex items-center justify-between rounded-lg border p-3">
               <div>
                 <FormLabel className="text-base">
-                  Transação Recorrente
+                  {t("transactions.form.recurring")}
                 </FormLabel>
                 <p className="text-sm text-muted-foreground">
-                  Marque se esta transação se repete mensalmente
+                  {t("transactions.form.recurringHint")}
                 </p>
               </div>
               <FormControl>
@@ -262,7 +278,7 @@ export function TransactionForm({
 
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Adicionar Transação
+          {t("transactions.form.submit")}
         </Button>
       </form>
     </Form>

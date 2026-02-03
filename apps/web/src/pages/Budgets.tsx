@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Plus, Loader2, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -39,30 +39,35 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { parseDateInput } from "@/lib/date";
 import { parseCurrency } from "@/lib/number";
-import { formatCurrency, MONTHS_LONG } from "@/lib/format";
+import { useFormatter } from "@/hooks/useFormatter";
+import { useI18n } from "@/hooks/useI18n";
 
-const budgetSchema = z.object({
-  category_id: z.string().min(1, "Selecione uma categoria"),
-  amount: z
-    .string()
-    .min(1, "Valor obrigatório")
-    .refine(
-      (value) => parseCurrency(value) > 0,
-      "Valor deve ser maior que zero",
-    ),
-});
+const buildBudgetSchema = (t: (key: string) => string) =>
+  z.object({
+    category_id: z.string().min(1, t("budgets.validation.categoryRequired")),
+    amount: z
+      .string()
+      .min(1, t("budgets.validation.amountRequired"))
+      .refine(
+        (value) => parseCurrency(value) > 0,
+        t("budgets.validation.amountPositive"),
+      ),
+  });
 
-type BudgetFormData = z.infer<typeof budgetSchema>;
+type BudgetFormData = z.infer<ReturnType<typeof buildBudgetSchema>>;
 
 export default function Budgets() {
   const { user, loading } = useAuth();
   const { budgets, isLoading, addBudget, deleteBudget } = useBudgets();
   const { categories } = useCategories();
   const { transactions } = useTransactions();
+  const { formatCurrency, monthsLong, locale } = useFormatter();
+  const { t } = useI18n();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  const schema = useMemo(() => buildBudgetSchema(t), [t]);
   const form = useForm<BudgetFormData>({
-    resolver: zodResolver(budgetSchema),
+    resolver: zodResolver(schema),
     defaultValues: { category_id: "", amount: "" },
   });
 
@@ -123,20 +128,24 @@ export default function Budgets() {
       });
       setIsDialogOpen(false);
       form.reset();
-      toast.success("Orçamento adicionado!");
+      toast.success(t("budgets.toast.addSuccess"));
     } catch {
-      toast.error("Erro ao adicionar orçamento");
+      toast.error(t("budgets.toast.addError"));
     }
   };
 
   const handleDelete = (id: string) => {
     deleteBudget.mutate(id, {
-      onSuccess: () => toast.success("Orçamento excluído"),
-      onError: () => toast.error("Erro ao excluir"),
+      onSuccess: () => toast.success(t("budgets.toast.deleteSuccess")),
+      onError: () => toast.error(t("budgets.toast.deleteError")),
     });
   };
 
-  const monthNames = MONTHS_LONG;
+  const monthName = monthsLong[currentMonth - 1] ?? "";
+  const monthLabel =
+    locale === "pt-BR"
+      ? `${monthName} de ${currentYear}`
+      : `${monthName} ${currentYear}`;
 
   return (
     <AppLayout>
@@ -144,10 +153,10 @@ export default function Budgets() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-              Orçamentos
+              {t("budgets.title")}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {monthNames[currentMonth - 1]} de {currentYear}
+              {monthLabel}
             </p>
           </div>
 
@@ -155,12 +164,12 @@ export default function Budgets() {
             <DialogTrigger asChild>
               <Button disabled={availableCategories.length === 0}>
                 <Plus className="h-4 w-4 mr-2" />
-                Novo Orçamento
+                {t("budgets.new")}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Novo Orçamento</DialogTitle>
+                <DialogTitle>{t("budgets.form.title")}</DialogTitle>
               </DialogHeader>
               <Form {...form}>
                 <form
@@ -172,14 +181,14 @@ export default function Budgets() {
                     name="category_id"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Categoria</FormLabel>
+                        <FormLabel>{t("budgets.form.categoryLabel")}</FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Selecione..." />
+                              <SelectValue placeholder={t("budgets.form.categoryPlaceholder")} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -205,12 +214,12 @@ export default function Budgets() {
                     name="amount"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Limite (R$)</FormLabel>
+                        <FormLabel>{t("budgets.form.amountLabel")}</FormLabel>
                         <FormControl>
                           <Input
                             type="text"
                             inputMode="decimal"
-                            placeholder="0,00"
+                            placeholder={t("common.currencyPlaceholder")}
                             {...field}
                           />
                         </FormControl>
@@ -226,7 +235,7 @@ export default function Budgets() {
                     {addBudget.isPending && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     )}
-                    Criar Orçamento
+                    {t("budgets.form.submit")}
                   </Button>
                 </form>
               </Form>
@@ -237,7 +246,7 @@ export default function Budgets() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground">Orçamento Total</p>
+              <p className="text-sm text-muted-foreground">{t("budgets.total")}</p>
               <p className="text-2xl font-bold">
                 {formatCurrency(totalBudget)}
               </p>
@@ -245,7 +254,7 @@ export default function Budgets() {
           </Card>
           <Card>
             <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground">Gasto Atual</p>
+              <p className="text-sm text-muted-foreground">{t("budgets.spent")}</p>
               <p
                 className={cn(
                   "text-2xl font-bold",
@@ -262,7 +271,7 @@ export default function Budgets() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Orçamentos por Categoria</CardTitle>
+            <CardTitle>{t("budgets.byCategory")}</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -272,7 +281,7 @@ export default function Budgets() {
             ) : budgetsWithSpent.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">
-                  Nenhum orçamento definido para este mês
+                  {t("budgets.none")}
                 </p>
               </div>
             ) : (
@@ -286,9 +295,9 @@ export default function Budgets() {
                   const isNearLimit = percentage >= 80 && !isOverBudget;
                   const remaining = Number(budget.amount) - budget.spent;
                   const statusLabel = isOverBudget
-                    ? "Limite excedido"
+                    ? t("budgets.exceeded")
                     : isNearLimit
-                      ? "Atenção: perto do limite"
+                      ? t("budgets.nearLimit")
                       : null;
 
                   return (
@@ -345,8 +354,8 @@ export default function Budgets() {
                           )}
                         >
                           {isOverBudget
-                            ? `Excedido ${formatCurrency(Math.abs(remaining))}`
-                            : `Restam ${formatCurrency(remaining)}`}
+                            ? `${t("budgets.exceeded")} ${formatCurrency(Math.abs(remaining))}`
+                            : `${t("budgets.remaining")} ${formatCurrency(remaining)}`}
                         </span>
                       </div>
                       {statusLabel && (

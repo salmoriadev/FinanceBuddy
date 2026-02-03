@@ -2,22 +2,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Budget } from "@/types/finance";
 import { cn } from "@/lib/utils";
-import { formatCurrency } from "@/lib/format";
+import { useFormatter } from "@/hooks/useFormatter";
+import { useI18n } from "@/hooks/useI18n";
 
 interface BudgetProgressProps {
   budgets: (Budget & { spent: number })[];
 }
 
 export function BudgetProgress({ budgets }: BudgetProgressProps) {
+  const { formatCurrency } = useFormatter();
+  const { t } = useI18n();
+
   if (budgets.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Orçamentos do Mês</CardTitle>
+          <CardTitle className="text-lg">{t("budgets.subtitle")}</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-8">
           <p className="text-muted-foreground text-sm">
-            Nenhum orçamento definido
+            {t("budgets.none")}
           </p>
         </CardContent>
       </Card>
@@ -27,7 +31,7 @@ export function BudgetProgress({ budgets }: BudgetProgressProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Orçamentos do Mês</CardTitle>
+        <CardTitle className="text-lg">{t("budgets.subtitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {budgets.slice(0, 5).map((budget) => {
@@ -38,9 +42,9 @@ export function BudgetProgress({ budgets }: BudgetProgressProps) {
           const isOverBudget = budget.spent > budget.amount;
           const isNearLimit = percentage >= 80 && !isOverBudget;
           const statusLabel = isOverBudget
-            ? "Excedido"
+            ? t("budgets.exceeded")
             : isNearLimit
-              ? "Perto do limite"
+              ? t("budgets.nearLimit")
               : null;
 
           return (
@@ -53,7 +57,7 @@ export function BudgetProgress({ budgets }: BudgetProgressProps) {
                       backgroundColor: budget.category?.color || "#6366f1",
                     }}
                   />
-                  {budget.category?.name || "Categoria"}
+                  {budget.category?.name || t("transactions.form.category")}
                 </span>
                 <span
                   className={cn(

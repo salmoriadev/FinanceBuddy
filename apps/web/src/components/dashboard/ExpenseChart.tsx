@@ -1,7 +1,8 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CategorySpending } from "@/types/finance";
-import { formatCurrency } from "@/lib/format";
+import { useFormatter } from "@/hooks/useFormatter";
+import { useI18n } from "@/hooks/useI18n";
 
 interface ExpenseChartProps {
   data: CategorySpending[];
@@ -18,15 +19,18 @@ const FALLBACK_COLORS = [
 ];
 
 export function ExpenseChart({ data }: ExpenseChartProps) {
+  const { formatCurrency } = useFormatter();
+  const { t } = useI18n();
+
   if (data.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Gastos por Categoria</CardTitle>
+          <CardTitle className="text-lg">{t("dashboard.spendingByCategory")}</CardTitle>
         </CardHeader>
         <CardContent className="h-[300px] flex items-center justify-center">
           <p className="text-muted-foreground text-sm">
-            Nenhuma despesa registrada
+            {t("dashboard.noExpenses")}
           </p>
         </CardContent>
       </Card>
@@ -42,7 +46,7 @@ export function ExpenseChart({ data }: ExpenseChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Gastos por Categoria</CardTitle>
+        <CardTitle className="text-lg">{t("dashboard.spendingByCategory")}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col items-center gap-4">
@@ -69,7 +73,7 @@ export function ExpenseChart({ data }: ExpenseChartProps) {
                   <Tooltip
                     formatter={(value: number) => [
                       formatCurrency(value),
-                      "Valor",
+                      t("transactions.form.amount"),
                     ]}
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",

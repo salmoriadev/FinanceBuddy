@@ -11,6 +11,9 @@ import { apiRequest, ApiError } from "@/lib/api";
 interface AuthUser {
   id: string;
   email: string;
+  name?: string | null;
+  locale?: string | null;
+  currency?: string | null;
 }
 
 interface AuthContextType {
@@ -19,6 +22,11 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  updateProfile: (data: {
+    name?: string | null;
+    locale?: string;
+    currency?: string;
+  }) => Promise<{ error: Error | null }>;
   changePassword: (
     currentPassword: string,
     newPassword: string,
@@ -149,12 +157,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateProfile = async (data: {
+    name?: string | null;
+    locale?: string;
+    currency?: string;
+  }) => {
+    if (!accessToken) {
+      return { error: new Error("User not authenticated") };
+    }
+    try {
+      const response = await apiRequest<{ user: AuthUser }>("/auth/profile", {
+        method: "PATCH",
+        token: accessToken,
+        body: data,
+      });
+      setUser(response.user);
+      return { error: null };
+    } catch (error) {
+      if (error instanceof ApiError) {
+        return { error };
+      }
+      return { error: error as Error };
+    }
+  };
+
   const changePassword = async (
     currentPassword: string,
     newPassword: string,
   ) => {
     if (!accessToken) {
-      return { error: new Error("Usuário não autenticado") };
+      return { error: new Error("User not authenticated") };
     }
     try {
       await apiRequest("/auth/password", {
@@ -188,6 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         signUp,
         signIn,
+        updateProfile,
         changePassword,
         signOut,
       }}

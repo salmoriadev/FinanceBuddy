@@ -3,9 +3,21 @@ import { format, isValid, parse, parseISO } from "date-fns";
 const BR_DATE_FORMAT = "dd/MM/yyyy";
 const BR_DATE_FORMAT_FLEX = "d/M/yyyy";
 
+export const normalizeDateInput = (value: string) => {
+  if (!value) return value;
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const masked = maskDateInput(trimmed);
+  if (/^\d{1,2}\/\d{1,2}$/.test(masked)) {
+    const year = new Date().getFullYear();
+    return `${masked}/${year}`;
+  }
+  return masked;
+};
+
 export function parseDateInput(value: string) {
   if (!value) return new Date("");
-  const trimmed = value.trim();
+  const trimmed = normalizeDateInput(value);
   const isoParsed = parseISO(trimmed);
   if (isValid(isoParsed)) return isoParsed;
   const brParsed = parse(trimmed, BR_DATE_FORMAT, new Date());
@@ -46,9 +58,10 @@ export const formatDateInput = (value: Date | string) => {
 
 export const toIsoDate = (value: string) => {
   if (!value) return "";
-  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return value;
-  const parsed = parse(value, BR_DATE_FORMAT, new Date());
+  const normalized = normalizeDateInput(value);
+  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(normalized)) return normalized;
+  const parsed = parse(normalized, BR_DATE_FORMAT, new Date());
   if (isValid(parsed)) return format(parsed, "yyyy-MM-dd");
-  const parsedFlex = parse(value, BR_DATE_FORMAT_FLEX, new Date());
+  const parsedFlex = parse(normalized, BR_DATE_FORMAT_FLEX, new Date());
   return isValid(parsedFlex) ? format(parsedFlex, "yyyy-MM-dd") : value;
 };

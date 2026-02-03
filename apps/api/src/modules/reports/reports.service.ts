@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
+import { RecurringTransactionsService } from "../transactions/recurring.service";
 import { TtlCache } from "../../common/cache/ttl-cache";
 
 @Injectable()
@@ -12,7 +13,10 @@ export class ReportsService {
     savingsRate: number;
   }>(30_000);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly recurring: RecurringTransactionsService,
+  ) {}
 
   async getSummary(userId: string, year?: number) {
     const now = new Date();
@@ -22,6 +26,8 @@ export class ReportsService {
     if (cached) {
       return cached;
     }
+
+    await this.recurring.ensureRecurringTransactions(userId);
 
     const start = new Date(targetYear, 0, 1);
     const end = new Date(targetYear + 1, 0, 1);

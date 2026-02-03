@@ -32,7 +32,7 @@ export class InvestmentsService {
       notes: dto.notes ?? null,
     });
     if (!updated) {
-      throw new NotFoundException("Investimento não encontrado");
+      throw new NotFoundException("Investment not found");
     }
     return updated;
   }
@@ -40,7 +40,7 @@ export class InvestmentsService {
   async delete(userId: string, id: string) {
     const result = await this.repository.delete(userId, id);
     if (result.count === 0) {
-      throw new NotFoundException("Investimento não encontrado");
+      throw new NotFoundException("Investment not found");
     }
     return { deleted: true };
   }
