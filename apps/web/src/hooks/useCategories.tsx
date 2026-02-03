@@ -1,14 +1,17 @@
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "./useAuth";
 import { Category, TransactionType } from "@/types/finance";
 import { apiRequest } from "@/lib/api";
 import { ApiCategory, mapCategory } from "@/lib/api-mappers";
-import { normalizeCategoryKey } from "@/lib/category-labels";
+import { getCategoryLabel, normalizeCategoryKey } from "@/lib/category-labels";
+import { usePreferences } from "@/hooks/usePreferences";
 
-const dedupeCategories = (items: Category[]) => {
+const dedupeCategories = (items: Category[], locale: "en" | "pt-BR") => {
   const unique = new Map<string, Category>();
   items.forEach((category) => {
-    const key = `${category.type}:${normalizeCategoryKey(category.name)}`;
+    const label = getCategoryLabel(category.name, category.type, locale);
+    const key = `${category.type}:${normalizeCategoryKey(label)}`;
     if (!unique.has(key)) {
       unique.set(key, category);
     }
@@ -18,6 +21,7 @@ const dedupeCategories = (items: Category[]) => {
 
 export function useCategories() {
   const { user, accessToken } = useAuth();
+  const { locale } = usePreferences();
   const queryClient = useQueryClient();
   const token = accessToken;
 
@@ -26,14 +30,18 @@ export function useCategories() {
     queryFn: async () => {
       if (!user || !token) return [];
       const data = await apiRequest<ApiCategory[]>("/categories", { token });
-      const mapped = data.map(mapCategory) as Category[];
-      return dedupeCategories(mapped);
+      return data.map(mapCategory) as Category[];
     },
     enabled: !!user && !!token,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
     keepPreviousData: true,
   });
+
+  const categories = useMemo(
+    () => dedupeCategories(categoriesQuery.data ?? [], locale),
+    [categoriesQuery.data, locale],
+  );
 
   const addCategory = useMutation({
     mutationFn: async (category: {
@@ -60,7 +68,7 @@ export function useCategories() {
   });
 
   return {
-    categories: categoriesQuery.data ?? [],
+    categories,
     isLoading: categoriesQuery.isLoading,
     addCategory,
   };

@@ -18,16 +18,35 @@ export const normalizeDateInput = (value: string) => {
 export function parseDateInput(value: string) {
   if (!value) return new Date("");
   const raw = value.trim();
+  if (!raw) return new Date("");
+
+  if (/^\d{10,}$/.test(raw)) {
+    const timestamp = Number(raw);
+    const timestampDate = new Date(timestamp);
+    if (isValid(timestampDate)) return timestampDate;
+  }
+
   const rawIso = parseISO(raw);
   if (isValid(rawIso)) return rawIso;
+
+  if (raw.includes(" ")) {
+    const normalizedIso = raw.replace(" ", "T");
+    const normalizedDate = parseISO(normalizedIso);
+    if (isValid(normalizedDate)) return normalizedDate;
+  }
+
   const trimmed = normalizeDateInput(raw);
   const isoParsed = parseISO(trimmed);
   if (isValid(isoParsed)) return isoParsed;
+
   const brParsed = parse(trimmed, BR_DATE_FORMAT, new Date());
   if (isValid(brParsed)) return brParsed;
+
   const brParsedFlex = parse(trimmed, BR_DATE_FORMAT_FLEX, new Date());
   if (isValid(brParsedFlex)) return brParsedFlex;
-  return new Date(trimmed);
+
+  const fallbackDate = new Date(raw);
+  return isValid(fallbackDate) ? fallbackDate : new Date("");
 }
 
 export const maskDateInput = (value: string) => {

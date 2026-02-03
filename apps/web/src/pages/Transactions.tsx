@@ -26,19 +26,27 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { TransactionType } from "@/types/finance";
+import { Transaction, TransactionType } from "@/types/finance";
 import { parseDateInput } from "@/lib/date";
+import { isValid } from "date-fns";
 import { useI18n } from "@/hooks/useI18n";
 import { useCategoryLabels } from "@/hooks/useCategoryLabels";
 
 export default function Transactions() {
   const { user, loading } = useAuth();
-  const { transactions, isLoading, addTransaction, deleteTransaction } =
-    useTransactions();
+  const {
+    transactions,
+    isLoading,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
+  } = useTransactions();
   const { categories } = useCategories();
   const { t } = useI18n();
   const { labelForCategory } = useCategoryLabels();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [filterType, setFilterType] = useState<"all" | TransactionType>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterFrom, setFilterFrom] = useState<string>("");
@@ -58,14 +66,26 @@ export default function Transactions() {
     return <Navigate to="/auth" replace />;
   }
 
-  const fromTime = useMemo(
-    () => (filterFrom ? parseDateInput(filterFrom).getTime() : null),
-    [filterFrom],
-  );
-  const toTime = useMemo(
-    () => (filterTo ? parseDateInput(filterTo).getTime() : null),
-    [filterTo],
-  );
+  const resolveTransactionDate = useCallback((transaction: Transaction) => {
+    const parsed = parseDateInput(transaction.date);
+    if (isValid(parsed)) return parsed;
+    if (transaction.created_at) {
+      const fallback = parseDateInput(transaction.created_at);
+      if (isValid(fallback)) return fallback;
+    }
+    return null;
+  }, []);
+
+  const fromTime = useMemo(() => {
+    if (!filterFrom) return null;
+    const parsed = parseDateInput(filterFrom);
+    return isValid(parsed) ? parsed.getTime() : null;
+  }, [filterFrom]);
+  const toTime = useMemo(() => {
+    if (!filterTo) return null;
+    const parsed = parseDateInput(filterTo);
+    return isValid(parsed) ? parsed.getTime() : null;
+  }, [filterTo]);
   const normalizedSearch = useMemo(
     () => deferredSearch.trim().toLowerCase(),
     [deferredSearch],
@@ -80,13 +100,15 @@ export default function Transactions() {
         const descriptionMatch = t.description
           .toLowerCase()
           .includes(normalizedSearch);
-        const categoryMatch = t.category?.name
-          ?.toLowerCase()
-          .includes(normalizedSearch);
+        const categoryMatch = t.category
+          ? labelForCategory(t.category).toLowerCase().includes(normalizedSearch)
+          : false;
         if (!descriptionMatch && !categoryMatch) return false;
       }
       if (fromTime !== null || toTime !== null) {
-        const transactionTime = parseDateInput(t.date).getTime();
+        const date = resolveTransactionDate(t);
+        if (!date) return false;
+        const transactionTime = date.getTime();
         if (fromTime !== null && transactionTime < fromTime) return false;
         if (toTime !== null && transactionTime > toTime) return false;
       }
@@ -99,6 +121,8 @@ export default function Transactions() {
     normalizedSearch,
     fromTime,
     toTime,
+    resolveTransactionDate,
+    labelForCategory,
   ]);
 
   const handleAddTransaction = async (
@@ -113,12 +137,39 @@ export default function Transactions() {
     }
   };
 
+  const handleUpdateTransaction = async (
+    data: Parameters<typeof addTransaction.mutateAsync>[0],
+  ) => {
+    if (!editingTransaction) return;
+    try {
+      await updateTransaction.mutateAsync({
+        id: editingTransaction.id,
+        description: data.description,
+        amount: data.amount,
+        type: data.type,
+        category_id: data.category_id ?? null,
+        date: data.date,
+        is_recurring: data.is_recurring,
+      });
+      setIsEditDialogOpen(false);
+      setEditingTransaction(null);
+      toast.success(t("transactions.toast.updateSuccess"));
+    } catch {
+      toast.error(t("transactions.toast.updateError"));
+    }
+  };
+
   const handleDeleteTransaction = useCallback((id: string) => {
     deleteTransaction.mutate(id, {
       onSuccess: () => toast.success(t("transactions.toast.deleteSuccess")),
       onError: () => toast.error(t("transactions.toast.deleteError")),
     });
   }, [deleteTransaction, t]);
+
+  const handleEditTransaction = useCallback((transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setIsEditDialogOpen(true);
+  }, []);
 
   return (
     <AppLayout>
@@ -149,6 +200,36 @@ export default function Transactions() {
                 onSubmit={handleAddTransaction}
                 isLoading={addTransaction.isPending}
               />
+            </DialogContent>
+          </Dialog>
+
+          <Dialog
+            open={isEditDialogOpen}
+            onOpenChange={(open) => {
+              setIsEditDialogOpen(open);
+              if (!open) setEditingTransaction(null);
+            }}
+          >
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>{t("transactions.form.editTitle")}</DialogTitle>
+              </DialogHeader>
+              {editingTransaction && (
+                <TransactionForm
+                  categories={categories}
+                  onSubmit={handleUpdateTransaction}
+                  isLoading={updateTransaction.isPending}
+                  submitLabel={t("transactions.form.update")}
+                  initialValues={{
+                    description: editingTransaction.description,
+                    amount: Number(editingTransaction.amount),
+                    type: editingTransaction.type,
+                    category_id: editingTransaction.category_id,
+                    date: editingTransaction.date,
+                    is_recurring: editingTransaction.is_recurring,
+                  }}
+                />
+              )}
             </DialogContent>
           </Dialog>
         </div>
@@ -241,6 +322,7 @@ export default function Transactions() {
               <TransactionList
                 transactions={filteredTransactions}
                 onDelete={handleDeleteTransaction}
+                onEdit={handleEditTransaction}
               />
             )}
           </CardContent>

@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
-import { Plus, Loader2, Trash2 } from "lucide-react";
+import { Plus, Loader2, Trash2, Edit2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -42,6 +42,7 @@ import { parseCurrency } from "@/lib/number";
 import { useFormatter } from "@/hooks/useFormatter";
 import { useI18n } from "@/hooks/useI18n";
 import { useCategoryLabels } from "@/hooks/useCategoryLabels";
+import { Budget } from "@/types/finance";
 
 const buildBudgetSchema = (t: (key: string) => string) =>
   z.object({
@@ -59,19 +60,33 @@ type BudgetFormData = z.infer<ReturnType<typeof buildBudgetSchema>>;
 
 export default function Budgets() {
   const { user, loading } = useAuth();
-  const { budgets, isLoading, addBudget, deleteBudget } = useBudgets();
+  const { budgets, isLoading, addBudget, updateBudget, deleteBudget } = useBudgets();
   const { categories } = useCategories();
   const { transactions } = useTransactions();
   const { formatCurrency, monthsLong, locale } = useFormatter();
   const { t } = useI18n();
   const { labelForCategory } = useCategoryLabels();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
 
   const schema = useMemo(() => buildBudgetSchema(t), [t]);
   const form = useForm<BudgetFormData>({
     resolver: zodResolver(schema),
     defaultValues: { category_id: "", amount: "" },
   });
+  const editForm = useForm<BudgetFormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { category_id: "", amount: "" },
+  });
+
+  useEffect(() => {
+    if (!editingBudget) return;
+    editForm.reset({
+      category_id: editingBudget.category_id,
+      amount: String(editingBudget.amount ?? ""),
+    });
+  }, [editingBudget, editForm]);
 
   if (loading) {
     return (
@@ -97,6 +112,13 @@ export default function Budgets() {
   const availableCategories = expenseCategories.filter(
     (c) => !existingCategoryIds.includes(c.id),
   );
+  const editAvailableCategories = useMemo(() => {
+    if (!editingBudget) return expenseCategories;
+    const blockedIds = new Set(
+      currentBudgets.filter((b) => b.id !== editingBudget.id).map((b) => b.category_id),
+    );
+    return expenseCategories.filter((c) => !blockedIds.has(c.id));
+  }, [editingBudget, expenseCategories, currentBudgets]);
 
   const budgetsWithSpent = currentBudgets.map((budget) => {
     const spent = transactions
@@ -136,11 +158,34 @@ export default function Budgets() {
     }
   };
 
+  const handleUpdateBudget = async (data: BudgetFormData) => {
+    if (!editingBudget) return;
+    try {
+      await updateBudget.mutateAsync({
+        id: editingBudget.id,
+        category_id: data.category_id,
+        amount: parseCurrency(data.amount),
+        month: editingBudget.month,
+        year: editingBudget.year,
+      });
+      setIsEditDialogOpen(false);
+      setEditingBudget(null);
+      toast.success(t("budgets.toast.updateSuccess"));
+    } catch {
+      toast.error(t("budgets.toast.updateError"));
+    }
+  };
+
   const handleDelete = (id: string) => {
     deleteBudget.mutate(id, {
       onSuccess: () => toast.success(t("budgets.toast.deleteSuccess")),
       onError: () => toast.error(t("budgets.toast.deleteError")),
     });
+  };
+
+  const handleEditBudget = (budget: Budget) => {
+    setEditingBudget(budget);
+    setIsEditDialogOpen(true);
   };
 
   const monthName = monthsLong[currentMonth - 1] ?? "";
@@ -243,6 +288,90 @@ export default function Budgets() {
               </Form>
             </DialogContent>
           </Dialog>
+
+          <Dialog
+            open={isEditDialogOpen}
+            onOpenChange={(open) => {
+              setIsEditDialogOpen(open);
+              if (!open) setEditingBudget(null);
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t("budgets.form.editTitle")}</DialogTitle>
+              </DialogHeader>
+              {editingBudget && (
+                <Form {...editForm}>
+                  <form
+                    onSubmit={editForm.handleSubmit(handleUpdateBudget)}
+                    className="space-y-4"
+                  >
+                    <FormField
+                      control={editForm.control}
+                      name="category_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("budgets.form.categoryLabel")}</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder={t("budgets.form.categoryPlaceholder")} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {editAvailableCategories.map((cat) => (
+                                <SelectItem key={cat.id} value={cat.id}>
+                                  <span className="flex items-center gap-2">
+                                    <span
+                                      className="w-3 h-3 rounded-full"
+                                      style={{ backgroundColor: cat.color }}
+                                    />
+                                    {labelForCategory(cat)}
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="amount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("budgets.form.amountLabel")}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              placeholder={t("common.currencyPlaceholder")}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={updateBudget.isPending}
+                    >
+                      {updateBudget.isPending && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      {t("budgets.form.update")}
+                    </Button>
+                  </form>
+                </Form>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -320,14 +449,24 @@ export default function Budgets() {
                             {budget.category ? labelForCategory(budget.category) : null}
                           </span>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(budget.id)}
-                          className="text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditBudget(budget)}
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(budget.id)}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
 
                       <Progress

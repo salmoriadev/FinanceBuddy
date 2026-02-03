@@ -47,12 +47,24 @@ export function useBudgets() {
   });
 
   const updateBudget = useMutation({
-    mutationFn: async ({ id, amount }: { id: string; amount: number }) => {
+    mutationFn: async (payload: {
+      id: string;
+      category_id?: string;
+      amount?: number;
+      month?: number;
+      year?: number;
+    }) => {
       if (!user || !token) throw new Error("Not authenticated");
-      await apiRequest(`/budgets/${id}`, {
+      const body: Record<string, unknown> = {};
+      if (payload.category_id !== undefined) body.categoryId = payload.category_id;
+      if (payload.amount !== undefined) body.amount = payload.amount;
+      if (payload.month !== undefined) body.month = payload.month;
+      if (payload.year !== undefined) body.year = payload.year;
+
+      await apiRequest(`/budgets/${payload.id}`, {
         method: "PATCH",
         token,
-        body: { amount },
+        body,
       });
     },
     onSuccess: () => {

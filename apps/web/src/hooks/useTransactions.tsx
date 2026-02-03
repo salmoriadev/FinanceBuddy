@@ -52,6 +52,36 @@ export function useTransactions() {
     },
   });
 
+  const updateTransaction = useMutation({
+    mutationFn: async (transaction: {
+      id: string;
+      description?: string;
+      amount?: number;
+      type?: TransactionType;
+      category_id?: string | null;
+      date?: string;
+      is_recurring?: boolean;
+    }) => {
+      if (!user || !token) throw new Error("Not authenticated");
+      const body: Record<string, unknown> = {};
+      if (transaction.description !== undefined) body.description = transaction.description;
+      if (transaction.amount !== undefined) body.amount = transaction.amount;
+      if (transaction.type !== undefined) body.type = transaction.type;
+      if (transaction.category_id !== undefined) body.categoryId = transaction.category_id;
+      if (transaction.date !== undefined) body.date = transaction.date;
+      if (transaction.is_recurring !== undefined) body.isRecurring = transaction.is_recurring;
+
+      return apiRequest<ApiTransaction>(`/transactions/${transaction.id}`, {
+        method: "PATCH",
+        token,
+        body,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    },
+  });
+
   const deleteTransaction = useMutation({
     mutationFn: async (id: string) => {
       if (!user || !token) throw new Error("Not authenticated");
@@ -69,6 +99,7 @@ export function useTransactions() {
     transactions: transactionsQuery.data ?? [],
     isLoading: transactionsQuery.isLoading,
     addTransaction,
+    updateTransaction,
     deleteTransaction,
   };
 }

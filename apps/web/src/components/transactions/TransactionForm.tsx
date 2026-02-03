@@ -65,12 +65,23 @@ interface TransactionFormProps {
     is_recurring: boolean;
   }) => Promise<void>;
   isLoading?: boolean;
+  initialValues?: {
+    description: string;
+    amount: number;
+    type: TransactionType;
+    category_id: string | null;
+    date: string;
+    is_recurring: boolean;
+  };
+  submitLabel?: string;
 }
 
 export function TransactionForm({
   categories,
   onSubmit,
   isLoading,
+  initialValues,
+  submitLabel,
 }: TransactionFormProps) {
   const { t } = useI18n();
   const { labelForCategory } = useCategoryLabels();
@@ -88,6 +99,26 @@ export function TransactionForm({
     },
   });
 
+  useEffect(() => {
+    if (!initialValues) {
+      setCategoryTouched(false);
+      return;
+    }
+
+    form.reset({
+      description: initialValues.description ?? "",
+      amount:
+        typeof initialValues.amount === "number"
+          ? String(initialValues.amount)
+          : "",
+      type: initialValues.type ?? "expense",
+      category_id: initialValues.category_id ?? "",
+      date: initialValues.date ? toIsoDate(initialValues.date) : format(new Date(), "yyyy-MM-dd"),
+      is_recurring: Boolean(initialValues.is_recurring),
+    });
+    setCategoryTouched(Boolean(initialValues.category_id));
+  }, [form, initialValues]);
+
   const selectedType = form.watch("type");
   const descriptionValue = form.watch("description");
   const categoryValue = form.watch("category_id");
@@ -96,13 +127,14 @@ export function TransactionForm({
     categories
       .filter((cat) => cat.type === selectedType)
       .forEach((cat) => {
-        const key = `${cat.type}:${normalizeCategoryKey(cat.name)}`;
+        const label = labelForCategory(cat) || cat.name;
+        const key = `${cat.type}:${normalizeCategoryKey(label)}`;
         if (!unique.has(key)) {
           unique.set(key, cat);
         }
       });
     return Array.from(unique.values());
-  }, [categories, selectedType]);
+  }, [categories, selectedType, labelForCategory]);
 
   const suggestedCategory = useMemo(
     () =>
@@ -291,7 +323,7 @@ export function TransactionForm({
 
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {t("transactions.form.submit")}
+          {submitLabel ?? t("transactions.form.submit")}
         </Button>
       </form>
     </Form>

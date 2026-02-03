@@ -1,4 +1,11 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  TooltipProps,
+} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CategorySpending } from "@/types/finance";
 import { useFormatter } from "@/hooks/useFormatter";
@@ -21,12 +28,6 @@ const FALLBACK_COLORS = [
 export function ExpenseChart({ data }: ExpenseChartProps) {
   const { formatCurrency } = useFormatter();
   const { t } = useI18n();
-  const tooltipStyle = {
-    backgroundColor: "hsl(var(--card))",
-    border: "1px solid hsl(var(--border))",
-    borderRadius: "8px",
-    color: "hsl(var(--foreground))",
-  } as const;
 
   if (data.length === 0) {
     return (
@@ -48,6 +49,26 @@ export function ExpenseChart({ data }: ExpenseChartProps) {
     color: item.color || FALLBACK_COLORS[index % FALLBACK_COLORS.length],
   }));
   const total = chartData.reduce((sum, item) => sum + item.value, 0);
+  const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
+    if (!active || !payload || payload.length === 0) return null;
+    const entry = payload[0].payload as CategorySpending & { color?: string };
+    const percent = total > 0 ? (entry.value / total) * 100 : 0;
+
+    return (
+      <div className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-lg">
+        <div className="flex items-center gap-2">
+          <span
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: entry.color }}
+          />
+          <span className="font-medium">{entry.name}</span>
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">
+          {formatCurrency(entry.value)} · {percent.toFixed(0)}%
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Card>
@@ -77,13 +98,7 @@ export function ExpenseChart({ data }: ExpenseChartProps) {
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value: number) => [
-                      formatCurrency(value),
-                      t("transactions.form.amount"),
-                    ]}
-                    contentStyle={tooltipStyle}
-                    labelStyle={{ color: "hsl(var(--foreground))" }}
-                    itemStyle={{ color: "hsl(var(--foreground))" }}
+                    content={<CustomTooltip />}
                   />
                 </PieChart>
               </ResponsiveContainer>

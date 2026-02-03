@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Navigate } from "react-router-dom";
 import { Loader2, TrendingUp, TrendingDown, Calendar } from "lucide-react";
+import { isValid } from "date-fns";
 import {
   BarChart,
   Bar,
@@ -25,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ExpenseChart } from "@/components/dashboard/ExpenseChart";
-import { CategorySpending } from "@/types/finance";
+import { CategorySpending, Transaction } from "@/types/finance";
 import { parseDateInput } from "@/lib/date";
 import { useInvestments } from "@/hooks/useInvestments";
 import { calculatePortfolioSummary } from "@/domain/investments/strategy";
@@ -48,22 +49,35 @@ export default function Reports() {
   } as const;
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear.toString());
+  const resolveTransactionDate = useCallback((transaction: Transaction) => {
+    const parsed = parseDateInput(transaction.date);
+    if (isValid(parsed)) return parsed;
+    if (transaction.created_at) {
+      const fallback = parseDateInput(transaction.created_at);
+      if (isValid(fallback)) return fallback;
+    }
+    return null;
+  }, []);
 
   const years = useMemo(() => {
-    const uniqueYears = new Set(
-      transactions.map((t) => parseDateInput(t.date).getFullYear()),
-    );
+    const uniqueYears = new Set<number>();
+    transactions.forEach((transaction) => {
+      const parsed = resolveTransactionDate(transaction);
+      if (parsed) {
+        uniqueYears.add(parsed.getFullYear());
+      }
+    });
     uniqueYears.add(currentYear);
     return Array.from(uniqueYears).sort((a, b) => b - a);
-  }, [transactions, currentYear]);
+  }, [transactions, currentYear, resolveTransactionDate]);
 
   const monthlyData = useMemo(() => {
     const year = parseInt(selectedYear);
 
     return monthsShort.map((month, index) => {
-      const monthTransactions = transactions.filter((t) => {
-        const date = parseDateInput(t.date);
-        return date.getMonth() === index && date.getFullYear() === year;
+      const monthTransactions = transactions.filter((transaction) => {
+        const date = resolveTransactionDate(transaction);
+        return date ? date.getMonth() === index && date.getFullYear() === year : false;
       });
 
       const income = monthTransactions
@@ -76,13 +90,14 @@ export default function Reports() {
 
       return { month, income, expense, balance: income - expense };
     });
-  }, [transactions, selectedYear, monthsShort]);
+  }, [transactions, selectedYear, monthsShort, resolveTransactionDate]);
 
   const yearlyStats = useMemo(() => {
     const year = parseInt(selectedYear);
-    const yearTransactions = transactions.filter(
-      (t) => parseDateInput(t.date).getFullYear() === year,
-    );
+    const yearTransactions = transactions.filter((transaction) => {
+      const date = resolveTransactionDate(transaction);
+      return date ? date.getFullYear() === year : false;
+    });
 
     const income = yearTransactions
       .filter((t) => t.type === "income")
@@ -98,13 +113,18 @@ export default function Reports() {
       balance: income - expense,
       savingsRate: income > 0 ? ((income - expense) / income) * 100 : 0,
     };
-  }, [transactions, selectedYear]);
+  }, [transactions, selectedYear, resolveTransactionDate]);
 
   const categorySpending = useMemo((): CategorySpending[] => {
     const year = parseInt(selectedYear);
-    const expenses = transactions.filter((t) => {
-      const date = parseDateInput(t.date);
-      return t.type === "expense" && date.getFullYear() === year && t.category;
+    const expenses = transactions.filter((transaction) => {
+      const date = resolveTransactionDate(transaction);
+      return (
+        transaction.type === "expense" &&
+        Boolean(date) &&
+        date.getFullYear() === year &&
+        transaction.category
+      );
     });
 
     const byCategory = expenses.reduce(
@@ -123,7 +143,7 @@ export default function Reports() {
     );
 
     return Object.values(byCategory).sort((a, b) => b.value - a.value);
-  }, [transactions, selectedYear, t]);
+  }, [transactions, selectedYear, t, resolveTransactionDate]);
 
   const currentMonthStats = useMemo(() => {
     const now = new Date();
@@ -131,18 +151,18 @@ export default function Reports() {
     const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
-    const currentMonthTransactions = transactions.filter((t) => {
-      const date = parseDateInput(t.date);
-      return (
-        date.getMonth() === currentMonth && date.getFullYear() === currentYear
-      );
+    const currentMonthTransactions = transactions.filter((transaction) => {
+      const date = resolveTransactionDate(transaction);
+      return date
+        ? date.getMonth() === currentMonth && date.getFullYear() === currentYear
+        : false;
     });
 
-    const lastMonthTransactions = transactions.filter((t) => {
-      const date = parseDateInput(t.date);
-      return (
-        date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear
-      );
+    const lastMonthTransactions = transactions.filter((transaction) => {
+      const date = resolveTransactionDate(transaction);
+      return date
+        ? date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear
+        : false;
     });
 
     const currentExpense = currentMonthTransactions
@@ -159,7 +179,7 @@ export default function Reports() {
         : 0;
 
     return { currentExpense, lastExpense, variation };
-  }, [transactions, currentYear]);
+  }, [transactions, currentYear, resolveTransactionDate]);
 
   const investmentStats = useMemo(
     () => calculatePortfolioSummary(investments),
@@ -327,9 +347,11 @@ export default function Reports() {
                 </p>
                 <p
                   className={`text-xl font-bold ${
-                    currentMonthStats.variation <= 0
-                      ? "text-emerald-600"
-                      : "text-rose-600"
+                    currentMonthStats.variation < 0
+                      ? "text-rose-600"
+                      : currentMonthStats.variation > 0
+                        ? "text-emerald-600"
+                        : "text-muted-foreground"
                   }`}
                 >
                   {currentMonthStats.variation > 0 ? "+" : ""}

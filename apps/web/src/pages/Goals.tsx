@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { Plus, Loader2, Trash2, Edit2 } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -32,6 +32,7 @@ import { isValidDateInput, toIsoDate } from "@/lib/date";
 import { parseCurrency } from "@/lib/number";
 import { useFormatter } from "@/hooks/useFormatter";
 import { useI18n } from "@/hooks/useI18n";
+import { SavingsGoal } from "@/types/finance";
 
 const buildGoalSchema = (t: (key: string) => string) =>
   z.object({
@@ -80,7 +81,9 @@ export default function Goals() {
   const { formatCurrency, formatPercent, formatDate } = useFormatter();
   const { t } = useI18n();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingGoal, setEditingGoal] = useState<string | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingGoalData, setEditingGoalData] = useState<SavingsGoal | null>(null);
+  const [depositingGoalId, setDepositingGoalId] = useState<string | null>(null);
   const [depositAmount, setDepositAmount] = useState("");
 
   const schema = useMemo(() => buildGoalSchema(t), [t]);
@@ -94,6 +97,29 @@ export default function Goals() {
       color: colors[0],
     },
   });
+  const editForm = useForm<GoalFormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      name: "",
+      target_amount: "",
+      current_amount: "0",
+      target_date: "",
+      color: colors[0],
+    },
+  });
+
+  useEffect(() => {
+    if (!editingGoalData) return;
+    editForm.reset({
+      name: editingGoalData.name,
+      target_amount: String(editingGoalData.target_amount ?? ""),
+      current_amount: String(editingGoalData.current_amount ?? 0),
+      target_date: editingGoalData.target_date
+        ? toIsoDate(editingGoalData.target_date)
+        : "",
+      color: editingGoalData.color || colors[0],
+    });
+  }, [editingGoalData, editForm]);
 
   if (loading) {
     return (
@@ -124,6 +150,25 @@ export default function Goals() {
     }
   };
 
+  const handleUpdateGoal = async (data: GoalFormData) => {
+    if (!editingGoalData) return;
+    try {
+      await updateGoal.mutateAsync({
+        id: editingGoalData.id,
+        name: data.name,
+        target_amount: parseCurrency(data.target_amount),
+        current_amount: parseCurrency(data.current_amount || "0"),
+        target_date: data.target_date ? toIsoDate(data.target_date) : null,
+        color: data.color || colors[0],
+      });
+      setIsEditDialogOpen(false);
+      setEditingGoalData(null);
+      toast.success(t("goals.toast.updateSuccess"));
+    } catch {
+      toast.error(t("goals.toast.updateError"));
+    }
+  };
+
   const handleDeposit = async (goalId: string, currentAmount: number) => {
     const amount = parseCurrency(depositAmount);
     if (isNaN(amount) || amount <= 0) {
@@ -136,7 +181,7 @@ export default function Goals() {
         id: goalId,
         current_amount: currentAmount + amount,
       });
-      setEditingGoal(null);
+      setDepositingGoalId(null);
       setDepositAmount("");
       toast.success(t("goals.toast.depositSuccess"));
     } catch {
@@ -149,6 +194,11 @@ export default function Goals() {
       onSuccess: () => toast.success(t("goals.toast.deleteSuccess")),
       onError: () => toast.error(t("goals.toast.deleteError")),
     });
+  };
+
+  const handleEditGoal = (goal: SavingsGoal) => {
+    setEditingGoalData(goal);
+    setIsEditDialogOpen(true);
   };
 
   const totalTarget = goals.reduce(
@@ -298,6 +348,132 @@ export default function Goals() {
               </Form>
             </DialogContent>
           </Dialog>
+
+          <Dialog
+            open={isEditDialogOpen}
+            onOpenChange={(open) => {
+              setIsEditDialogOpen(open);
+              if (!open) setEditingGoalData(null);
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t("goals.form.editTitle")}</DialogTitle>
+              </DialogHeader>
+              {editingGoalData && (
+                <Form {...editForm}>
+                  <form
+                    onSubmit={editForm.handleSubmit(handleUpdateGoal)}
+                    className="space-y-4"
+                  >
+                    <FormField
+                      control={editForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("goals.form.nameLabel")}</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder={t("goals.form.namePlaceholder")}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="target_amount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("goals.form.targetAmountLabel")}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              placeholder={t("common.currencyPlaceholder")}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="current_amount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("goals.form.initialAmountLabel")}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              placeholder={t("common.currencyPlaceholder")}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="target_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("goals.form.targetDateLabel")}</FormLabel>
+                          <FormControl>
+                            <DateInput
+                              {...field}
+                              placeholder={t("common.datePlaceholder")}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="color"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("goals.form.colorLabel")}</FormLabel>
+                          <div className="flex gap-2">
+                            {colors.map((color) => (
+                              <button
+                                key={color}
+                                type="button"
+                                onClick={() => field.onChange(color)}
+                                className={`w-8 h-8 rounded-full transition-transform ${
+                                  field.value === color
+                                    ? "ring-2 ring-offset-2 ring-primary scale-110"
+                                    : ""
+                                }`}
+                                style={{ backgroundColor: color }}
+                              />
+                            ))}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={updateGoal.isPending}
+                    >
+                      {updateGoal.isPending && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      {t("goals.form.update")}
+                    </Button>
+                  </form>
+                </Form>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -373,14 +549,24 @@ export default function Goals() {
                         />
                         {goal.name}
                       </CardTitle>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(goal.id)}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditGoal(goal)}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(goal.id)}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -412,7 +598,7 @@ export default function Goals() {
                       )}
                     </div>
 
-                    {editingGoal === goal.id ? (
+                    {depositingGoalId === goal.id ? (
                       <div className="flex gap-2">
                         <Input
                           type="text"
@@ -438,7 +624,7 @@ export default function Goals() {
                       <Button
                         variant="outline"
                         className="w-full"
-                        onClick={() => setEditingGoal(goal.id)}
+                        onClick={() => setDepositingGoalId(goal.id)}
                         disabled={isComplete}
                       >
                         <Edit2 className="h-4 w-4 mr-2" />

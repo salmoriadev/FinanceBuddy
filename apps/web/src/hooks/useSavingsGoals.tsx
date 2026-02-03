@@ -49,12 +49,26 @@ export function useSavingsGoals() {
   });
 
   const updateGoal = useMutation({
-    mutationFn: async ({ id, current_amount }: { id: string; current_amount: number }) => {
+    mutationFn: async (payload: {
+      id: string;
+      name?: string;
+      target_amount?: number;
+      current_amount?: number;
+      target_date?: string | null;
+      color?: string;
+    }) => {
       if (!user || !token) throw new Error("Not authenticated");
-      await apiRequest(`/goals/${id}`, {
+      const body: Record<string, unknown> = {};
+      if (payload.name !== undefined) body.name = payload.name;
+      if (payload.target_amount !== undefined) body.targetAmount = payload.target_amount;
+      if (payload.current_amount !== undefined) body.currentAmount = payload.current_amount;
+      if (payload.target_date !== undefined) body.targetDate = payload.target_date;
+      if (payload.color !== undefined) body.color = payload.color;
+
+      await apiRequest(`/goals/${payload.id}`, {
         method: "PATCH",
         token,
-        body: { currentAmount: current_amount },
+        body,
       });
     },
     onSuccess: () => {

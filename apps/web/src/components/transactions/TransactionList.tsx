@@ -1,5 +1,5 @@
 import { memo, useMemo } from "react";
-import { Trash2, TrendingDown, TrendingUp, RefreshCw } from "lucide-react";
+import { Trash2, TrendingDown, TrendingUp, RefreshCw, Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Transaction } from "@/types/finance";
 import { cn } from "@/lib/utils";
@@ -10,22 +10,29 @@ import { useCategoryLabels } from "@/hooks/useCategoryLabels";
 interface TransactionListProps {
   transactions: Transaction[];
   onDelete: (id: string) => void;
+  onEdit?: (transaction: Transaction) => void;
 }
 
 const TransactionRow = memo(function TransactionRow({
   transaction,
   onDelete,
+  onEdit,
 }: {
   transaction: Transaction;
   onDelete: (id: string) => void;
+  onEdit?: (transaction: Transaction) => void;
 }) {
   const { formatCurrency, formatShortDate } = useFormatter();
   const { t } = useI18n();
   const { labelForCategory } = useCategoryLabels();
   const formattedDate = useMemo(() => {
     const formatted = formatShortDate(transaction.date);
-    return formatted || t("common.invalidDate");
-  }, [transaction.date, formatShortDate, t]);
+    if (formatted) return formatted;
+    const fallback = transaction.created_at
+      ? formatShortDate(transaction.created_at)
+      : "";
+    return fallback || t("common.invalidDate");
+  }, [transaction.date, transaction.created_at, formatShortDate, t]);
 
   return (
     <div className="flex items-center justify-between p-4 rounded-xl border border-border/70 bg-card/90 hover:bg-muted/50 transition-colors">
@@ -92,6 +99,16 @@ const TransactionRow = memo(function TransactionRow({
           {transaction.type === "income" ? "+" : "-"}{" "}
           {formatCurrency(Number(transaction.amount))}
         </p>
+        {onEdit && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onEdit(transaction)}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Edit2 className="h-4 w-4" />
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"
@@ -108,6 +125,7 @@ const TransactionRow = memo(function TransactionRow({
 export const TransactionList = memo(function TransactionList({
   transactions,
   onDelete,
+  onEdit,
 }: TransactionListProps) {
   const { t } = useI18n();
   if (transactions.length === 0) {
@@ -125,6 +143,7 @@ export const TransactionList = memo(function TransactionList({
           key={transaction.id}
           transaction={transaction}
           onDelete={onDelete}
+          onEdit={onEdit}
         />
       ))}
     </div>
