@@ -17,7 +17,10 @@ export const normalizeDateInput = (value: string) => {
 
 export function parseDateInput(value: string) {
   if (!value) return new Date("");
-  const trimmed = normalizeDateInput(value);
+  const raw = value.trim();
+  const rawIso = parseISO(raw);
+  if (isValid(rawIso)) return rawIso;
+  const trimmed = normalizeDateInput(raw);
   const isoParsed = parseISO(trimmed);
   if (isValid(isoParsed)) return isoParsed;
   const brParsed = parse(trimmed, BR_DATE_FORMAT, new Date());
@@ -58,7 +61,10 @@ export const formatDateInput = (value: Date | string) => {
 
 export const toIsoDate = (value: string) => {
   if (!value) return "";
-  const normalized = normalizeDateInput(value);
+  const raw = value.trim();
+  const rawIso = parseISO(raw);
+  if (isValid(rawIso)) return format(rawIso, "yyyy-MM-dd");
+  const normalized = normalizeDateInput(raw);
   if (/^\\d{4}-\\d{2}-\\d{2}$/.test(normalized)) return normalized;
   const parsed = parse(normalized, BR_DATE_FORMAT, new Date());
   if (isValid(parsed)) return format(parsed, "yyyy-MM-dd");
