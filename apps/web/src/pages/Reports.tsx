@@ -173,12 +173,12 @@ export default function Reports() {
       .filter((t) => t.type === "expense")
       .reduce((sum, t) => sum + Number(t.amount), 0);
 
-    const variation =
-      lastExpense > 0
-        ? ((currentExpense - lastExpense) / lastExpense) * 100
-        : 0;
+    const hasVariationBaseline = lastExpense > 0;
+    const variation = hasVariationBaseline
+      ? ((currentExpense - lastExpense) / lastExpense) * 100
+      : null;
 
-    return { currentExpense, lastExpense, variation };
+    return { currentExpense, lastExpense, variation, hasVariationBaseline };
   }, [transactions, currentYear, resolveTransactionDate]);
 
   const investmentStats = useMemo(
@@ -347,15 +347,25 @@ export default function Reports() {
                 </p>
                 <p
                   className={`text-xl font-bold ${
-                    currentMonthStats.variation < 0
+                    !currentMonthStats.hasVariationBaseline
+                      ? "text-muted-foreground"
+                      : currentMonthStats.variation! < 0
                       ? "text-rose-600"
-                      : currentMonthStats.variation > 0
+                      : currentMonthStats.variation! > 0
                         ? "text-emerald-600"
                         : "text-muted-foreground"
                   }`}
                 >
-                  {currentMonthStats.variation > 0 ? "+" : ""}
-                  {formatPercent(currentMonthStats.variation, 1)}
+                  {currentMonthStats.hasVariationBaseline ? (
+                    <>
+                      {currentMonthStats.variation! > 0 ? "+" : ""}
+                      {formatPercent(currentMonthStats.variation!, 1)}
+                    </>
+                  ) : (
+                    <span className="text-sm font-medium">
+                      {t("reports.noVariation")}
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
