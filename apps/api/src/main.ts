@@ -45,14 +45,18 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new LoggingInterceptor());
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle("FinanceBuddy API")
-    .setDescription("Personal finance management API")
-    .setVersion("1.0")
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup("docs", app, document);
+  const enableSwagger =
+    !isProd || configService.get<string>("ENABLE_SWAGGER") === "true";
+  if (enableSwagger) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle("FinanceBuddy API")
+      .setDescription("Personal finance management API")
+      .setVersion("1.0")
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup("docs", app, document);
+  }
 
   const port = configService.get<number>("PORT") ?? 4000;
   await app.listen(port);
