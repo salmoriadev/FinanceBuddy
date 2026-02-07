@@ -1,3 +1,7 @@
+/**
+ * This file defines Vite build and development settings for the web app.
+ * Its role is to optimize bundling, module resolution, and local development behavior.
+ */
 import fs from "fs";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
@@ -45,6 +49,33 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("recharts")) return "vendor-charts";
+          if (
+            id.includes("@radix-ui") ||
+            id.includes("embla-carousel-react") ||
+            id.includes("vaul")
+          ) {
+            return "vendor-ui";
+          }
+          if (
+            id.includes("react-router-dom") ||
+            id.includes("@tanstack/react-query")
+          ) {
+            return "vendor-routing-data";
+          }
+          if (id.includes("react") || id.includes("react-dom")) {
+            return "vendor-react";
+          }
+          return;
+        },
+      },
     },
   },
 }));

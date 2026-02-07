@@ -1,3 +1,7 @@
+/**
+ * This file implements Index behavior for the frontend page layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import { useMemo } from "react";
 import { Navigate } from "react-router-dom";
 import { Wallet, TrendingUp, TrendingDown, Scale, Loader2 } from "lucide-react";
@@ -88,7 +92,7 @@ export default function Index() {
     );
 
     return Object.values(byCategory).sort((a, b) => b.value - a.value);
-  }, [transactions, tText]);
+  }, [transactions, tText, labelFor]);
 
   const monthlyData = useMemo((): MonthlyData[] => {
     const currentYear = new Date().getFullYear();

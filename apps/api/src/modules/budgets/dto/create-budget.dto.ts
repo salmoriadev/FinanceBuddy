@@ -1,3 +1,7 @@
+/**
+ * This file implements Create Budget.Dto behavior for the backend module layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import { IsInt, IsNumber, IsUUID, Max, Min } from "class-validator";
 import { Transform } from "class-transformer";
 

@@ -1,3 +1,7 @@
+/**
+ * This file implements Api behavior for the frontend utility layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 export class ApiError extends Error {
   status: number;
   details?: unknown;
@@ -40,6 +44,7 @@ export async function apiRequest<T>(
   const { method = "GET", body, token, signal } = options;
   const headers: Record<string, string> = {
     Accept: "application/json",
+    "X-Requested-With": "XMLHttpRequest",
   };
 
   if (body !== undefined) {

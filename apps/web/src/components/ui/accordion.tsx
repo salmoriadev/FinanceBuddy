@@ -1,3 +1,7 @@
+/**
+ * This file implements Accordion behavior for the frontend component layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import * as React from "react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { ChevronDown } from "lucide-react";

@@ -1,3 +1,7 @@
+/**
+ * This file implements Carousel behavior for the frontend component layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import * as React from "react";
 import useEmblaCarousel, { type UseEmblaCarouselType } from "embla-carousel-react";
 import { ArrowLeft, ArrowRight } from "lucide-react";

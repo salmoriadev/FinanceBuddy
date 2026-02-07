@@ -1,5 +1,10 @@
+/**
+ * Persists and fetches budget records scoped by user, including category joins
+ * needed by the budgets API responses.
+ */
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
+import { runUpdateAndFind } from "../../database/repository-helpers";
 
 @Injectable()
 export class BudgetsRepository {
@@ -44,17 +49,18 @@ export class BudgetsRepository {
     month?: number;
     year?: number;
   }) {
-    return this.prisma.budget
-      .updateMany({
-        where: { id, userId },
-        data,
-      })
-      .then(() =>
+    return runUpdateAndFind(
+      () =>
+        this.prisma.budget.updateMany({
+          where: { id, userId },
+          data,
+        }),
+      () =>
         this.prisma.budget.findFirst({
           where: { id, userId },
           include: { category: true },
         }),
-      );
+    );
   }
 
   delete(userId: string, id: string) {

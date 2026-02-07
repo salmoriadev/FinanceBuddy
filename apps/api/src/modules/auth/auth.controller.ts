@@ -1,3 +1,7 @@
+/**
+ * This file implements Auth.Controller behavior for the backend module layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import {
   Body,
   Controller,
@@ -18,6 +22,7 @@ import { ChangePasswordDto } from "./dto/change-password.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { User } from "../../common/decorators/user.decorator";
+import { CsrfProtectionGuard } from "../../common/guards/csrf-protection.guard";
 
 @ApiTags("auth")
 @Controller("auth")
@@ -50,6 +55,7 @@ export class AuthController {
 
   @Post("refresh")
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @UseGuards(CsrfProtectionGuard)
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
@@ -60,6 +66,7 @@ export class AuthController {
   }
 
   @Post("logout")
+  @UseGuards(CsrfProtectionGuard)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     await this.authService.logout(req);
     this.authService.clearRefreshCookie(res);

@@ -1,3 +1,7 @@
+/**
+ * This file implements Main behavior for the application core layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
@@ -14,10 +18,13 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   const corsOrigin = configService.get<string>("CORS_ORIGIN");
+  const trustProxyValue = configService.get<string>("TRUST_PROXY");
   const isProd = configService.get<string>("NODE_ENV") === "production";
   const adapter = app.getHttpAdapter();
   const instance = adapter?.getInstance?.();
-  if (instance?.set) {
+  const shouldTrustProxy =
+    trustProxyValue === "1" || trustProxyValue?.toLowerCase() === "true";
+  if (instance?.set && shouldTrustProxy) {
     instance.set("trust proxy", 1);
   }
   app.enableCors({
@@ -28,7 +35,7 @@ async function bootstrap() {
           ? false
           : true,
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   });
 
   app.use(helmet());

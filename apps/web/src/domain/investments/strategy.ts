@@ -1,3 +1,7 @@
+/**
+ * This file implements Strategy behavior for the frontend domain layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import { Investment } from "@/types/finance";
 
 export type InvestmentType = "fixed" | "variable" | "crypto" | "custom";

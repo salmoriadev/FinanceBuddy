@@ -1,3 +1,7 @@
+/**
+ * This file implements Category Matching.Test behavior for the automated testing layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import { describe, expect, it } from "vitest";
 import { suggestCategory } from "@/domain/categories/matching";
 import { Category } from "@/types/finance";

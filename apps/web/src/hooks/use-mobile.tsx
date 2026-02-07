@@ -1,3 +1,7 @@
+/**
+ * This file implements Use Mobile behavior for the frontend hooks layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import * as React from "react";
 
 const MOBILE_BREAKPOINT = 768;

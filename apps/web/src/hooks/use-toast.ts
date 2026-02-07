@@ -1,3 +1,7 @@
+/**
+ * This file implements Use Toast behavior for the frontend hooks layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import * as React from "react";
 
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast";

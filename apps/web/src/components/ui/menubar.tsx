@@ -1,3 +1,7 @@
+/**
+ * This file implements Menubar behavior for the frontend component layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import * as React from "react";
 import * as MenubarPrimitive from "@radix-ui/react-menubar";
 import { Check, ChevronRight, Circle } from "lucide-react";

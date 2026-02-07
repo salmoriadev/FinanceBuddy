@@ -1,3 +1,7 @@
+/**
+ * This file implements Hover Card behavior for the frontend component layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import * as React from "react";
 import * as HoverCardPrimitive from "@radix-ui/react-hover-card";
 

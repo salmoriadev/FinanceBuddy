@@ -1,3 +1,7 @@
+/**
+ * This file implements Logging.Interceptor behavior for the backend shared infrastructure layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import {
   CallHandler,
   ExecutionContext,
@@ -11,14 +15,17 @@ import { tap } from "rxjs/operators";
 export class LoggingInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = context.switchToHttp().getRequest();
-    const { method, url } = req;
+    const method = req.method as string;
+    const path = (req.route?.path as string | undefined) || (req.path as string) || "/";
     const start = Date.now();
+    const res = context.switchToHttp().getResponse();
 
     return next.handle().pipe(
       tap(() => {
         const duration = Date.now() - start;
+        const statusCode = res?.statusCode ?? 0;
         // eslint-disable-next-line no-console
-        console.log(`${method} ${url} ${duration}ms`);
+        console.log(`${method} ${path} ${statusCode} ${duration}ms`);
       }),
     );
   }

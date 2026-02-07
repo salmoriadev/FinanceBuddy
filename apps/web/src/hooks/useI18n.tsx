@@ -1,3 +1,7 @@
+/**
+ * This file implements UseI18n behavior for the frontend hooks layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import { useEffect, useMemo } from "react";
 import { translate } from "@/lib/i18n";
 import { usePreferences } from "@/hooks/usePreferences";

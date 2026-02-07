@@ -1,5 +1,10 @@
+/**
+ * Implements transaction persistence primitives, including pagination, category
+ * joins, and recurring-template support operations.
+ */
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
+import { runUpdateAndFind } from "../../database/repository-helpers";
 
 @Injectable()
 export class TransactionsRepository {
@@ -101,17 +106,18 @@ export class TransactionsRepository {
     date?: Date;
     isRecurring?: boolean;
   }) {
-    return this.prisma.transaction
-      .updateMany({
-        where: { id, userId },
-        data,
-      })
-      .then(() =>
+    return runUpdateAndFind(
+      () =>
+        this.prisma.transaction.updateMany({
+          where: { id, userId },
+          data,
+        }),
+      () =>
         this.prisma.transaction.findFirst({
           where: { id, userId },
           include: { category: true },
         }),
-      );
+    );
   }
 
   delete(userId: string, id: string) {

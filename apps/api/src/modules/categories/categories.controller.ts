@@ -1,3 +1,7 @@
+/**
+ * This file implements Categories.Controller behavior for the backend module layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import {
   Body,
   Controller,

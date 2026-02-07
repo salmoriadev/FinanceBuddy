@@ -1,7 +1,10 @@
 {
   "name": "financebuddy",
   "private": true,
-  "workspaces": ["apps/web", "apps/api"],
+  "workspaces": [
+    "apps/web",
+    "apps/api"
+  ],
   "scripts": {
     "dev": "npm run dev --workspace=apps/web",
     "dev:web": "npm run dev --workspace=apps/web",
@@ -12,6 +15,8 @@
     "lint": "npm run lint --workspace=apps/web",
     "test": "npm run test --workspace=apps/web",
     "test:web": "npm run test --workspace=apps/web",
-    "test:api": "npm run test --workspace=apps/api"
+    "test:api": "npm run test --workspace=apps/api",
+    "check": "npm run test:api && npm run test:web && npm run lint && npm run build:api && npm run build:web",
+    "check:fast": "npm run test:api && npm run test:web && npm run lint"
   }
 }

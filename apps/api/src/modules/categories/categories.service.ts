@@ -1,8 +1,16 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+/**
+ * Manages user categories with normalization-aware deduplication and short-lived
+ * caching to keep category reads fast and consistent.
+ */
+import { Injectable } from "@nestjs/common";
 import { CategoriesRepository } from "./categories.repository";
 import { TtlCache } from "../../common/cache/ttl-cache";
 import { CreateCategoryDto } from "./dto/create-category.dto";
 import { UpdateCategoryDto } from "./dto/update-category.dto";
+import {
+  assertResourceDeleted,
+  assertResourceFound,
+} from "../../common/services/resource-assertions";
 
 const normalizeCategoryName = (value: string) =>
   value
@@ -66,19 +74,14 @@ export class CategoriesService {
 
   async update(userId: string, id: string, dto: UpdateCategoryDto) {
     const updated = await this.repository.update(userId, id, dto);
-    if (!updated) {
-      throw new NotFoundException("Category not found");
-    }
+    const category = assertResourceFound(updated, "Category not found");
     this.cache.delete(userId);
-    return updated;
+    return category;
   }
 
   async delete(userId: string, id: string) {
     const result = await this.repository.delete(userId, id);
-    if (result.count === 0) {
-      throw new NotFoundException("Category not found");
-    }
     this.cache.delete(userId);
-    return { deleted: true };
+    return assertResourceDeleted(result, "Category not found");
   }
 }

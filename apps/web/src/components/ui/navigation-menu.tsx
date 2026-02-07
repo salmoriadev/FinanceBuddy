@@ -1,3 +1,7 @@
+/**
+ * This file implements Navigation Menu behavior for the frontend component layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 /* eslint-disable react-refresh/only-export-components */
 import * as React from "react";
 import * as NavigationMenuPrimitive from "@radix-ui/react-navigation-menu";

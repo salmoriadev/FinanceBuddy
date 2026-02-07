@@ -1,3 +1,7 @@
+/**
+ * This file implements Auth.Service behavior for the backend module layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import {
   BadRequestException,
   ConflictException,
@@ -148,28 +152,16 @@ export class AuthService {
   }
 
   setRefreshCookie(res: Response, refreshToken: string) {
-    const isProd = this.configService.get<string>("NODE_ENV") === "production";
-    const cookieDomain = this.configService.get<string>("COOKIE_DOMAIN");
-    const sameSite =
-      this.configService.get<string>("COOKIE_SAMESITE") ||
-      (isProd ? "none" : "lax");
     const ttlDays = this.getRefreshTtlDays();
+    const cookieOptions = this.getRefreshCookieOptions();
     res.cookie("refresh_token", refreshToken, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: sameSite as "lax" | "strict" | "none",
+      ...cookieOptions,
       maxAge: ttlDays * 24 * 60 * 60 * 1000,
-      path: "/api/v1/auth",
-      domain: cookieDomain || undefined,
     });
   }
 
   clearRefreshCookie(res: Response) {
-    const cookieDomain = this.configService.get<string>("COOKIE_DOMAIN");
-    res.clearCookie("refresh_token", {
-      path: "/api/v1/auth",
-      domain: cookieDomain || undefined,
-    });
+    res.clearCookie("refresh_token", this.getRefreshCookieOptions());
   }
 
   private safeUser(user: {
@@ -213,6 +205,22 @@ export class AuthService {
     const value = this.configService.get<string>("REFRESH_TOKEN_TTL_DAYS");
     const parsed = value ? Number(value) : 30;
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 30;
+  }
+
+  private getRefreshCookieOptions() {
+    const isProd = this.configService.get<string>("NODE_ENV") === "production";
+    const cookieDomain = this.configService.get<string>("COOKIE_DOMAIN");
+    const sameSite =
+      this.configService.get<string>("COOKIE_SAMESITE") ||
+      (isProd ? "none" : "lax");
+
+    return {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: sameSite as "lax" | "strict" | "none",
+      path: "/api/v1/auth",
+      domain: cookieDomain || undefined,
+    };
   }
 
   private async issueTokens(userId: string, email: string | undefined, req: Request) {
@@ -318,12 +326,6 @@ export class AuthService {
   }
 
   private getRefreshTokenFromRequest(req: Request) {
-    const token = req.cookies?.refresh_token;
-    if (token) return token;
-    const authHeader = req.headers?.authorization as string | undefined;
-    if (authHeader?.startsWith("Bearer ")) {
-      return authHeader.replace("Bearer ", "");
-    }
-    return null;
+    return req.cookies?.refresh_token ?? null;
   }
 }

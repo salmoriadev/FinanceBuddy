@@ -1,3 +1,7 @@
+/**
+ * This file implements App.Spec behavior for the automated testing layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import { Test } from "@nestjs/testing";
 import { INestApplication } from "@nestjs/common";
 import request from "supertest";

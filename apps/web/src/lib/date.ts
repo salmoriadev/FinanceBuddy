@@ -1,3 +1,7 @@
+/**
+ * This file implements Date behavior for the frontend utility layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import { format, isValid, parse, parseISO } from "date-fns";
 
 const BR_DATE_FORMAT = "dd/MM/yyyy";

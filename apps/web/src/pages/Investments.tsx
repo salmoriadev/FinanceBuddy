@@ -1,3 +1,7 @@
+/**
+ * This file implements Investments behavior for the frontend page layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Loader2, Plus, Trash2, Edit2 } from "lucide-react";

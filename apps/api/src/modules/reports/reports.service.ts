@@ -1,3 +1,7 @@
+/**
+ * Builds financial report summaries by combining recurring transaction materialization
+ * with cached, database-aggregated totals for the requested year.
+ */
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
 import { RecurringTransactionsService } from "../transactions/recurring.service";
@@ -18,6 +22,39 @@ export class ReportsService {
     private readonly recurring: RecurringTransactionsService,
   ) {}
 
+  private async getYearlyTotals(userId: string, year: number) {
+    const start = new Date(year, 0, 1);
+    const end = new Date(year + 1, 0, 1);
+
+    const groupedByType = await this.prisma.transaction.groupBy({
+      by: ["type"],
+      where: {
+        userId,
+        date: {
+          gte: start,
+          lt: end,
+        },
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+
+    let income = 0;
+    let expense = 0;
+
+    groupedByType.forEach((entry) => {
+      const amount = Number(entry._sum.amount ?? 0);
+      if (entry.type === "income") {
+        income = amount;
+      } else {
+        expense = amount;
+      }
+    });
+
+    return { income, expense };
+  }
+
   async getSummary(userId: string, year?: number) {
     const now = new Date();
     const targetYear = year ?? now.getFullYear();
@@ -29,25 +66,7 @@ export class ReportsService {
 
     await this.recurring.ensureRecurringTransactions(userId);
 
-    const start = new Date(targetYear, 0, 1);
-    const end = new Date(targetYear + 1, 0, 1);
-
-    const transactions = await this.prisma.transaction.findMany({
-      where: {
-        userId,
-        date: {
-          gte: start,
-          lt: end,
-        },
-      },
-    });
-
-    const income = transactions
-      .filter((t) => t.type === "income")
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-    const expense = transactions
-      .filter((t) => t.type === "expense")
-      .reduce((sum, t) => sum + Number(t.amount), 0);
+    const { income, expense } = await this.getYearlyTotals(userId, targetYear);
 
     const balance = income - expense;
     const savingsRate = income > 0 ? ((income - expense) / income) * 100 : 0;

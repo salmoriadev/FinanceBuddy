@@ -1,3 +1,7 @@
+/**
+ * This file implements ExpenseChart behavior for the frontend component layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import {
   PieChart,
   Pie,

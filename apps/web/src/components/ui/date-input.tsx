@@ -1,3 +1,7 @@
+/**
+ * This file implements Date Input behavior for the frontend component layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { parseDateInput } from "@/lib/date";

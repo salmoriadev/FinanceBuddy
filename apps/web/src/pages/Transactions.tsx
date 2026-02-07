@@ -1,3 +1,7 @@
+/**
+ * This file implements Transactions behavior for the frontend page layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import { useMemo, useState, useDeferredValue, useCallback } from "react";
 import { Navigate } from "react-router-dom";
 import { Plus, Filter, Loader2 } from "lucide-react";
@@ -53,18 +57,6 @@ export default function Transactions() {
   const [filterTo, setFilterTo] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
   const deferredSearch = useDeferredValue(searchTerm);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
 
   const resolveTransactionDate = useCallback((transaction: Transaction) => {
     const parsed = parseDateInput(transaction.date);
@@ -170,6 +162,18 @@ export default function Transactions() {
     setEditingTransaction(transaction);
     setIsEditDialogOpen(true);
   }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
 
   return (
     <AppLayout>

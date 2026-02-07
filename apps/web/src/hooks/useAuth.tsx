@@ -1,3 +1,7 @@
+/**
+ * This file implements UseAuth behavior for the frontend hooks layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 /* eslint-disable react-refresh/only-export-components */
 import {
   useState,
@@ -35,30 +39,14 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const ACCESS_TOKEN_KEY = "financebuddy_access_token";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem(ACCESS_TOKEN_KEY);
-    } catch {
-      return null;
-    }
-  });
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const persistToken = (token: string | null) => {
     setAccessToken(token);
-    try {
-      if (token) {
-        localStorage.setItem(ACCESS_TOKEN_KEY, token);
-      } else {
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-      }
-    } catch {
-      // ignore storage errors
-    }
   };
 
   const fetchMe = async (token: string) => {

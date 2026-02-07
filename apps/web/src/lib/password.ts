@@ -1,3 +1,7 @@
+/**
+ * This file implements Password behavior for the frontend utility layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 export const passwordRules = {
   minLength: 8,
   upper: /[A-Z]/,

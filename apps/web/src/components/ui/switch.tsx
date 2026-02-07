@@ -1,3 +1,7 @@
+/**
+ * This file implements Switch behavior for the frontend component layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import * as React from "react";
 import * as SwitchPrimitives from "@radix-ui/react-switch";
 

@@ -1,5 +1,10 @@
+/**
+ * Handles savings-goal persistence with user-level scoping and simple CRUD
+ * operations consumed by the goals service.
+ */
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
+import { runUpdateAndFind } from "../../database/repository-helpers";
 
 @Injectable()
 export class GoalsRepository {
@@ -38,12 +43,14 @@ export class GoalsRepository {
     targetDate?: Date | null;
     color?: string;
   }) {
-    return this.prisma.savingsGoal
-      .updateMany({
-        where: { id, userId },
-        data,
-      })
-      .then(() => this.prisma.savingsGoal.findFirst({ where: { id, userId } }));
+    return runUpdateAndFind(
+      () =>
+        this.prisma.savingsGoal.updateMany({
+          where: { id, userId },
+          data,
+        }),
+      () => this.prisma.savingsGoal.findFirst({ where: { id, userId } }),
+    );
   }
 
   delete(userId: string, id: string) {

@@ -1,3 +1,7 @@
+/**
+ * This file implements Investment Strategy.Test behavior for the automated testing layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import { describe, expect, it } from "vitest";
 import {
   calculateInvestmentSummary,

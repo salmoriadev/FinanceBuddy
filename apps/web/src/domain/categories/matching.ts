@@ -1,3 +1,7 @@
+/**
+ * This file implements Matching behavior for the frontend domain layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import { Category } from "@/types/finance";
 
 export interface CategoryMatcher {
@@ -62,7 +66,16 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "treinamento",
   ],
   salario: ["salario", "pagamento", "holerite"],
-  freelance: ["freela", "freelance", "projeto", "job"],
+  freelance: [
+    "freela",
+    "freelance",
+    "projeto",
+    "job",
+    "contract",
+    "project",
+    "client",
+    "gig",
+  ],
   investimentos: [
     "investimento",
     "dividendo",
@@ -70,6 +83,13 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "rendimento",
     "tesouro",
     "cdb",
+    "investment",
+    "dividend",
+    "interest",
+    "yield",
+    "bond",
+    "treasury",
+    "etf",
   ],
   food: [
     "grocery",
@@ -133,17 +153,6 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "training",
   ],
   salary: ["salary", "payroll", "paycheck", "wage", "payment"],
-  freelance: ["freelance", "contract", "project", "client", "gig", "job"],
-  investments: [
-    "investment",
-    "dividend",
-    "interest",
-    "yield",
-    "bond",
-    "treasury",
-    "cdb",
-    "etf",
-  ],
 };
 
 const getKeywordsForCategory = (name: string) => {

@@ -1,3 +1,7 @@
+/**
+ * This file implements Http Exception.Filter behavior for the backend shared infrastructure layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import {
   ArgumentsHost,
   Catch,

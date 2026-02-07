@@ -1,3 +1,7 @@
+/**
+ * This file implements Prisma.Module behavior for the database integration layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import { Global, Module } from "@nestjs/common";
 import { PrismaService } from "./prisma.service";
 

@@ -1,3 +1,7 @@
+/**
+ * This file implements Budgets behavior for the frontend page layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import { useMemo, useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { Plus, Loader2, Trash2, Edit2 } from "lucide-react";
@@ -88,18 +92,6 @@ export default function Budgets() {
     });
   }, [editingBudget, editForm]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
-
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
@@ -119,6 +111,18 @@ export default function Budgets() {
     );
     return expenseCategories.filter((c) => !blockedIds.has(c.id));
   }, [editingBudget, expenseCategories, currentBudgets]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
 
   const budgetsWithSpent = currentBudgets.map((budget) => {
     const spent = transactions

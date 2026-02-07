@@ -1,5 +1,10 @@
+/**
+ * Provides user-scoped data access for investment entities and keeps persistence
+ * concerns isolated from investment business rules.
+ */
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
+import { runUpdateAndFind } from "../../database/repository-helpers";
 
 @Injectable()
 export class InvestmentsRepository {
@@ -41,14 +46,14 @@ export class InvestmentsRepository {
     startDate?: Date | null;
     notes?: string | null;
   }) {
-    return this.prisma.investment
-      .updateMany({
-        where: { id, userId },
-        data,
-      })
-      .then(() =>
-        this.prisma.investment.findFirst({ where: { id, userId } }),
-      );
+    return runUpdateAndFind(
+      () =>
+        this.prisma.investment.updateMany({
+          where: { id, userId },
+          data,
+        }),
+      () => this.prisma.investment.findFirst({ where: { id, userId } }),
+    );
   }
 
   delete(userId: string, id: string) {

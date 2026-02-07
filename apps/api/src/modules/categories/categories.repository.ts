@@ -1,5 +1,10 @@
+/**
+ * Encapsulates category database operations with user scoping and case-insensitive
+ * lookup helpers used by category business logic.
+ */
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
+import { runUpdateAndFind } from "../../database/repository-helpers";
 
 @Injectable()
 export class CategoriesRepository {
@@ -48,12 +53,14 @@ export class CategoriesRepository {
     icon?: string;
     type?: "income" | "expense";
   }) {
-    return this.prisma.category
-      .updateMany({
-        where: { id, userId },
-        data,
-      })
-      .then(() => this.prisma.category.findFirst({ where: { id, userId } }));
+    return runUpdateAndFind(
+      () =>
+        this.prisma.category.updateMany({
+          where: { id, userId },
+          data,
+        }),
+      () => this.prisma.category.findFirst({ where: { id, userId } }),
+    );
   }
 
   delete(userId: string, id: string) {

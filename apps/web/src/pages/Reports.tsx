@@ -1,3 +1,7 @@
+/**
+ * This file implements Reports behavior for the frontend page layer.
+ * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
+ */
 import { useMemo, useState, useCallback } from "react";
 import { Navigate } from "react-router-dom";
 import { Loader2, TrendingUp, TrendingDown, Calendar } from "lucide-react";
@@ -129,10 +133,10 @@ export default function Reports() {
 
     const byCategory = expenses.reduce(
       (acc, t) => {
-        const catName = t.category
-          ? labelFor(t.category.name, t.category.type)
-          : t("common.other");
-        const catColor = t.category?.color || "#6366f1";
+        const category = t.category;
+        if (!category) return acc;
+        const catName = labelFor(category.name, category.type);
+        const catColor = category.color || "#6366f1";
         if (!acc[catName]) {
           acc[catName] = { name: catName, value: 0, color: catColor };
         }
@@ -143,7 +147,7 @@ export default function Reports() {
     );
 
     return Object.values(byCategory).sort((a, b) => b.value - a.value);
-  }, [transactions, selectedYear, t, resolveTransactionDate]);
+  }, [transactions, selectedYear, resolveTransactionDate, labelFor]);
 
   const currentMonthStats = useMemo(() => {
     const now = new Date();
