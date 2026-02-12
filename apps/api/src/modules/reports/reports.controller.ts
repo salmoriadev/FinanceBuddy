@@ -16,6 +16,11 @@ import { ReportsSummaryQueryDto } from "./dto/reports-summary-query.dto";
 export class ReportsController {
   constructor(private readonly service: ReportsService) {}
 
+  @Get("analytics")
+  analytics(@User() user: { id: string }, @Query() query: ReportsSummaryQueryDto) {
+    return this.service.getAnalytics(user.id, query.year);
+  }
+
   @Get("summary")
   summary(@User() user: { id: string }, @Query() query: ReportsSummaryQueryDto) {
     return this.service.getSummary(user.id, query.year);

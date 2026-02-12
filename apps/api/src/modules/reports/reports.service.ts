@@ -3,28 +3,272 @@
  * with cached, database-aggregated totals for the requested year.
  */
 import { Injectable } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../database/prisma.service";
 import { RecurringTransactionsService } from "../transactions/recurring.service";
 import { TtlCache } from "../../common/cache/ttl-cache";
 
+type ReportSummary = {
+  year: number;
+  income: number;
+  expense: number;
+  balance: number;
+  savingsRate: number;
+};
+
+type ReportMonthlyItem = {
+  month: number;
+  income: number;
+  expense: number;
+  balance: number;
+};
+
+type ReportCategorySpending = {
+  name: string;
+  type: "income" | "expense";
+  color: string;
+  value: number;
+};
+
+type ReportCurrentMonthComparison = {
+  currentExpense: number;
+  lastExpense: number;
+  variation: number | null;
+  hasVariationBaseline: boolean;
+};
+
+type ReportsAnalytics = {
+  year: number;
+  summary: ReportSummary;
+  monthly: ReportMonthlyItem[];
+  categories: ReportCategorySpending[];
+  currentMonthComparison: ReportCurrentMonthComparison;
+  availableYears: number[];
+};
+
+type MonthlyTotalsRow = {
+  month: number;
+  income: unknown;
+  expense: unknown;
+};
+
+type CategorySpendingRow = {
+  name: string;
+  type: "income" | "expense";
+  color: string;
+  value: unknown;
+};
+
+type MonthComparisonRow = {
+  current_expense: unknown;
+  last_expense: unknown;
+};
+
 @Injectable()
 export class ReportsService {
-  private readonly cache = new TtlCache<string, {
-    year: number;
-    income: number;
-    expense: number;
-    balance: number;
-    savingsRate: number;
-  }>(30_000);
+  private readonly summaryCache = new TtlCache<string, ReportSummary>(30_000);
+  private readonly analyticsCache = new TtlCache<string, ReportsAnalytics>(30_000);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly recurring: RecurringTransactionsService,
   ) {}
 
+  private toYearRange(year: number) {
+    return {
+      start: new Date(year, 0, 1),
+      end: new Date(year + 1, 0, 1),
+    };
+  }
+
+  private toNumber(value: unknown) {
+    return Number(value ?? 0);
+  }
+
+  private buildSummaryFromMonthly(year: number, monthly: ReportMonthlyItem[]): ReportSummary {
+    const { income, expense } = monthly.reduce(
+      (acc, item) => ({
+        income: acc.income + item.income,
+        expense: acc.expense + item.expense,
+      }),
+      { income: 0, expense: 0 },
+    );
+    const balance = income - expense;
+    const savingsRate = income > 0 ? ((income - expense) / income) * 100 : 0;
+    return { year, income, expense, balance, savingsRate };
+  }
+
+  private buildMonthlySeries(rows: MonthlyTotalsRow[]): ReportMonthlyItem[] {
+    const byMonth = new Map<number, { income: number; expense: number }>();
+    rows.forEach((row) => {
+      byMonth.set(row.month, {
+        income: this.toNumber(row.income),
+        expense: this.toNumber(row.expense),
+      });
+    });
+
+    return Array.from({ length: 12 }, (_, index) => {
+      const month = index + 1;
+      const current = byMonth.get(month) ?? { income: 0, expense: 0 };
+      return {
+        month,
+        income: current.income,
+        expense: current.expense,
+        balance: current.income - current.expense,
+      };
+    });
+  }
+
+  private buildAvailableYears(
+    minDate: Date | null | undefined,
+    maxDate: Date | null | undefined,
+    currentYear: number,
+  ) {
+    if (!minDate || !maxDate) {
+      return [currentYear];
+    }
+
+    const years: number[] = [];
+    for (let year = maxDate.getFullYear(); year >= minDate.getFullYear(); year -= 1) {
+      years.push(year);
+    }
+    if (!years.includes(currentYear)) {
+      years.push(currentYear);
+    }
+    return years.sort((a, b) => b - a);
+  }
+
+  private async getMonthlyTotals(userId: string, year: number) {
+    const { start, end } = this.toYearRange(year);
+    return this.prisma.$queryRaw<MonthlyTotalsRow[]>(
+      Prisma.sql`
+        SELECT
+          EXTRACT(MONTH FROM t.date)::int AS month,
+          COALESCE(SUM(CASE WHEN t.type = 'income' THEN t.amount ELSE 0 END), 0) AS income,
+          COALESCE(SUM(CASE WHEN t.type = 'expense' THEN t.amount ELSE 0 END), 0) AS expense
+        FROM public.transactions t
+        WHERE t.user_id = ${userId}::uuid
+          AND t.date >= ${start}::date
+          AND t.date < ${end}::date
+        GROUP BY EXTRACT(MONTH FROM t.date)
+        ORDER BY month ASC
+      `,
+    );
+  }
+
+  private async getCategorySpending(userId: string, year: number) {
+    const { start, end } = this.toYearRange(year);
+    const rows = await this.prisma.$queryRaw<CategorySpendingRow[]>(
+      Prisma.sql`
+        SELECT
+          c.name AS name,
+          c.type AS type,
+          c.color AS color,
+          COALESCE(SUM(t.amount), 0) AS value
+        FROM public.transactions t
+        INNER JOIN public.categories c
+          ON c.id = t.category_id
+        WHERE t.user_id = ${userId}::uuid
+          AND t.type = 'expense'
+          AND t.date >= ${start}::date
+          AND t.date < ${end}::date
+        GROUP BY c.name, c.type, c.color
+        ORDER BY value DESC
+      `,
+    );
+
+    return rows.map((row) => ({
+      name: row.name,
+      type: row.type,
+      color: row.color,
+      value: this.toNumber(row.value),
+    }));
+  }
+
+  private async getCurrentMonthComparison(userId: string): Promise<ReportCurrentMonthComparison> {
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    const rows = await this.prisma.$queryRaw<MonthComparisonRow[]>(
+      Prisma.sql`
+        SELECT
+          COALESCE(
+            SUM(t.amount) FILTER (
+              WHERE t.type = 'expense'
+                AND t.date >= ${currentMonthStart}::date
+                AND t.date < ${nextMonthStart}::date
+            ),
+            0
+          ) AS current_expense,
+          COALESCE(
+            SUM(t.amount) FILTER (
+              WHERE t.type = 'expense'
+                AND t.date >= ${previousMonthStart}::date
+                AND t.date < ${currentMonthStart}::date
+            ),
+            0
+          ) AS last_expense
+        FROM public.transactions t
+        WHERE t.user_id = ${userId}::uuid
+      `,
+    );
+    const row = rows[0];
+    const currentExpense = this.toNumber(row?.current_expense ?? 0);
+    const lastExpense = this.toNumber(row?.last_expense ?? 0);
+    const hasVariationBaseline = lastExpense > 0;
+    const variation = hasVariationBaseline
+      ? ((currentExpense - lastExpense) / lastExpense) * 100
+      : null;
+
+    return { currentExpense, lastExpense, variation, hasVariationBaseline };
+  }
+
+  async getAnalytics(userId: string, year?: number): Promise<ReportsAnalytics> {
+    const now = new Date();
+    const targetYear = year ?? now.getFullYear();
+    const cacheKey = `${userId}:${targetYear}`;
+    const cached = this.analyticsCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    await this.recurring.ensureRecurringTransactions(userId);
+
+    const [monthlyRows, categories, currentMonthComparison, minMax] = await Promise.all([
+      this.getMonthlyTotals(userId, targetYear),
+      this.getCategorySpending(userId, targetYear),
+      this.getCurrentMonthComparison(userId),
+      this.prisma.transaction.aggregate({
+        where: { userId },
+        _min: { date: true },
+        _max: { date: true },
+      }),
+    ]);
+
+    const monthly = this.buildMonthlySeries(monthlyRows);
+    const summary = this.buildSummaryFromMonthly(targetYear, monthly);
+    const analytics: ReportsAnalytics = {
+      year: targetYear,
+      summary,
+      monthly,
+      categories,
+      currentMonthComparison,
+      availableYears: this.buildAvailableYears(
+        minMax._min.date,
+        minMax._max.date,
+        now.getFullYear(),
+      ),
+    };
+
+    this.summaryCache.set(cacheKey, summary);
+    this.analyticsCache.set(cacheKey, analytics);
+    return analytics;
+  }
+
   private async getYearlyTotals(userId: string, year: number) {
-    const start = new Date(year, 0, 1);
-    const end = new Date(year + 1, 0, 1);
+    const { start, end } = this.toYearRange(year);
 
     const groupedByType = await this.prisma.transaction.groupBy({
       by: ["type"],
@@ -59,9 +303,14 @@ export class ReportsService {
     const now = new Date();
     const targetYear = year ?? now.getFullYear();
     const cacheKey = `${userId}:${targetYear}`;
-    const cached = this.cache.get(cacheKey);
+    const cached = this.summaryCache.get(cacheKey);
     if (cached) {
       return cached;
+    }
+
+    const cachedAnalytics = this.analyticsCache.get(cacheKey);
+    if (cachedAnalytics) {
+      return cachedAnalytics.summary;
     }
 
     await this.recurring.ensureRecurringTransactions(userId);
@@ -79,7 +328,7 @@ export class ReportsService {
       savingsRate,
     };
 
-    this.cache.set(cacheKey, summary);
+    this.summaryCache.set(cacheKey, summary);
     return summary;
   }
 }

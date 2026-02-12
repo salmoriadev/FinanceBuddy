@@ -23,6 +23,17 @@ import { useFormatter } from "@/hooks/useFormatter";
 import { useI18n } from "@/hooks/useI18n";
 import { useCategoryLabels } from "@/hooks/useCategoryLabels";
 
+type DashboardAggregates = {
+  stats: {
+    income: number;
+    expense: number;
+    balance: number;
+  };
+  categorySpending: CategorySpending[];
+  monthlyData: MonthlyData[];
+  budgetsByCategoryCurrentMonth: Map<string, number>;
+};
+
 export default function Index() {
   const { user, loading: authLoading } = useAuth();
   const {
@@ -36,108 +47,91 @@ export default function Index() {
   const { t: tText } = useI18n();
   const { labelFor } = useCategoryLabels();
 
-  const stats = useMemo(() => {
+  const dashboardAggregates = useMemo((): DashboardAggregates => {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
+    const monthlyTotals = Array.from({ length: 12 }, () => ({
+      income: 0,
+      expense: 0,
+    }));
+    const currentMonthByCategory = new Map<string, CategorySpending>();
+    const budgetsByCategoryCurrentMonth = new Map<string, number>();
+    let currentMonthIncome = 0;
+    let currentMonthExpense = 0;
 
-    const monthlyTransactions = transactions.filter((t) => {
-      const date = parseDateInput(t.date);
-      return (
-        date.getMonth() === currentMonth && date.getFullYear() === currentYear
-      );
-    });
+    for (const transaction of transactions) {
+      const date = parseDateInput(transaction.date);
+      const txYear = date.getFullYear();
+      if (txYear !== currentYear) continue;
+      const txMonth = date.getMonth();
+      const amount = Number(transaction.amount);
 
-    const income = monthlyTransactions
-      .filter((t) => t.type === "income")
-      .reduce((sum, t) => sum + Number(t.amount), 0);
+      if (transaction.type === "income") {
+        monthlyTotals[txMonth].income += amount;
+        if (txMonth === currentMonth) currentMonthIncome += amount;
+        continue;
+      }
 
-    const expense = monthlyTransactions
-      .filter((t) => t.type === "expense")
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-
-    const balance = income - expense;
-
-    return { income, expense, balance };
-  }, [transactions]);
-
-  const categorySpending = useMemo((): CategorySpending[] => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-
-    const expenses = transactions.filter((t) => {
-      const date = parseDateInput(t.date);
-      return (
-        t.type === "expense" &&
-        date.getMonth() === currentMonth &&
-        date.getFullYear() === currentYear &&
-        t.category
-      );
-    });
-
-    const byCategory = expenses.reduce(
-      (acc, t) => {
-        const catName = t.category
-          ? labelFor(t.category.name, t.category.type)
-          : tText("common.none");
-        const catColor = t.category?.color || "#6366f1";
-        if (!acc[catName]) {
-          acc[catName] = { name: catName, value: 0, color: catColor };
+      monthlyTotals[txMonth].expense += amount;
+      if (txMonth === currentMonth) {
+        currentMonthExpense += amount;
+        if (transaction.category_id) {
+          const previous = budgetsByCategoryCurrentMonth.get(transaction.category_id) ?? 0;
+          budgetsByCategoryCurrentMonth.set(transaction.category_id, previous + amount);
         }
-        acc[catName].value += Number(t.amount);
-        return acc;
+
+        const categoryName = transaction.category
+          ? labelFor(transaction.category.name, transaction.category.type)
+          : tText("common.none");
+        const categoryColor = transaction.category?.color || "#6366f1";
+        const currentCategory = currentMonthByCategory.get(categoryName);
+        if (currentCategory) {
+          currentCategory.value += amount;
+        } else {
+          currentMonthByCategory.set(categoryName, {
+            name: categoryName,
+            value: amount,
+            color: categoryColor,
+          });
+        }
+      }
+    }
+
+    return {
+      stats: {
+        income: currentMonthIncome,
+        expense: currentMonthExpense,
+        balance: currentMonthIncome - currentMonthExpense,
       },
-      {} as Record<string, CategorySpending>,
-    );
+      categorySpending: Array.from(currentMonthByCategory.values()).sort(
+        (a, b) => b.value - a.value,
+      ),
+      monthlyData: monthsShort
+        .map((month, index) => ({
+          month,
+          income: monthlyTotals[index].income,
+          expense: monthlyTotals[index].expense,
+        }))
+        .filter((d) => d.income > 0 || d.expense > 0),
+      budgetsByCategoryCurrentMonth,
+    };
+  }, [transactions, tText, labelFor, monthsShort]);
 
-    return Object.values(byCategory).sort((a, b) => b.value - a.value);
-  }, [transactions, tText, labelFor]);
-
-  const monthlyData = useMemo((): MonthlyData[] => {
-    const currentYear = new Date().getFullYear();
-
-    return monthsShort.map((month, index) => {
-      const monthTransactions = transactions.filter((t) => {
-        const date = parseDateInput(t.date);
-        return date.getMonth() === index && date.getFullYear() === currentYear;
-      });
-
-      const income = monthTransactions
-        .filter((t) => t.type === "income")
-        .reduce((sum, t) => sum + Number(t.amount), 0);
-
-      const expense = monthTransactions
-        .filter((t) => t.type === "expense")
-        .reduce((sum, t) => sum + Number(t.amount), 0);
-
-      return { month, income, expense };
-    }).filter((d) => d.income > 0 || d.expense > 0);
-  }, [transactions, monthsShort]);
+  const { stats, categorySpending, monthlyData } = dashboardAggregates;
 
   const budgetsWithSpent = useMemo(() => {
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
-
     return budgets
       .filter((b) => b.month === currentMonth && b.year === currentYear)
       .map((budget) => {
-        const spent = transactions
-          .filter((t) => {
-            const date = parseDateInput(t.date);
-            return (
-              t.type === "expense" &&
-              t.category_id === budget.category_id &&
-              date.getMonth() + 1 === currentMonth &&
-              date.getFullYear() === currentYear
-            );
-          })
-          .reduce((sum, t) => sum + Number(t.amount), 0);
+        const spent = dashboardAggregates.budgetsByCategoryCurrentMonth.get(budget.category_id) ?? 0;
 
         return { ...budget, spent };
       });
-  }, [budgets, transactions]);
+  }, [budgets, dashboardAggregates.budgetsByCategoryCurrentMonth]);
 
   if (authLoading) {
     return (

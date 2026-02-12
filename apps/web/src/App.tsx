@@ -22,7 +22,20 @@ const Investments = lazy(() => import("./pages/Investments"));
 const Settings = lazy(() => import("./pages/Settings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 5 * 60_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: "always",
+    },
+    mutations: {
+      retry: 0,
+    },
+  },
+});
 
 const RouteLoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">

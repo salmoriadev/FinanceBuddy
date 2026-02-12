@@ -2,10 +2,9 @@
  * This file implements Reports behavior for the frontend page layer.
  * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
  */
-import { useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Loader2, TrendingUp, TrendingDown, Calendar } from "lucide-react";
-import { isValid } from "date-fns";
 import {
   BarChart,
   Bar,
@@ -19,7 +18,6 @@ import {
   Line,
 } from "recharts";
 import { useAuth } from "@/hooks/useAuth";
-import { useTransactions } from "@/hooks/useTransactions";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -30,17 +28,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ExpenseChart } from "@/components/dashboard/ExpenseChart";
-import { CategorySpending, Transaction } from "@/types/finance";
-import { parseDateInput } from "@/lib/date";
+import { CategorySpending } from "@/types/finance";
 import { useInvestments } from "@/hooks/useInvestments";
 import { calculatePortfolioSummary } from "@/domain/investments/strategy";
 import { useFormatter } from "@/hooks/useFormatter";
 import { useI18n } from "@/hooks/useI18n";
 import { useCategoryLabels } from "@/hooks/useCategoryLabels";
+import { useReportAnalytics } from "@/hooks/useReports";
 
 export default function Reports() {
   const { user, loading } = useAuth();
-  const { transactions, isLoading } = useTransactions();
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear.toString());
+  const parsedSelectedYear = Number(selectedYear);
+  const selectedYearNumber = Number.isFinite(parsedSelectedYear)
+    ? parsedSelectedYear
+    : currentYear;
+  const { analytics, isLoading: isReportsLoading } = useReportAnalytics(selectedYearNumber);
   const { investments } = useInvestments();
   const { formatCurrency, formatPercent, formatCompactCurrency, monthsShort } = useFormatter();
   const { t } = useI18n();
@@ -51,139 +55,58 @@ export default function Reports() {
     borderRadius: "8px",
     color: "hsl(var(--foreground))",
   } as const;
-  const currentYear = new Date().getFullYear();
-  const [selectedYear, setSelectedYear] = useState(currentYear.toString());
-  const resolveTransactionDate = useCallback((transaction: Transaction) => {
-    const parsed = parseDateInput(transaction.date);
-    if (isValid(parsed)) return parsed;
-    if (transaction.created_at) {
-      const fallback = parseDateInput(transaction.created_at);
-      if (isValid(fallback)) return fallback;
-    }
-    return null;
-  }, []);
 
-  const years = useMemo(() => {
-    const uniqueYears = new Set<number>();
-    transactions.forEach((transaction) => {
-      const parsed = resolveTransactionDate(transaction);
-      if (parsed) {
-        uniqueYears.add(parsed.getFullYear());
-      }
-    });
-    uniqueYears.add(currentYear);
-    return Array.from(uniqueYears).sort((a, b) => b - a);
-  }, [transactions, currentYear, resolveTransactionDate]);
+  const years = useMemo(
+    () =>
+      analytics?.availableYears?.length
+        ? analytics.availableYears
+        : [currentYear],
+    [analytics?.availableYears, currentYear],
+  );
+
+  useEffect(() => {
+    if (!years.includes(selectedYearNumber)) {
+      setSelectedYear(years[0].toString());
+    }
+  }, [years, selectedYearNumber]);
 
   const monthlyData = useMemo(() => {
-    const year = parseInt(selectedYear);
-
+    const byMonth = new Map((analytics?.monthly ?? []).map((item) => [item.month, item]));
     return monthsShort.map((month, index) => {
-      const monthTransactions = transactions.filter((transaction) => {
-        const date = resolveTransactionDate(transaction);
-        return date ? date.getMonth() === index && date.getFullYear() === year : false;
-      });
-
-      const income = monthTransactions
-        .filter((t) => t.type === "income")
-        .reduce((sum, t) => sum + Number(t.amount), 0);
-
-      const expense = monthTransactions
-        .filter((t) => t.type === "expense")
-        .reduce((sum, t) => sum + Number(t.amount), 0);
-
-      return { month, income, expense, balance: income - expense };
+      const monthItem = byMonth.get(index + 1);
+      const income = monthItem?.income ?? 0;
+      const expense = monthItem?.expense ?? 0;
+      return {
+        month,
+        income,
+        expense,
+        balance: monthItem?.balance ?? income - expense,
+      };
     });
-  }, [transactions, selectedYear, monthsShort, resolveTransactionDate]);
+  }, [analytics?.monthly, monthsShort]);
 
-  const yearlyStats = useMemo(() => {
-    const year = parseInt(selectedYear);
-    const yearTransactions = transactions.filter((transaction) => {
-      const date = resolveTransactionDate(transaction);
-      return date ? date.getFullYear() === year : false;
-    });
-
-    const income = yearTransactions
-      .filter((t) => t.type === "income")
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-
-    const expense = yearTransactions
-      .filter((t) => t.type === "expense")
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-
-    return {
-      income,
-      expense,
-      balance: income - expense,
-      savingsRate: income > 0 ? ((income - expense) / income) * 100 : 0,
-    };
-  }, [transactions, selectedYear, resolveTransactionDate]);
+  const yearlyStats = analytics?.summary ?? {
+    year: selectedYearNumber,
+    income: 0,
+    expense: 0,
+    balance: 0,
+    savingsRate: 0,
+  };
 
   const categorySpending = useMemo((): CategorySpending[] => {
-    const year = parseInt(selectedYear);
-    const expenses = transactions.filter((transaction) => {
-      const date = resolveTransactionDate(transaction);
-      return (
-        transaction.type === "expense" &&
-        Boolean(date) &&
-        date.getFullYear() === year &&
-        transaction.category
-      );
-    });
+    return (analytics?.categories ?? []).map((item) => ({
+      name: labelFor(item.name, item.type),
+      value: item.value,
+      color: item.color || "#6366f1",
+    }));
+  }, [analytics?.categories, labelFor]);
 
-    const byCategory = expenses.reduce(
-      (acc, t) => {
-        const category = t.category;
-        if (!category) return acc;
-        const catName = labelFor(category.name, category.type);
-        const catColor = category.color || "#6366f1";
-        if (!acc[catName]) {
-          acc[catName] = { name: catName, value: 0, color: catColor };
-        }
-        acc[catName].value += Number(t.amount);
-        return acc;
-      },
-      {} as Record<string, CategorySpending>,
-    );
-
-    return Object.values(byCategory).sort((a, b) => b.value - a.value);
-  }, [transactions, selectedYear, resolveTransactionDate, labelFor]);
-
-  const currentMonthStats = useMemo(() => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-
-    const currentMonthTransactions = transactions.filter((transaction) => {
-      const date = resolveTransactionDate(transaction);
-      return date
-        ? date.getMonth() === currentMonth && date.getFullYear() === currentYear
-        : false;
-    });
-
-    const lastMonthTransactions = transactions.filter((transaction) => {
-      const date = resolveTransactionDate(transaction);
-      return date
-        ? date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear
-        : false;
-    });
-
-    const currentExpense = currentMonthTransactions
-      .filter((t) => t.type === "expense")
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-
-    const lastExpense = lastMonthTransactions
-      .filter((t) => t.type === "expense")
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-
-    const hasVariationBaseline = lastExpense > 0;
-    const variation = hasVariationBaseline
-      ? ((currentExpense - lastExpense) / lastExpense) * 100
-      : null;
-
-    return { currentExpense, lastExpense, variation, hasVariationBaseline };
-  }, [transactions, currentYear, resolveTransactionDate]);
+  const currentMonthStats = analytics?.currentMonthComparison ?? {
+    currentExpense: 0,
+    lastExpense: 0,
+    variation: null,
+    hasVariationBaseline: false,
+  };
 
   const investmentStats = useMemo(
     () => calculatePortfolioSummary(investments),
@@ -382,7 +305,7 @@ export default function Reports() {
               <CardTitle>{t("reports.incomeVsExpense")}</CardTitle>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
+              {isReportsLoading ? (
                 <div className="flex items-center justify-center h-[300px]">
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 </div>

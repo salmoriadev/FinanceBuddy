@@ -73,3 +73,41 @@ export interface CategorySpending {
   value: number;
   color: string;
 }
+
+export interface ReportSummary {
+  year: number;
+  income: number;
+  expense: number;
+  balance: number;
+  savingsRate: number;
+}
+
+export interface ReportMonthlyData {
+  month: number;
+  income: number;
+  expense: number;
+  balance: number;
+}
+
+export interface ReportCategorySpending {
+  name: string;
+  type: TransactionType;
+  color: string;
+  value: number;
+}
+
+export interface ReportCurrentMonthComparison {
+  currentExpense: number;
+  lastExpense: number;
+  variation: number | null;
+  hasVariationBaseline: boolean;
+}
+
+export interface ReportAnalytics {
+  year: number;
+  summary: ReportSummary;
+  monthly: ReportMonthlyData[];
+  categories: ReportCategorySpending[];
+  currentMonthComparison: ReportCurrentMonthComparison;
+  availableYears: number[];
+}
