@@ -61,8 +61,16 @@ export type ApiInvestment = {
   userId: string;
   name: string;
   category: string | null;
+  assetSymbol: string | null;
+  quantity: number | string | null;
+  averagePrice: number | string | null;
   investedAmount: number | string;
   currentValue: number | string;
+  marketPrice: number | string | null;
+  marketValue: number | string | null;
+  quoteProvider: string | null;
+  quoteCurrency: string | null;
+  quoteUpdatedAt: string | null;
   startDate: string | null;
   notes: string | null;
   createdAt: string;
@@ -118,8 +126,16 @@ export const mapInvestment = (api: ApiInvestment): Investment => ({
   user_id: api.userId,
   name: api.name,
   category: api.category,
+  asset_symbol: api.assetSymbol,
+  quantity: api.quantity === null ? null : Number(api.quantity),
+  average_price: api.averagePrice === null ? null : Number(api.averagePrice),
   invested_amount: Number(api.investedAmount),
   current_value: Number(api.currentValue),
+  market_price: api.marketPrice === null ? null : Number(api.marketPrice),
+  market_value: api.marketValue === null ? null : Number(api.marketValue),
+  quote_provider: api.quoteProvider,
+  quote_currency: api.quoteCurrency,
+  quote_updated_at: api.quoteUpdatedAt,
   start_date: api.startDate,
   notes: api.notes,
   created_at: api.createdAt,

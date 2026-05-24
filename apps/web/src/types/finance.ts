@@ -55,11 +55,29 @@ export interface Investment {
   user_id: string;
   name: string;
   category: string | null;
+  asset_symbol: string | null;
+  quantity: number | null;
+  average_price: number | null;
   invested_amount: number;
   current_value: number;
+  market_price: number | null;
+  market_value: number | null;
+  quote_provider: string | null;
+  quote_currency: string | null;
+  quote_updated_at: string | null;
   start_date: string | null;
   notes: string | null;
   created_at: string;
+}
+
+export interface InvestmentAssetSearchResult {
+  symbol: string;
+  name: string;
+  type: string;
+  exchange: string;
+  currency: string;
+  provider: string;
+  logoUrl?: string | null;
 }
 
 export interface MonthlyData {
