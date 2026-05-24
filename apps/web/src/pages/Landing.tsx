@@ -92,6 +92,27 @@ const securityItems = [
   "Validação de entradas antes de gravar informações",
 ];
 
+function EditorialImage({
+  src,
+  alt,
+  className,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+}) {
+  return (
+    <figure
+      className={cn(
+        "overflow-hidden rounded-lg border border-white/[0.11] bg-[#070708] shadow-[0_24px_90px_rgba(0,0,0,0.42)]",
+        className,
+      )}
+    >
+      <img src={src} alt={alt} className="block h-auto w-full" loading="lazy" />
+    </figure>
+  );
+}
+
 function DashboardMockup({ className }: { className?: string }) {
   return (
     <div
@@ -281,7 +302,11 @@ export default function Landing() {
               </div>
             </div>
 
-            <DashboardMockup className="lg:translate-y-5" />
+            <EditorialImage
+              src="/landing-ledger.svg"
+              alt="Imagem editorial com resumo financeiro do FinanceBuddy em formato de ledger"
+              className="lg:translate-y-5"
+            />
           </div>
         </div>
       </section>
@@ -317,25 +342,31 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            {productAreas.map((area, index) => {
-              const Icon = area.icon;
-              return (
-                <article
-                  key={area.title}
-                  className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5"
-                >
-                  <div className="mb-8 flex items-center justify-between">
-                    <span className={ledgerLabel}>§{String(index + 1).padStart(2, "0")}</span>
-                    <Icon className="h-5 w-5 text-[#8e8d96]" />
-                  </div>
-                  <h3 className="font-serif text-3xl font-normal text-[#f4f1ea]">
-                    {area.title}
-                  </h3>
-                  <p className="mt-3 text-sm leading-6 text-[#a5a3ad]">{area.description}</p>
-                </article>
-              );
-            })}
+          <div className="space-y-4">
+            <EditorialImage
+              src="/landing-loop.svg"
+              alt="Imagem editorial mostrando o ciclo financeiro em três movimentos: registrar, organizar e decidir"
+            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              {productAreas.map((area, index) => {
+                const Icon = area.icon;
+                return (
+                  <article
+                    key={area.title}
+                    className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5"
+                  >
+                    <div className="mb-8 flex items-center justify-between">
+                      <span className={ledgerLabel}>§{String(index + 1).padStart(2, "0")}</span>
+                      <Icon className="h-5 w-5 text-[#8e8d96]" />
+                    </div>
+                    <h3 className="font-serif text-3xl font-normal text-[#f4f1ea]">
+                      {area.title}
+                    </h3>
+                    <p className="mt-3 text-sm leading-6 text-[#a5a3ad]">{area.description}</p>
+                  </article>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>
@@ -371,6 +402,11 @@ export default function Landing() {
               segurança como detalhe.
             </p>
           </div>
+          <div className="space-y-4">
+          <EditorialImage
+            src="/landing-flow.svg"
+            alt="Imagem editorial mostrando o fluxo do dinheiro do lançamento ao saldo final"
+          />
           <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-5">
             <div className="mb-6 flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-md border border-white/[0.08] bg-[#050506]">
@@ -391,6 +427,7 @@ export default function Landing() {
                 </div>
               ))}
             </div>
+          </div>
           </div>
         </div>
       </section>

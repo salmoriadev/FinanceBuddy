@@ -1,0 +1,38 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="720" fill="#111113"/>
+  <rect x="1" y="1" width="1278" height="718" rx="18" stroke="#F4F1EA" stroke-opacity="0.11" stroke-width="2"/>
+  <text x="76" y="166" fill="#8E8D96" font-family="DM Sans, Arial, sans-serif" font-size="17" font-weight="700" letter-spacing="10">COMO O DINHEIRO SE MOVE</text>
+  <text x="366" y="104" fill="#F4F1EA" font-family="Crimson Pro, Georgia, serif" font-size="66" font-weight="500">Do lançamento ao saldo final — sem</text>
+  <text x="366" y="176" fill="#F4F1EA" font-family="Crimson Pro, Georgia, serif" font-size="66" font-weight="500">perder contexto.</text>
+
+  <g transform="translate(76 282)">
+    <rect width="260" height="206" rx="10" fill="#070708" stroke="#F4F1EA" stroke-opacity="0.12"/>
+    <text x="32" y="54" fill="#8E8D96" font-family="DM Sans, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="8">STEP·01</text>
+    <rect x="182" y="34" width="50" height="24" rx="8" stroke="#F4F1EA" stroke-opacity="0.12"/>
+    <text x="199" y="51" fill="#A5A3AD" font-family="DM Sans, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="4">TX</text>
+    <text x="32" y="118" fill="#F4F1EA" font-family="Crimson Pro, Georgia, serif" font-size="40" font-weight="500">Você lança</text>
+    <text x="32" y="154" fill="#A5A3AD" font-family="DM Sans, Arial, sans-serif" font-size="20" font-weight="500">Compra, renda ou aporte.</text>
+  </g>
+  <g transform="translate(370 282)">
+    <rect width="260" height="206" rx="10" fill="#070708" stroke="#F4F1EA" stroke-opacity="0.12"/>
+    <text x="32" y="54" fill="#8E8D96" font-family="DM Sans, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="8">STEP·02</text>
+    <rect x="32" y="130" width="196" height="42" rx="7" fill="#F4F1EA"/>
+    <text x="50" y="157" fill="#050506" font-family="DM Sans, Arial, sans-serif" font-size="18" font-weight="700">categoria + valor</text>
+    <text x="32" y="118" fill="#F4F1EA" font-family="Crimson Pro, Georgia, serif" font-size="40" font-weight="500">Classificamos</text>
+  </g>
+  <g transform="translate(664 282)">
+    <rect width="260" height="206" rx="10" fill="#070708" stroke="#F4F1EA" stroke-opacity="0.12"/>
+    <text x="32" y="54" fill="#8E8D96" font-family="DM Sans, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="8">STEP·03</text>
+    <rect x="32" y="130" width="196" height="42" rx="7" fill="#F4F1EA"/>
+    <text x="50" y="157" fill="#050506" font-family="DM Sans, Arial, sans-serif" font-size="18" font-weight="700">meta atualizada</text>
+    <text x="32" y="118" fill="#F4F1EA" font-family="Crimson Pro, Georgia, serif" font-size="40" font-weight="500">Somamos</text>
+  </g>
+  <g transform="translate(958 282)">
+    <rect width="260" height="206" rx="10" fill="#070708" stroke="#F4F1EA" stroke-opacity="0.12"/>
+    <text x="32" y="54" fill="#8E8D96" font-family="DM Sans, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="8">STEP·04</text>
+    <text x="32" y="118" fill="#F4F1EA" font-family="Crimson Pro, Georgia, serif" font-size="40" font-weight="500">Você enxerga</text>
+    <text x="32" y="154" fill="#A5A3AD" font-family="DM Sans, Arial, sans-serif" font-size="20" font-weight="500">Saldo, orçamento e carteira.</text>
+    <rect x="32" y="166" width="196" height="32" rx="7" stroke="#F4F1EA" stroke-opacity="0.12" stroke-dasharray="4 5"/>
+  </g>
+  <text x="76" y="590" fill="#A5A3AD" font-family="Crimson Pro, Georgia, serif" font-size="32" font-style="italic">Seu mês vira uma sequência legível, não um conjunto de abas abertas.</text>
+</svg>
