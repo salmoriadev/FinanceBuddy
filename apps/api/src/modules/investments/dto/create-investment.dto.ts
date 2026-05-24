@@ -2,7 +2,14 @@
  * This file implements Create Investment.Dto behavior for the backend module layer.
  * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
  */
-import { IsDateString, IsNumber, IsOptional, IsString, MinLength } from "class-validator";
+import {
+  IsDateString,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  MinLength,
+} from "class-validator";
 import { Transform } from "class-transformer";
 
 export class CreateInvestmentDto {
@@ -13,6 +20,25 @@ export class CreateInvestmentDto {
   @IsOptional()
   @IsString()
   category?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.trim().toUpperCase() : value,
+  )
+  assetSymbol?: string | null;
+
+  @IsOptional()
+  @Transform(({ value }) => (value === null || value === "" ? undefined : Number(value)))
+  @IsNumber()
+  @Min(0)
+  quantity?: number | null;
+
+  @IsOptional()
+  @Transform(({ value }) => (value === null || value === "" ? undefined : Number(value)))
+  @IsNumber()
+  @Min(0)
+  averagePrice?: number | null;
 
   @Transform(({ value }) => Number(value))
   @IsNumber()

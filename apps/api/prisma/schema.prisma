@@ -119,12 +119,21 @@ model Investment {
   userId         String    @map("user_id") @db.Uuid
   name           String
   category       String?
+  assetSymbol    String?   @map("asset_symbol")
+  quantity       Decimal?  @db.Decimal(18, 6)
+  averagePrice   Decimal?  @map("average_price") @db.Decimal(12, 2)
   investedAmount Decimal   @map("invested_amount") @db.Decimal(12, 2)
   currentValue   Decimal   @map("current_value") @db.Decimal(12, 2)
+  marketPrice    Decimal?  @map("market_price") @db.Decimal(12, 2)
+  marketValue    Decimal?  @map("market_value") @db.Decimal(12, 2)
+  quoteProvider  String?   @map("quote_provider")
+  quoteCurrency  String?   @map("quote_currency")
+  quoteUpdatedAt DateTime? @map("quote_updated_at") @db.Timestamptz(6)
   startDate      DateTime? @map("start_date") @db.Date
   notes          String?
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId], map: "idx_investments_user")
+  @@index([userId, assetSymbol], map: "idx_investments_user_asset_symbol")
   @@map("investments")
 }

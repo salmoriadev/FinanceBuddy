@@ -4,7 +4,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { Loader2, Plus, Trash2, Edit2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, RefreshCw, Search } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -35,7 +35,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { isValidDateInput, toIsoDate } from "@/lib/date";
 import { parseCurrency } from "@/lib/number";
-import { Investment } from "@/types/finance";
+import { Investment, InvestmentAssetSearchResult } from "@/types/finance";
 import {
   calculateInvestmentSummary,
   calculatePortfolioSummary,
@@ -58,6 +58,9 @@ const buildInvestmentSchema = (t: (key: string) => string) =>
   z.object({
     name: z.string().min(1, t("investments.validation.nameRequired")),
     category: z.string().optional(),
+    asset_symbol: z.string().optional(),
+    quantity: z.string().optional(),
+    average_price: z.string().optional(),
     invested_amount: z
       .string()
       .min(1, t("investments.validation.amountRequired"))
@@ -87,6 +90,9 @@ type InvestmentFormData = z.infer<ReturnType<typeof buildInvestmentSchema>>;
 const emptyFormValues: InvestmentFormData = {
   name: "",
   category: "",
+  asset_symbol: "",
+  quantity: "",
+  average_price: "",
   invested_amount: "",
   current_value: "",
   start_date: "",
@@ -101,6 +107,8 @@ export default function Investments() {
     addInvestment,
     updateInvestment,
     deleteInvestment,
+    refreshMarketData,
+    searchAssets,
   } = useInvestments();
   const { formatCurrency, formatPercent, formatDate } = useFormatter();
   const { t } = useI18n();
@@ -108,6 +116,9 @@ export default function Investments() {
   const [editingInvestment, setEditingInvestment] = useState<Investment | null>(
     null,
   );
+  const [assetSearch, setAssetSearch] = useState("");
+  const [assetResults, setAssetResults] = useState<InvestmentAssetSearchResult[]>([]);
+  const [assetSearchLoading, setAssetSearchLoading] = useState(false);
 
   const schema = useMemo(() => buildInvestmentSchema(t), [t]);
 
@@ -126,6 +137,9 @@ export default function Investments() {
     editForm.reset({
       name: editingInvestment.name,
       category: editingInvestment.category ?? "",
+      asset_symbol: editingInvestment.asset_symbol ?? "",
+      quantity: editingInvestment.quantity?.toString() ?? "",
+      average_price: editingInvestment.average_price?.toString() ?? "",
       invested_amount: editingInvestment.invested_amount.toString(),
       current_value: editingInvestment.current_value.toString(),
     start_date: editingInvestment.start_date
@@ -139,6 +153,29 @@ export default function Investments() {
     () => calculatePortfolioSummary(investments),
     [investments],
   );
+
+  const quotedInvestments = useMemo(
+    () => investments.filter((investment) => investment.asset_symbol),
+    [investments],
+  );
+
+  const allocationByCategory = useMemo(() => {
+    const totalsByCategory = new Map<string, number>();
+    for (const investment of investments) {
+      const key = investment.category || t("common.other");
+      totalsByCategory.set(
+        key,
+        (totalsByCategory.get(key) ?? 0) + Number(investment.current_value),
+      );
+    }
+    return Array.from(totalsByCategory.entries())
+      .map(([category, value]) => ({
+        category,
+        value,
+        weight: totals.current > 0 ? (value / totals.current) * 100 : 0,
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [investments, t, totals.current]);
 
   if (loading) {
     return (
@@ -157,6 +194,9 @@ export default function Investments() {
       await addInvestment.mutateAsync({
         name: data.name,
         category: data.category || null,
+        asset_symbol: data.asset_symbol || null,
+        quantity: data.quantity ? parseCurrency(data.quantity) : null,
+        average_price: data.average_price ? parseCurrency(data.average_price) : null,
         invested_amount: parseCurrency(data.invested_amount),
         current_value: parseCurrency(data.current_value),
         start_date: data.start_date ? toIsoDate(data.start_date) : null,
@@ -177,6 +217,9 @@ export default function Investments() {
         id: editingInvestment.id,
         name: data.name,
         category: data.category || null,
+        asset_symbol: data.asset_symbol || null,
+        quantity: data.quantity ? parseCurrency(data.quantity) : null,
+        average_price: data.average_price ? parseCurrency(data.average_price) : null,
         invested_amount: parseCurrency(data.invested_amount),
         current_value: parseCurrency(data.current_value),
         start_date: data.start_date ? toIsoDate(data.start_date) : null,
@@ -196,6 +239,30 @@ export default function Investments() {
     });
   };
 
+  const handleRefreshQuotes = async () => {
+    try {
+      const result = await refreshMarketData.mutateAsync();
+      toast.success(`${result.updatedCount} cotacoes atualizadas`);
+      if (result.missingSymbols.length > 0) {
+        toast.warning(`Sem cotacao para: ${result.missingSymbols.join(", ")}`);
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Nao foi possivel atualizar cotacoes"));
+    }
+  };
+
+  const handleAssetSearch = async () => {
+    if (assetSearch.trim().length < 2) return;
+    setAssetSearchLoading(true);
+    try {
+      setAssetResults(await searchAssets(assetSearch));
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Nao foi possivel buscar ativos"));
+    } finally {
+      setAssetSearchLoading(false);
+    }
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -209,13 +276,26 @@ export default function Investments() {
             </p>
           </div>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                {t("investments.new")}
-              </Button>
-            </DialogTrigger>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={handleRefreshQuotes}
+              disabled={refreshMarketData.isPending || quotedInvestments.length === 0}
+            >
+              {refreshMarketData.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Atualizar cotacoes
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t("investments.new")}
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>{t("investments.form.title")}</DialogTitle>
@@ -241,6 +321,44 @@ export default function Investments() {
                       </FormItem>
                     )}
                   />
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <FormField
+                      control={addForm.control}
+                      name="asset_symbol"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Ticker</FormLabel>
+                          <FormControl>
+                            <Input placeholder="PETR4" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={addForm.control}
+                      name="quantity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Quantidade</FormLabel>
+                          <FormControl>
+                            <Input type="text" inputMode="decimal" placeholder="100" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={addForm.control}
+                      name="average_price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Preco medio</FormLabel>
+                          <FormControl>
+                            <Input type="text" inputMode="decimal" placeholder={t("common.currencyPlaceholder")} {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   <FormField
                     control={addForm.control}
                     name="category"
@@ -338,7 +456,8 @@ export default function Investments() {
                 </form>
               </Form>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -383,6 +502,91 @@ export default function Investments() {
           </Card>
         </div>
 
+        <div className="grid grid-cols-1 lg:grid-cols-[0.85fr_1.15fr] gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Buscar ativos B3</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  value={assetSearch}
+                  onChange={(event) => setAssetSearch(event.target.value)}
+                  placeholder="PETR4, KNRI11, BOVA11"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleAssetSearch}
+                  disabled={assetSearchLoading}
+                >
+                  {assetSearchLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {assetResults.map((asset) => (
+                  <button
+                    key={asset.symbol}
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-lg border border-border p-3 text-left transition hover:bg-muted/40"
+                    onClick={() => {
+                      addForm.setValue("asset_symbol", asset.symbol);
+                      addForm.setValue("name", asset.name);
+                      addForm.setValue("category", asset.type.toUpperCase());
+                      setIsDialogOpen(true);
+                    }}
+                  >
+                    <span>
+                      <span className="block font-medium">{asset.symbol}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {asset.name}
+                      </span>
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {asset.exchange} / {asset.provider}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Alocacao da carteira</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {allocationByCategory.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("investments.empty")}
+                </p>
+              ) : (
+                allocationByCategory.map((item) => (
+                  <div key={item.category} className="space-y-1">
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="font-medium">{item.category}</span>
+                      <span className="text-muted-foreground">
+                        {formatCurrency(item.value)} / {formatPercent(item.weight, 1)}
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${Math.min(100, item.weight)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle>{t("investments.portfolio")}</CardTitle>
@@ -419,6 +623,11 @@ export default function Investments() {
                                 {investment.category}
                               </span>
                             )}
+                            {investment.asset_symbol && (
+                              <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                                {investment.asset_symbol}
+                              </span>
+                            )}
                             {investment.start_date && (
                               <span>
                                 {t("common.since")} {formatDate(investment.start_date)}
@@ -444,7 +653,7 @@ export default function Investments() {
                           </Button>
                         </div>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 text-sm">
                         <div>
                           <p className="text-muted-foreground">
                             {t("investments.form.invested")}
@@ -452,6 +661,25 @@ export default function Investments() {
                           <p className="font-semibold">
                             {formatCurrency(Number(investment.invested_amount))}
                           </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Quantidade</p>
+                          <p className="font-semibold">
+                            {investment.quantity?.toLocaleString("pt-BR") ?? "-"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Cotacao</p>
+                          <p className="font-semibold">
+                            {investment.market_price
+                              ? formatCurrency(investment.market_price)
+                              : "-"}
+                          </p>
+                          {investment.quote_updated_at && (
+                            <p className="text-xs text-muted-foreground">
+                              {investment.quote_provider} / {formatDate(investment.quote_updated_at)}
+                            </p>
+                          )}
                         </div>
                         <div>
                           <p className="text-muted-foreground">
@@ -524,6 +752,44 @@ export default function Investments() {
                   </FormItem>
                 )}
               />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="asset_symbol"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ticker</FormLabel>
+                      <FormControl>
+                        <Input placeholder="PETR4" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="quantity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quantidade</FormLabel>
+                      <FormControl>
+                        <Input type="text" inputMode="decimal" placeholder="100" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="average_price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Preco medio</FormLabel>
+                      <FormControl>
+                        <Input type="text" inputMode="decimal" placeholder={t("common.currencyPlaceholder")} {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={editForm.control}
                 name="category"
