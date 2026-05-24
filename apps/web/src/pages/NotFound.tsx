@@ -29,7 +29,7 @@ const NotFound = () => {
           {t("notFound.description")}
         </p>
         <Button asChild className="mt-2">
-          <Link to="/">{t("notFound.back")}</Link>
+          <Link to="/dashboard">{t("notFound.back")}</Link>
         </Button>
       </div>
     </div>

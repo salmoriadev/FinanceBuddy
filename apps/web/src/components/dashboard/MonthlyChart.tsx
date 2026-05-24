@@ -60,12 +60,12 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
             >
               <defs>
                 <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#19c37d" stopOpacity={0.22} />
+                  <stop offset="95%" stopColor="#19c37d" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#ef6f7c" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#ef6f7c" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid
@@ -93,7 +93,7 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
                 type="monotone"
                 dataKey="income"
                 name={t("dashboard.income")}
-                stroke="#10b981"
+                stroke="#19c37d"
                 fillOpacity={1}
                 fill="url(#colorIncome)"
               />
@@ -101,7 +101,7 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
                 type="monotone"
                 dataKey="expense"
                 name={t("dashboard.expenses")}
-                stroke="#ef4444"
+                stroke="#ef6f7c"
                 fillOpacity={1}
                 fill="url(#colorExpense)"
               />

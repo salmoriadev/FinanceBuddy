@@ -221,7 +221,7 @@ export default function Goals() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+            <h1 className="font-serif text-4xl font-normal tracking-normal text-foreground">
               {t("goals.title")}
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -484,7 +484,7 @@ export default function Goals() {
           <Card>
             <CardContent className="p-6">
               <p className="text-sm text-muted-foreground">{t("goals.total")}</p>
-              <p className="text-2xl font-bold">
+              <p className="font-serif text-3xl font-normal tracking-normal">
                 {formatCurrency(totalTarget)}
               </p>
             </CardContent>
@@ -492,7 +492,7 @@ export default function Goals() {
           <Card>
             <CardContent className="p-6">
               <p className="text-sm text-muted-foreground">{t("goals.saved")}</p>
-              <p className="text-2xl font-bold text-emerald-600">
+              <p className="font-serif text-3xl font-normal tracking-normal text-[#19c37d]">
                 {formatCurrency(totalSaved)}
               </p>
             </CardContent>

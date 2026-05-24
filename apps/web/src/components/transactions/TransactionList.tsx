@@ -39,14 +39,14 @@ const TransactionRow = memo(function TransactionRow({
   }, [transaction.date, transaction.created_at, formatShortDate, t]);
 
   return (
-    <div className="flex items-center justify-between p-4 rounded-xl border border-border/70 bg-card/90 hover:bg-muted/50 transition-colors">
+    <div className="flex items-center justify-between p-4 rounded-md border border-border/80 bg-card/90 hover:bg-muted/35 transition-colors">
       <div className="flex items-center gap-4">
         <div
           className={cn(
-            "h-10 w-10 rounded-full flex items-center justify-center",
+            "h-10 w-10 rounded-md border flex items-center justify-center",
             transaction.type === "income"
-              ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600"
-              : "bg-rose-100 dark:bg-rose-900/30 text-rose-600",
+              ? "border-[#19c37d]/20 bg-[#19c37d]/10 text-[#19c37d]"
+              : "border-[#ef6f7c]/20 bg-[#ef6f7c]/10 text-[#ef6f7c]",
           )}
         >
           {transaction.type === "income" ? (
@@ -96,8 +96,8 @@ const TransactionRow = memo(function TransactionRow({
           className={cn(
             "font-semibold",
             transaction.type === "income"
-              ? "text-emerald-600 dark:text-emerald-400"
-              : "text-rose-600 dark:text-rose-400",
+              ? "text-[#19c37d]"
+              : "text-[#ef6f7c]",
           )}
         >
           {transaction.type === "income" ? "+" : "-"}{" "}

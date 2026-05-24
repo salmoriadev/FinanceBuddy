@@ -38,7 +38,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const isDark = theme === "dark" || resolvedTheme === "dark";
   const toggleTheme = () => setTheme(isDark ? "light" : "dark");
   const navItems = [
-    { path: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
+    { path: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
     { path: "/transactions", label: t("nav.transactions"), icon: ArrowLeftRight },
     { path: "/budgets", label: t("nav.budgets"), icon: PiggyBank },
     { path: "/goals", label: t("nav.goals"), icon: Target },
@@ -50,8 +50,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile Header */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-card/90 backdrop-blur-xl border-b border-border/60 px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-foreground">FinanceBuddy</h1>
+      <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-sidebar/95 backdrop-blur-xl border-b border-sidebar-border px-4 py-3 flex items-center justify-between">
+        <h1 className="font-serif text-xl font-normal text-foreground">FinanceBuddy</h1>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={toggleTheme}>
             {isDark ? (
@@ -85,7 +85,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-50 h-full w-64 bg-card/90 backdrop-blur-xl border-r border-border/60 transition-transform duration-200 ease-in-out",
+          "fixed top-0 left-0 z-50 h-full w-64 bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border transition-transform duration-200 ease-in-out",
           "md:translate-x-0",
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full",
         )}
@@ -94,7 +94,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           <div className="mb-8 pt-2">
             <div className="flex items-center justify-between gap-2">
               <div>
-                <h1 className="text-xl font-semibold tracking-tight text-foreground">
+                <h1 className="font-serif text-2xl font-normal tracking-normal text-foreground">
                   FinanceBuddy
                 </h1>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -121,9 +121,9 @@ export function AppLayout({ children }: AppLayoutProps) {
                   to={item.path}
                   onClick={() => setMobileMenuOpen(false)}
                   className={cn(
-                    "relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors border border-transparent",
+                    "relative flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors border border-transparent",
                     isActive
-                      ? "bg-primary/10 text-foreground border-primary/20 shadow-sm shadow-black/20 before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-primary/80"
+                      ? "bg-sidebar-accent text-foreground border-sidebar-border before:content-[''] before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[2px] before:rounded-full before:bg-primary/80"
                       : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
                   )}
                 >
@@ -134,7 +134,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             })}
           </nav>
 
-          <div className="border-t border-border pt-4 mt-auto space-y-3 pb-2">
+          <div className="border-t border-sidebar-border pt-4 mt-auto space-y-3 pb-2">
             <div className="px-3">
               {user?.name ? (
                 <>

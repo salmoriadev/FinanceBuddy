@@ -1,0 +1,25 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="720" fill="#070708"/>
+  <rect x="1" y="1" width="1278" height="718" rx="18" stroke="#F4F1EA" stroke-opacity="0.11" stroke-width="2"/>
+  <text x="76" y="120" fill="#8E8D96" font-family="DM Sans, Arial, sans-serif" font-size="17" font-weight="700" letter-spacing="10">O CICLO FINANCEIRO</text>
+  <text x="366" y="120" fill="#F4F1EA" font-family="Crimson Pro, Georgia, serif" font-size="62" font-weight="500">Três movimentos, uma leitura calma.</text>
+  <g transform="translate(94 230)">
+    <text x="0" y="0" fill="#8E8D96" font-family="DM Sans, Arial, sans-serif" font-size="17" font-weight="700" letter-spacing="8">§01</text>
+    <circle cx="330" cy="-6" r="18" stroke="#F4F1EA" stroke-opacity="0.13" stroke-width="2"/>
+    <text x="0" y="100" fill="#F4F1EA" font-family="Crimson Pro, Georgia, serif" font-size="52" font-weight="500">Registre</text>
+    <text x="0" y="154" fill="#A5A3AD" font-family="DM Sans, Arial, sans-serif" font-size="24" font-weight="500">Entradas, saídas e categorias deixam de morar na memória.</text>
+  </g>
+  <g transform="translate(454 196)">
+    <rect width="374" height="292" fill="#242428"/>
+    <text x="50" y="66" fill="#8E8D96" font-family="DM Sans, Arial, sans-serif" font-size="17" font-weight="700" letter-spacing="8">§02</text>
+    <rect x="316" y="44" width="36" height="36" rx="18" stroke="#F4F1EA" stroke-opacity="0.7" stroke-width="2"/>
+    <text x="50" y="162" fill="#F4F1EA" font-family="Crimson Pro, Georgia, serif" font-size="52" font-weight="500">Organize</text>
+    <text x="50" y="216" fill="#A5A3AD" font-family="DM Sans, Arial, sans-serif" font-size="24" font-weight="500">Orçamentos e metas mostram se o mês está seguindo o plano.</text>
+  </g>
+  <g transform="translate(876 230)">
+    <text x="0" y="0" fill="#8E8D96" font-family="DM Sans, Arial, sans-serif" font-size="17" font-weight="700" letter-spacing="8">§03</text>
+    <circle cx="330" cy="-6" r="18" stroke="#F4F1EA" stroke-opacity="0.13" stroke-width="2"/>
+    <text x="0" y="100" fill="#F4F1EA" font-family="Crimson Pro, Georgia, serif" font-size="52" font-weight="500">Decida</text>
+    <text x="0" y="154" fill="#A5A3AD" font-family="DM Sans, Arial, sans-serif" font-size="24" font-weight="500">Relatórios e carteira conectam contexto antes da próxima escolha.</text>
+  </g>
+</svg>

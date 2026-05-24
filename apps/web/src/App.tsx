@@ -13,6 +13,7 @@ import { AuthProvider } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 const Index = lazy(() => import("./pages/Index"));
+const Landing = lazy(() => import("./pages/Landing"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Transactions = lazy(() => import("./pages/Transactions"));
 const Budgets = lazy(() => import("./pages/Budgets"));
@@ -56,7 +57,8 @@ const App = () => (
         <BrowserRouter>
           <Suspense fallback={<RouteLoadingFallback />}>
             <Routes>
-              <Route path="/" element={protect(<Index />)} />
+              <Route path="/" element={<Landing />} />
+              <Route path="/dashboard" element={protect(<Index />)} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/transactions" element={protect(<Transactions />)} />
               <Route path="/budgets" element={protect(<Budgets />)} />

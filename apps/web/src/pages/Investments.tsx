@@ -201,7 +201,7 @@ export default function Investments() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+            <h1 className="font-serif text-4xl font-normal tracking-normal text-foreground">
               {t("investments.title")}
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -347,7 +347,7 @@ export default function Investments() {
               <p className="text-sm text-muted-foreground">
                 {t("investments.totalInvested")}
               </p>
-              <p className="text-2xl font-bold">
+              <p className="font-serif text-3xl font-normal tracking-normal">
                 {formatCurrency(totals.invested)}
               </p>
             </CardContent>
@@ -357,7 +357,7 @@ export default function Investments() {
               <p className="text-sm text-muted-foreground">
                 {t("investments.currentValue")}
               </p>
-              <p className="text-2xl font-bold text-emerald-600">
+              <p className="font-serif text-3xl font-normal tracking-normal text-[#19c37d]">
                 {formatCurrency(totals.current)}
               </p>
             </CardContent>
@@ -369,8 +369,8 @@ export default function Investments() {
               </p>
               <p
                 className={cn(
-                  "text-2xl font-bold",
-                  totals.profit >= 0 ? "text-emerald-600" : "text-rose-600",
+                  "font-serif text-3xl font-normal tracking-normal",
+                  totals.profit >= 0 ? "text-[#19c37d]" : "text-[#ef6f7c]",
                 )}
               >
                 {totals.profit >= 0 ? "+" : ""}
@@ -469,8 +469,8 @@ export default function Investments() {
                             className={cn(
                               "font-semibold",
                               summary.profit >= 0
-                                ? "text-emerald-600"
-                                : "text-rose-600",
+                                ? "text-[#19c37d]"
+                                : "text-[#ef6f7c]",
                             )}
                           >
                             {summary.profit >= 0 ? "+" : ""}

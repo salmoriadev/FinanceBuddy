@@ -21,11 +21,11 @@ const REQUIREMENTS = [
 ] as const;
 
 const STRENGTH_COLORS = [
-  "bg-rose-500",
-  "bg-orange-500",
-  "bg-amber-400",
-  "bg-lime-500",
-  "bg-emerald-500",
+  "bg-[#ef6f7c]",
+  "bg-[#c8865b]",
+  "bg-[#d7b56d]",
+  "bg-[#7fa982]",
+  "bg-[#19c37d]",
 ];
 
 export function PasswordStrength({ password }: PasswordStrengthProps) {
@@ -67,7 +67,7 @@ export function PasswordStrength({ password }: PasswordStrengthProps) {
               className={cn(
                 "flex h-4 w-4 items-center justify-center rounded-full border",
                 checks[item.key]
-                  ? "border-emerald-500/60 text-emerald-500"
+                  ? "border-[#19c37d]/60 text-[#19c37d]"
                   : "border-muted-foreground/40 text-muted-foreground/60",
               )}
             >
