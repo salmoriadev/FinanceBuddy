@@ -159,7 +159,7 @@ export default function Auth() {
   }
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   const onSubmit = async (data: AuthFormData) => {
@@ -190,14 +190,14 @@ export default function Auth() {
       <button
         type="button"
         onClick={toggleTheme}
-        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-sm transition hover:bg-muted"
+        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-md border border-border bg-card text-foreground shadow-sm transition hover:bg-muted"
         aria-label={t("common.toggleTheme")}
       >
         {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       </button>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-semibold tracking-tight">
+          <CardTitle className="font-serif text-3xl font-normal tracking-normal">
             FinanceBuddy
           </CardTitle>
           <CardDescription>

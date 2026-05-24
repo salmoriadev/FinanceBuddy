@@ -130,7 +130,7 @@ export default function Reports() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+            <h1 className="font-serif text-4xl font-normal tracking-normal text-foreground">
               {t("reports.title")}
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -157,10 +157,10 @@ export default function Reports() {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                <TrendingUp className="h-4 w-4 text-emerald-600" />
+                <TrendingUp className="h-4 w-4 text-[#19c37d]" />
                 {t("reports.income")} {selectedYear}
               </div>
-              <p className="text-2xl font-bold text-emerald-600">
+              <p className="font-serif text-3xl font-normal tracking-normal text-[#19c37d]">
                 {formatCurrency(yearlyStats.income)}
               </p>
             </CardContent>
@@ -168,10 +168,10 @@ export default function Reports() {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                <TrendingDown className="h-4 w-4 text-rose-600" />
+                <TrendingDown className="h-4 w-4 text-[#ef6f7c]" />
                 {t("reports.expense")} {selectedYear}
               </div>
-              <p className="text-2xl font-bold text-rose-600">
+              <p className="font-serif text-3xl font-normal tracking-normal text-[#ef6f7c]">
                 {formatCurrency(yearlyStats.expense)}
               </p>
             </CardContent>
@@ -182,8 +182,8 @@ export default function Reports() {
                 {t("reports.balance")} {selectedYear}
               </p>
               <p
-                className={`text-2xl font-bold ${
-                  yearlyStats.balance >= 0 ? "text-emerald-600" : "text-rose-600"
+                className={`font-serif text-3xl font-normal tracking-normal ${
+                  yearlyStats.balance >= 0 ? "text-[#19c37d]" : "text-[#ef6f7c]"
                 }`}
               >
                 {formatCurrency(yearlyStats.balance)}
@@ -195,7 +195,7 @@ export default function Reports() {
               <p className="text-sm text-muted-foreground mb-1">
                 {t("reports.savingsRate")}
               </p>
-              <p className="text-2xl font-bold">
+              <p className="font-serif text-3xl font-normal tracking-normal">
                 {formatPercent(yearlyStats.savingsRate, 1)}
               </p>
             </CardContent>
@@ -208,31 +208,31 @@ export default function Reports() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="rounded-md border border-border/70 bg-muted/35 p-4">
                 <p className="text-sm text-muted-foreground">
                   {t("investments.totalInvested")}
                 </p>
-                <p className="text-xl font-bold">
+                <p className="font-serif text-2xl font-normal tracking-normal">
                   {formatCurrency(investmentStats.invested)}
                 </p>
               </div>
-              <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="rounded-md border border-border/70 bg-muted/35 p-4">
                 <p className="text-sm text-muted-foreground">
                   {t("investments.currentValue")}
                 </p>
-                <p className="text-xl font-bold text-emerald-600">
+                <p className="font-serif text-2xl font-normal tracking-normal text-[#19c37d]">
                   {formatCurrency(investmentStats.current)}
                 </p>
               </div>
-              <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="rounded-md border border-border/70 bg-muted/35 p-4">
                 <p className="text-sm text-muted-foreground">
                   {t("investments.return")}
                 </p>
                 <p
-                  className={`text-xl font-bold ${
+                  className={`font-serif text-2xl font-normal tracking-normal ${
                     investmentStats.profit >= 0
-                      ? "text-emerald-600"
-                      : "text-rose-600"
+                      ? "text-[#19c37d]"
+                      : "text-[#ef6f7c]"
                   }`}
                 >
                   {investmentStats.profit >= 0 ? "+" : ""}
@@ -252,34 +252,34 @@ export default function Reports() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="rounded-md border border-border/70 bg-muted/35 p-4">
                 <p className="text-sm text-muted-foreground">
                   {t("reports.currentMonth")}
                 </p>
-                <p className="text-xl font-bold">
+                <p className="font-serif text-2xl font-normal tracking-normal">
                   {formatCurrency(currentMonthStats.currentExpense)}
                 </p>
               </div>
-              <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="rounded-md border border-border/70 bg-muted/35 p-4">
                 <p className="text-sm text-muted-foreground">
                   {t("reports.previousMonth")}
                 </p>
-                <p className="text-xl font-bold">
+                <p className="font-serif text-2xl font-normal tracking-normal">
                   {formatCurrency(currentMonthStats.lastExpense)}
                 </p>
               </div>
-              <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="rounded-md border border-border/70 bg-muted/35 p-4">
                 <p className="text-sm text-muted-foreground">
                   {t("reports.variation")}
                 </p>
                 <p
-                  className={`text-xl font-bold ${
+                  className={`font-serif text-2xl font-normal tracking-normal ${
                     !currentMonthStats.hasVariationBaseline
                       ? "text-muted-foreground"
                       : currentMonthStats.variation! < 0
-                      ? "text-rose-600"
+                      ? "text-[#ef6f7c]"
                       : currentMonthStats.variation! > 0
-                        ? "text-emerald-600"
+                        ? "text-[#19c37d]"
                         : "text-muted-foreground"
                   }`}
                 >

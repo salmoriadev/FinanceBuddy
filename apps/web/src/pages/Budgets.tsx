@@ -203,7 +203,7 @@ export default function Budgets() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+            <h1 className="font-serif text-4xl font-normal tracking-normal text-foreground">
               {t("budgets.title")}
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -382,7 +382,7 @@ export default function Budgets() {
           <Card>
             <CardContent className="p-6">
               <p className="text-sm text-muted-foreground">{t("budgets.total")}</p>
-              <p className="text-2xl font-bold">
+              <p className="font-serif text-3xl font-normal tracking-normal">
                 {formatCurrency(totalBudget)}
               </p>
             </CardContent>
@@ -392,10 +392,10 @@ export default function Budgets() {
               <p className="text-sm text-muted-foreground">{t("budgets.spent")}</p>
               <p
                 className={cn(
-                  "text-2xl font-bold",
+                  "font-serif text-3xl font-normal tracking-normal",
                   totalSpent > totalBudget
-                    ? "text-rose-600"
-                    : "text-emerald-600",
+                    ? "text-[#ef6f7c]"
+                    : "text-[#19c37d]",
                 )}
               >
                 {formatCurrency(totalSpent)}
@@ -477,8 +477,8 @@ export default function Budgets() {
                         value={percentage}
                         className={cn(
                           "h-3",
-                          isOverBudget && "[&>div]:bg-rose-500",
-                          isNearLimit && "[&>div]:bg-amber-500",
+                          isOverBudget && "[&>div]:bg-[#ef6f7c]",
+                          isNearLimit && "[&>div]:bg-[#d7b56d]",
                         )}
                         style={{
                           ["--progress-color" as string]:
@@ -494,7 +494,7 @@ export default function Budgets() {
                         <span
                           className={cn(
                             isOverBudget
-                              ? "text-rose-600 font-medium"
+                              ? "text-[#ef6f7c] font-medium"
                               : "text-muted-foreground",
                           )}
                         >
@@ -507,7 +507,7 @@ export default function Budgets() {
                         <p
                           className={cn(
                             "text-xs",
-                            isOverBudget ? "text-rose-600" : "text-amber-600",
+                            isOverBudget ? "text-[#ef6f7c]" : "text-[#d7b56d]",
                           )}
                         >
                           {statusLabel}

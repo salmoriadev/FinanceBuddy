@@ -34,10 +34,9 @@ export function StatCard({
             <p className="text-sm text-muted-foreground">{title}</p>
             <p
               className={cn(
-                "text-2xl font-semibold mt-1 tracking-tight tabular-nums",
-                variant === "success" &&
-                  "text-emerald-600 dark:text-emerald-400",
-                variant === "danger" && "text-rose-600 dark:text-rose-400",
+                "mt-2 font-serif text-3xl font-normal tracking-normal tabular-nums",
+                variant === "success" && "text-[#19c37d]",
+                variant === "danger" && "text-[#ef6f7c]",
               )}
             >
               {value}
@@ -46,7 +45,7 @@ export function StatCard({
               <p
                 className={cn(
                   "text-xs mt-1",
-                  trend.isPositive ? "text-emerald-600" : "text-rose-600",
+                  trend.isPositive ? "text-[#19c37d]" : "text-[#ef6f7c]",
                 )}
               >
                 {trend.isPositive ? "+" : ""}
@@ -56,12 +55,12 @@ export function StatCard({
           </div>
           <div
             className={cn(
-              "h-12 w-12 rounded-full flex items-center justify-center",
+              "h-12 w-12 rounded-md border flex items-center justify-center",
               variant === "success" &&
-                "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600",
+                "border-[#19c37d]/20 bg-[#19c37d]/10 text-[#19c37d]",
               variant === "danger" &&
-                "bg-rose-100 dark:bg-rose-900/30 text-rose-600",
-              variant === "default" && "bg-primary/10 text-primary",
+                "border-[#ef6f7c]/20 bg-[#ef6f7c]/10 text-[#ef6f7c]",
+              variant === "default" && "border-border bg-muted/45 text-foreground",
             )}
           >
             {icon}

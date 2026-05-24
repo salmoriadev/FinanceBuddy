@@ -20,13 +20,13 @@ interface ExpenseChartProps {
 }
 
 const FALLBACK_COLORS = [
-  "#22d3ee",
-  "#38bdf8",
-  "#34d399",
-  "#f59e0b",
-  "#f97316",
-  "#f43f5e",
-  "#a78bfa",
+  "#f4f1ea",
+  "#a5a3ad",
+  "#777680",
+  "#19c37d",
+  "#d7b56d",
+  "#ef6f7c",
+  "#6f7480",
 ];
 
 export function ExpenseChart({ data }: ExpenseChartProps) {
@@ -59,7 +59,7 @@ export function ExpenseChart({ data }: ExpenseChartProps) {
     const percent = total > 0 ? (entry.value / total) * 100 : 0;
 
     return (
-      <div className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-lg">
+      <div className="rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground shadow-lg shadow-black/30">
         <div className="flex items-center gap-2">
           <span
             className="h-2.5 w-2.5 rounded-full"
@@ -115,7 +115,7 @@ export function ExpenseChart({ data }: ExpenseChartProps) {
                 return (
                   <div
                     key={item.name}
-                    className="flex items-center gap-2 rounded-full border border-border/60 px-3 py-1 text-muted-foreground"
+                    className="flex items-center gap-2 rounded-md border border-border/70 px-3 py-1 text-muted-foreground"
                   >
                     <span
                       className="h-2.5 w-2.5 rounded-full"

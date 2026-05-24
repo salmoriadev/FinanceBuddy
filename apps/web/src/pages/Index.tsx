@@ -159,7 +159,7 @@ export default function Index() {
     <AppLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+          <h1 className="font-serif text-4xl font-normal tracking-normal text-foreground">
             {tText("dashboard.title")}
           </h1>
           <p className="text-sm text-muted-foreground">

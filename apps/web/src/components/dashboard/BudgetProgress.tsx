@@ -70,8 +70,8 @@ export function BudgetProgress({ budgets }: BudgetProgressProps) {
                 <span
                   className={cn(
                     "text-muted-foreground",
-                    isOverBudget && "text-rose-600 font-medium",
-                    isNearLimit && "text-amber-600",
+                    isOverBudget && "text-[#ef6f7c] font-medium",
+                    isNearLimit && "text-[#d7b56d]",
                   )}
                 >
                   {formatCurrency(budget.spent)} /{" "}
@@ -82,8 +82,8 @@ export function BudgetProgress({ budgets }: BudgetProgressProps) {
                 value={percentage}
                 className={cn(
                   "h-2",
-                  isOverBudget && "[&>div]:bg-rose-500",
-                  isNearLimit && "[&>div]:bg-amber-500",
+                  isOverBudget && "[&>div]:bg-[#ef6f7c]",
+                  isNearLimit && "[&>div]:bg-[#d7b56d]",
                 )}
                 style={{
                   ["--progress-color" as string]:
@@ -94,7 +94,7 @@ export function BudgetProgress({ budgets }: BudgetProgressProps) {
                 <p
                   className={cn(
                     "text-xs",
-                    isOverBudget ? "text-rose-600" : "text-amber-600",
+                    isOverBudget ? "text-[#ef6f7c]" : "text-[#d7b56d]",
                   )}
                 >
                   {statusLabel}
