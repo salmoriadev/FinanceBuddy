@@ -38,7 +38,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const isDark = theme === "dark" || resolvedTheme === "dark";
   const toggleTheme = () => setTheme(isDark ? "light" : "dark");
   const navItems = [
-    { path: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
+    { path: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
     { path: "/transactions", label: t("nav.transactions"), icon: ArrowLeftRight },
     { path: "/budgets", label: t("nav.budgets"), icon: PiggyBank },
     { path: "/goals", label: t("nav.goals"), icon: Target },
