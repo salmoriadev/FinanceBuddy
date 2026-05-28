@@ -13,6 +13,8 @@ import { TransactionsModule } from "./modules/transactions/transactions.module";
 import { BudgetsModule } from "./modules/budgets/budgets.module";
 import { GoalsModule } from "./modules/goals/goals.module";
 import { InvestmentsModule } from "./modules/investments/investments.module";
+import { AssetsModule } from "./modules/assets/assets.module";
+import { PortfoliosModule } from "./modules/portfolios/portfolios.module";
 import { CategoriesModule } from "./modules/categories/categories.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 
@@ -32,6 +34,8 @@ import { ReportsModule } from "./modules/reports/reports.module";
     BudgetsModule,
     GoalsModule,
     InvestmentsModule,
+    AssetsModule,
+    PortfoliosModule,
     CategoriesModule,
     ReportsModule,
   ],

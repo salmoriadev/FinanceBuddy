@@ -14,6 +14,65 @@ enum TransactionType {
   @@map("transaction_type")
 }
 
+enum AssetClass {
+  stock
+  fii
+  etf
+  bdr
+  fixed_income
+  crypto
+  custom
+
+  @@map("asset_class")
+}
+
+enum QuoteStatus {
+  current
+  stale
+  manual
+  estimated
+  incomplete
+
+  @@map("quote_status")
+}
+
+enum DataSourceType {
+  manual
+  mock
+  external
+  legacy_manual
+
+  @@map("data_source_type")
+}
+
+enum PortfolioTransactionType {
+  buy
+  sell
+  dividend
+  fee
+  manual_adjustment
+  opening_balance
+
+  @@map("portfolio_transaction_type")
+}
+
+enum DividendEventStatus {
+  announced
+  confirmed
+  received
+  cancelled
+
+  @@map("dividend_event_status")
+}
+
+enum DividendReceiptStatus {
+  pending
+  received
+  cancelled
+
+  @@map("dividend_receipt_status")
+}
+
 model Category {
   id        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId    String          @map("user_id") @db.Uuid
@@ -62,6 +121,204 @@ model RefreshToken {
   @@index([userId], map: "idx_refresh_tokens_user")
   @@index([tokenHash], map: "idx_refresh_tokens_hash")
   @@map("refresh_tokens")
+}
+
+model DataProvider {
+  id         String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String?        @map("user_id") @db.Uuid
+  name       String
+  sourceType DataSourceType @default(manual) @map("source_type")
+  status     QuoteStatus    @default(current)
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  quotes Quote[]
+
+  @@unique([userId, name], map: "data_providers_user_name_key")
+  @@map("data_providers")
+}
+
+model Asset {
+  id         String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String         @map("user_id") @db.Uuid
+  ticker     String
+  name       String
+  class      AssetClass     @default(custom)
+  sector     String?
+  currency   String         @default("BRL")
+  notes      String?
+  source     String         @default("manual")
+  sourceType DataSourceType @default(manual) @map("source_type")
+  status     QuoteStatus    @default(manual)
+  observedAt DateTime?      @map("observed_at") @db.Timestamptz(6)
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  quotes       Quote[]
+  transactions PortfolioTransaction[]
+  snapshots    PositionSnapshot[]
+  dividendEvents DividendEvent[]
+  dividendReceipts PortfolioDividendReceipt[]
+
+  @@unique([userId, ticker], map: "assets_user_ticker_key")
+  @@index([userId, class], map: "idx_assets_user_class")
+  @@map("assets")
+}
+
+model Quote {
+  id         String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String         @map("user_id") @db.Uuid
+  assetId    String         @map("asset_id") @db.Uuid
+  providerId String?        @map("provider_id") @db.Uuid
+  price      Decimal        @db.Decimal(20, 8)
+  currency   String         @default("BRL")
+  source     String         @default("manual")
+  sourceType DataSourceType @default(manual) @map("source_type")
+  status     QuoteStatus    @default(manual)
+  quotedAt   DateTime       @map("quoted_at") @db.Timestamptz(6)
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  asset    Asset         @relation(fields: [assetId], references: [id])
+  provider DataProvider? @relation(fields: [providerId], references: [id])
+
+  @@index([userId, assetId, quotedAt], map: "idx_quotes_user_asset_quoted")
+  @@map("quotes")
+}
+
+model Portfolio {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  transactions PortfolioTransaction[]
+  snapshots    PositionSnapshot[]
+  audits       CalculationAudit[]
+  dividendReceipts PortfolioDividendReceipt[]
+
+  @@index([userId], map: "idx_portfolios_user")
+  @@map("portfolios")
+}
+
+model PortfolioTransaction {
+  id                 String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String                   @map("user_id") @db.Uuid
+  portfolioId        String                   @map("portfolio_id") @db.Uuid
+  assetId            String                   @map("asset_id") @db.Uuid
+  type               PortfolioTransactionType
+  quantity           Decimal?                 @db.Decimal(24, 10)
+  unitPrice          Decimal?                 @map("unit_price") @db.Decimal(20, 8)
+  grossAmount        Decimal?                 @map("gross_amount") @db.Decimal(20, 8)
+  fees               Decimal                  @default(0) @db.Decimal(20, 8)
+  taxes              Decimal                  @default(0) @db.Decimal(20, 8)
+  totalAmount        Decimal                  @map("total_amount") @db.Decimal(20, 8)
+  currency           String                   @default("BRL")
+  occurredAt         DateTime                 @map("occurred_at") @db.Date
+  notes              String?
+  source             String                   @default("manual")
+  sourceType         DataSourceType           @default(manual) @map("source_type")
+  status             QuoteStatus              @default(manual)
+  legacyInvestmentId String?                  @unique(map: "portfolio_transactions_legacy_investment_key") @map("legacy_investment_id") @db.Uuid
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id])
+  asset     Asset     @relation(fields: [assetId], references: [id])
+
+  @@index([userId, portfolioId, occurredAt], map: "idx_portfolio_transactions_user_portfolio_date")
+  @@index([userId, assetId], map: "idx_portfolio_transactions_user_asset")
+  @@map("portfolio_transactions")
+}
+
+model PositionSnapshot {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  portfolioId    String   @map("portfolio_id") @db.Uuid
+  assetId        String   @map("asset_id") @db.Uuid
+  quantity       Decimal  @db.Decimal(24, 10)
+  averagePrice   Decimal  @map("average_price") @db.Decimal(20, 8)
+  costBasis      Decimal  @map("cost_basis") @db.Decimal(20, 8)
+  currentValue   Decimal  @map("current_value") @db.Decimal(20, 8)
+  dividends      Decimal  @default(0) @db.Decimal(20, 8)
+  unrealizedGain Decimal  @map("unrealized_gain") @db.Decimal(20, 8)
+  roi            Decimal  @default(0) @db.Decimal(20, 8)
+  calculatedAt   DateTime @default(now()) @map("calculated_at") @db.Timestamptz(6)
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id])
+  asset     Asset     @relation(fields: [assetId], references: [id])
+
+  @@index([userId, portfolioId, calculatedAt], map: "idx_position_snapshots_user_portfolio_time")
+  @@map("position_snapshots")
+}
+
+model CalculationAudit {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  portfolioId  String   @map("portfolio_id") @db.Uuid
+  scope        String
+  formula      String
+  inputs       Json
+  result       Json
+  calculatedAt DateTime @default(now()) @map("calculated_at") @db.Timestamptz(6)
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id])
+
+  @@index([userId, portfolioId, calculatedAt], map: "idx_calculation_audits_user_portfolio_time")
+  @@map("calculation_audits")
+}
+
+model DividendEvent {
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String              @map("user_id") @db.Uuid
+  assetId        String              @map("asset_id") @db.Uuid
+  source         String              @default("manual")
+  sourceType     DataSourceType      @default(manual) @map("source_type")
+  status         DividendEventStatus @default(announced)
+  exDate         DateTime?           @map("ex_date") @db.Date
+  paymentDate    DateTime            @map("payment_date") @db.Date
+  amountPerShare Decimal             @map("amount_per_share") @db.Decimal(20, 8)
+  currency       String              @default("BRL")
+  notes          String?
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  asset    Asset                      @relation(fields: [assetId], references: [id])
+  receipts PortfolioDividendReceipt[]
+
+  @@index([userId, assetId, paymentDate], map: "idx_dividend_events_user_asset_payment")
+  @@map("dividend_events")
+}
+
+model PortfolioDividendReceipt {
+  id              String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String                @map("user_id") @db.Uuid
+  portfolioId     String                @map("portfolio_id") @db.Uuid
+  assetId         String                @map("asset_id") @db.Uuid
+  dividendEventId String?               @map("dividend_event_id") @db.Uuid
+  status          DividendReceiptStatus @default(pending)
+  quantity        Decimal?              @db.Decimal(24, 10)
+  amountPerShare  Decimal               @map("amount_per_share") @db.Decimal(20, 8)
+  grossAmount     Decimal?              @map("gross_amount") @db.Decimal(20, 8)
+  taxes           Decimal               @default(0) @db.Decimal(20, 8)
+  totalAmount     Decimal?              @map("total_amount") @db.Decimal(20, 8)
+  currency        String                @default("BRL")
+  exDate          DateTime?             @map("ex_date") @db.Date
+  paymentDate     DateTime              @map("payment_date") @db.Date
+  receivedAt      DateTime?             @map("received_at") @db.Date
+  transactionId   String?               @map("transaction_id") @db.Uuid
+  notes           String?
+  source          String                @default("manual")
+  sourceType      DataSourceType        @default(manual) @map("source_type")
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  portfolio Portfolio      @relation(fields: [portfolioId], references: [id])
+  asset     Asset          @relation(fields: [assetId], references: [id])
+  event     DividendEvent? @relation(fields: [dividendEventId], references: [id])
+
+  @@index([userId, portfolioId, paymentDate], map: "idx_dividend_receipts_user_portfolio_payment")
+  @@index([userId, assetId], map: "idx_dividend_receipts_user_asset")
+  @@map("portfolio_dividend_receipts")
 }
 
 model Transaction {

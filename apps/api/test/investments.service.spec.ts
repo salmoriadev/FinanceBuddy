@@ -5,6 +5,7 @@
 import { NotFoundException } from "@nestjs/common";
 import { InvestmentsService } from "../src/modules/investments/investments.service";
 import { InvestmentsRepository } from "../src/modules/investments/investments.repository";
+import { InvestmentMarketDataService } from "../src/modules/investments/investment-market-data.service";
 
 describe("InvestmentsService", () => {
   const repository = {
@@ -14,7 +15,12 @@ describe("InvestmentsService", () => {
     delete: jest.fn(),
   } as unknown as jest.Mocked<InvestmentsRepository>;
 
-  const service = new InvestmentsService(repository);
+  const marketData = {
+    searchAssets: jest.fn(),
+    getQuotes: jest.fn(),
+  } as unknown as jest.Mocked<InvestmentMarketDataService>;
+
+  const service = new InvestmentsService(repository, marketData);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -35,6 +41,9 @@ describe("InvestmentsService", () => {
     expect(repository.create).toHaveBeenCalledWith("user-1", {
       name: "ETF",
       category: null,
+      assetSymbol: null,
+      quantity: null,
+      averagePrice: null,
       investedAmount: 1000,
       currentValue: 1200,
       startDate: null,

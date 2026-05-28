@@ -80,6 +80,151 @@ export interface InvestmentAssetSearchResult {
   logoUrl?: string | null;
 }
 
+export type AssetClass =
+  | "stock"
+  | "fii"
+  | "etf"
+  | "bdr"
+  | "fixed_income"
+  | "crypto"
+  | "custom";
+
+export type QuoteStatus =
+  | "current"
+  | "stale"
+  | "manual"
+  | "estimated"
+  | "incomplete";
+
+export type DataSourceType = "manual" | "mock" | "external" | "legacy_manual";
+
+export type PortfolioTransactionType =
+  | "buy"
+  | "sell"
+  | "dividend"
+  | "fee"
+  | "manual_adjustment"
+  | "opening_balance";
+
+export type DividendEventStatus =
+  | "announced"
+  | "confirmed"
+  | "received"
+  | "cancelled";
+
+export type DividendReceiptStatus = "pending" | "received" | "cancelled";
+
+export interface Quote {
+  id: string;
+  user_id: string;
+  asset_id: string;
+  price: number;
+  currency: string;
+  source: string;
+  source_type: DataSourceType;
+  status: QuoteStatus;
+  quoted_at: string;
+  created_at: string;
+}
+
+export interface Asset {
+  id: string;
+  user_id: string;
+  ticker: string;
+  name: string;
+  class: AssetClass;
+  sector: string | null;
+  currency: string;
+  notes: string | null;
+  source: string;
+  source_type: DataSourceType;
+  status: QuoteStatus;
+  observed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  latest_quote: Quote | null;
+}
+
+export interface Portfolio {
+  id: string;
+  user_id: string;
+  name: string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PortfolioPosition {
+  asset: Asset;
+  quantity: number;
+  averagePrice: number;
+  costBasis: number;
+  currentValue: number;
+  dividends: number;
+  unrealizedGain: number;
+  realizedGain: number;
+  roi: number;
+  latestQuote: Quote | null;
+  audit: {
+    formula: string;
+    eventCount: number;
+    quoteSource: string | null;
+    quoteStatus: QuoteStatus;
+    quotedAt: string | null;
+  };
+}
+
+export interface PortfolioDividendReceipt {
+  id: string;
+  user_id: string;
+  portfolio_id: string;
+  asset_id: string;
+  dividend_event_id: string | null;
+  status: DividendReceiptStatus;
+  quantity: number | null;
+  amount_per_share: number;
+  gross_amount: number | null;
+  taxes: number;
+  total_amount: number | null;
+  currency: string;
+  ex_date: string | null;
+  payment_date: string;
+  received_at: string | null;
+  transaction_id: string | null;
+  notes: string | null;
+  source: string;
+  source_type: DataSourceType;
+  created_at: string;
+  updated_at: string;
+  asset: Asset;
+}
+
+export interface PortfolioMonthlyReport {
+  portfolioId: string;
+  month: string;
+  periodStart: string;
+  periodEnd: string;
+  contributions: number;
+  sales: number;
+  dividendsReceived: number;
+  estimatedCapitalGain: number;
+  portfolioValue: number;
+  transactionCount: number;
+  pendingData: {
+    staleQuotes: number;
+    missingQuotes: number;
+    pendingDividends: number;
+    hasPendingData: boolean;
+  };
+  dividends: Array<{
+    id: string;
+    status: DividendReceiptStatus;
+    ticker: string;
+    paymentDate: string;
+    totalAmount: number | null;
+  }>;
+}
+
 export interface MonthlyData {
   month: string;
   income: number;
