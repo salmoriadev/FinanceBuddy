@@ -90,7 +90,8 @@ Why this matters:
 
 ### S-03: Auth Table Hardening
 
-Status: done in code, pending database migration application.
+Status: done and applied to the configured Supabase/Postgres database on
+2026-06-01.
 
 Implemented behavior:
 
@@ -104,7 +105,7 @@ Important file:
 
 Operational note:
 
-- This only takes effect after applying the Supabase migration.
+- The migration has been applied through `psql` using `apps/api/.env`.
 - The app uses Prisma/API-managed auth, so frontend code should keep talking to
   the Nest API and never directly to these tables.
 
@@ -209,10 +210,9 @@ Note:
   the Codex sandbox. If they fail with `listen EPERM: operation not permitted
   0.0.0.0`, rerun with elevated sandbox permission.
 
-## Migrations To Apply In Supabase
+## Supabase Migration Status
 
-Apply these migrations in order after the already existing investment/security
-migrations:
+These migrations were applied in order through `psql` on 2026-06-01:
 
 1. `supabase/migrations/20260531120000_harden_custom_auth_tables.sql`
 2. `supabase/migrations/20260531123000_add_refresh_token_family.sql`
@@ -225,9 +225,16 @@ Important operational details:
 - `20260531124000` creates `security_events`.
 - The Prisma schema already expects the new columns/models.
 
-If the deployed database does not have these migrations but the new API code is
-deployed, refresh-token operations can fail because Prisma will expect columns
-that do not exist yet.
+Validation queries confirmed:
+
+- `refresh_tokens.family_id` exists.
+- `refresh_tokens.replaced_by_token_id` exists.
+- `public.security_events` exists.
+- RLS is enabled for `users`, `refresh_tokens`, and `security_events`.
+
+If another environment is used later, apply the same migrations before deploying
+the new API code there. Refresh-token operations depend on those columns and the
+`security_events` table.
 
 ## What Still Remains From The Report
 

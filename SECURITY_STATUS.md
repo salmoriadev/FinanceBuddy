@@ -1,6 +1,6 @@
 # FinanceBuddy Security Status
 
-Last updated: 2026-05-31
+Last updated: 2026-06-01
 
 This file tracks the security improvement backlog from
 `security_best_practices_report.md` and records what has been implemented.
@@ -30,13 +30,15 @@ Main files:
 
 ### S-03: Auth Table RLS And Client Role Denial
 
-**Status:** Done in code, pending Supabase migration application
+**Status:** Done and applied to the configured Supabase/Postgres database on
+2026-06-01
 
 Implemented controls:
 
 - Enabled RLS on API-managed `users` and `refresh_tokens`.
 - Revoked direct access from Supabase `anon` and `authenticated` roles.
 - Added explicit deny policies for browser-facing roles.
+- Verified `users`, `refresh_tokens`, and `security_events` have RLS enabled.
 
 Main file:
 
