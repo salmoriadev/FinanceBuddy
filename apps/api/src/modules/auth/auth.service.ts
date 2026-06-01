@@ -85,7 +85,12 @@ export class AuthService {
 
     const tokenHash = this.hashRefreshToken(refreshToken);
     const stored = await this.repository.findRefreshTokenByHash(tokenHash);
-    if (!stored || stored.revokedAt) {
+    if (!stored) {
+      throw new UnauthorizedException("Refresh token invalid");
+    }
+
+    if (stored.revokedAt) {
+      await this.repository.revokeUserTokens(stored.userId);
       throw new UnauthorizedException("Refresh token invalid");
     }
 

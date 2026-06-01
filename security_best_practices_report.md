@@ -18,6 +18,8 @@ clearer production security posture.
 
 - Access tokens are kept in React state instead of `localStorage` or
   `sessionStorage`: `apps/web/src/hooks/useAuth.tsx:43`.
+- Reused revoked refresh tokens now revoke active sessions for the user:
+  `apps/api/src/modules/auth/auth.service.ts:88`.
 - API requests include credentials only for the API client and use bearer access
   tokens for protected resources: `apps/web/src/lib/api.ts:44`.
 - Protected API controllers use `JwtAuthGuard`, including transactions, budgets,
@@ -62,14 +64,23 @@ issues depending on reachable code paths.
 
 **Severity:** High
 
+**Status:** Partially addressed. A reused revoked refresh token now revokes the
+user's active refresh tokens. A future pass can add token-family metadata and a
+persisted security event.
+
 **Location:** `apps/api/src/modules/auth/auth.service.ts:80`
 
-**Evidence:** On refresh, the service looks up the refresh token hash and rejects
-missing or revoked tokens:
+**Evidence:** On refresh, the service looks up the refresh token hash, rejects
+missing tokens, and revokes active sessions if a revoked token is presented:
 
 ```ts
 const stored = await this.repository.findRefreshTokenByHash(tokenHash);
-if (!stored || stored.revokedAt) {
+if (!stored) {
+  throw new UnauthorizedException("Refresh token invalid");
+}
+
+if (stored.revokedAt) {
+  await this.repository.revokeUserTokens(stored.userId);
   throw new UnauthorizedException("Refresh token invalid");
 }
 ```
@@ -91,6 +102,10 @@ and revoke the related session family or all active tokens for that user.
 ### S-03: Custom Auth Tables Do Not Show RLS/Privilege Hardening
 
 **Severity:** High
+
+**Status:** Addressed by
+`supabase/migrations/20260531120000_harden_custom_auth_tables.sql`. The
+remaining operational task is applying the migration in Supabase.
 
 **Location:** `supabase/migrations/20260202120000_add_auth_tables.sql:7`
 
