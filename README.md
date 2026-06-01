@@ -138,7 +138,7 @@ FinanceBuddy includes security controls focused on authentication, authorization
 - Secret scanning with Gitleaks
 - SAST with Semgrep OWASP rules
 - Filesystem vulnerability scanning with Trivy
-- Informational dependency checks with `npm audit --audit-level=high`
+- Blocking dependency checks with `npm audit --audit-level=high`
 
 ### Main security scenario
 

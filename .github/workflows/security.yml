@@ -50,9 +50,8 @@ jobs:
           ignore-unfixed: true
 
   dependency-audit:
-    name: Dependency audit (informational)
+    name: Dependency audit
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4

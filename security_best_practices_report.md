@@ -40,26 +40,28 @@ clearer production security posture.
 
 **Severity:** High
 
+**Status:** Addressed. The dependency tree was upgraded in a controlled pass and
+`npm audit --audit-level=high` now reports `found 0 vulnerabilities`.
+
 **Location:** `apps/api/package.json:22`, `apps/web/package.json:65`,
 `package-lock.json`
 
-**Evidence:** `npm audit --omit=dev --audit-level=high` currently reports 16
-production dependency advisories, including high-severity advisories in
-`lodash`, `multer`, `path-to-regexp`, and `picomatch`. Some fixes require
-breaking upgrades such as NestJS 11 and Swagger 11.
+**Evidence:** The original audit reported 16 production dependency advisories,
+including high-severity advisories in `lodash`, `multer`, `path-to-regexp`, and
+`picomatch`. The fix upgraded NestJS, Swagger, Vite, Vitest, and related
+transitive dependencies, then ran `npm audit fix` and `npm dedupe`.
 
 **Impact:** Known vulnerable dependency versions weaken the AppSec/DevSecOps
 story and may expose denial-of-service, prototype pollution, or route parsing
 issues depending on reachable code paths.
 
-**Fix:**
+**Fix applied:**
 
-- Run a dedicated dependency upgrade phase, not `npm audit fix --force` blindly.
-- Upgrade NestJS packages together and rerun API tests.
-- Upgrade Swagger separately and verify docs generation.
-- Upgrade Vite/PostCSS/tooling for dev-only advisories after production deps.
-- Change the GitHub Actions audit job from informational to blocking once the
-  dependency tree is clean.
+- Upgraded NestJS packages together and reran API tests.
+- Upgraded Swagger and verified API build.
+- Upgraded Vite/Vitest/PostCSS tooling and reran web tests/build.
+- Removed the incompatible development-only `lovable-tagger` Vite plugin.
+- Changed the GitHub Actions audit job from informational to blocking.
 
 ### S-02: Refresh Token Reuse Is Rejected But Not Detected As Compromise
 

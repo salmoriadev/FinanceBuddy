@@ -240,16 +240,16 @@ the new API code there. Refresh-token operations depend on those columns and the
 
 Tracked in `SECURITY_STATUS.md`:
 
-- S-01: dependency vulnerability upgrade pass.
 - S-08: heavy user-scoped read controls beyond current throttles/cache.
 - S-09: security event logging for rate-limit blocks and repeated
   authorization failures.
 - S-10: optional final refresh-cookie prefix hardening after production topology
   is fixed.
-- S-01: dependency vulnerability upgrade pass.
 
 Completed or documented since the original report:
 
+- S-01: dependency vulnerability upgrade pass is complete and
+  `npm audit --audit-level=high` reports `found 0 vulnerabilities`.
 - S-05: Swagger is disabled in production application code.
 - S-10: deployment cookie strategy is documented.
 - S-11: chart style keys/colors are constrained before dynamic CSS injection.
@@ -262,8 +262,8 @@ Recommended next order:
    failures if an admin review surface is added.
 2. S-08: add materialized/cached report snapshots if real portfolio datasets
    grow.
-3. S-01: dependency upgrade pass. Highest operational risk because it may
-   require Nest/Vite/Swagger major upgrades.
+3. Keep the dependency audit blocking in CI and handle future advisories in
+   small grouped upgrade passes.
 
 Security requirement and deployment documents:
 
@@ -293,12 +293,8 @@ Before either session starts coding:
 
 Suggested split:
 
-- Session A: S-01 dependency pass.
-- Session B: S-08/S-09 operational hardening, but only after checking current
-  Git state.
-
-Avoid doing S-01 in parallel with other API work. Dependency upgrades can create
-large lockfile churn and framework-level breakage.
+- Session A: S-08 report/query resource controls.
+- Session B: S-09 rate-limit and repeated authorization event logging.
 
 ## Quick Explanation In Plain Language
 

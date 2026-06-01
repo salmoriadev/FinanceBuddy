@@ -7,6 +7,32 @@ This file tracks the security improvement backlog from
 
 ## Done
 
+### S-01: Dependency Vulnerability Upgrade Pass
+
+**Status:** Done
+
+Implemented controls:
+
+- Upgraded NestJS API packages from 10.x to 11.x as a coordinated framework
+  pass.
+- Upgraded Swagger, throttler, config, Vite, Vitest, PostCSS, and related
+  tooling.
+- Removed the development-only `lovable-tagger` Vite plugin because it is not
+  compatible with Vite 8 and kept an older vulnerable Vite/esbuild tree in the
+  lockfile.
+- Ran `npm audit fix` and `npm dedupe` to clean vulnerable transitive
+  dependencies.
+- Verified `npm audit --audit-level=high` reports `found 0 vulnerabilities`.
+- Made the GitHub Actions dependency audit blocking.
+
+Main files:
+
+- `apps/api/package.json`
+- `apps/web/package.json`
+- `apps/web/vite.config.ts`
+- `package-lock.json`
+- `.github/workflows/security.yml`
+
 ### S-02: Refresh Token Reuse Detection
 
 **Status:** Done
@@ -205,14 +231,4 @@ Remaining:
 
 ## Remaining
 
-### S-01: Dependency Vulnerability Upgrade Pass
-
-**Status:** Todo
-
-Remaining:
-
-- Upgrade vulnerable production dependencies in a controlled pass.
-- Make `npm audit --audit-level=high` blocking once advisories are resolved.
-
-Only S-01 remains completely unstarted. S-08, S-09, and S-10 have explicit
-remaining operational work listed above.
+S-08, S-09, and S-10 have explicit remaining operational work listed above.

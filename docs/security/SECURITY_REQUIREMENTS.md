@@ -23,7 +23,7 @@ Primary goals:
 
 | ID | Requirement | Status | Evidence |
 | --- | --- | --- | --- |
-| S-01 | Upgrade vulnerable production dependencies in a controlled pass. | Todo | `security_best_practices_report.md` |
+| S-01 | Upgrade vulnerable production dependencies in a controlled pass. | Done | `package-lock.json`, `.github/workflows/security.yml` |
 | S-02 | Detect refresh-token reuse and revoke the compromised token family. | Done | `apps/api/src/modules/auth/auth.service.ts`, `apps/api/test/auth.service.spec.ts` |
 | S-03 | Harden custom auth tables with RLS and client-role denial. | Done and applied | `supabase/migrations/20260531120000_harden_custom_auth_tables.sql` |
 | S-04 | Require explicit CSRF tokens for cookie-authenticated auth routes. | Done | `apps/api/src/common/guards/csrf-protection.guard.ts`, `apps/web/src/lib/api.ts` |
@@ -41,9 +41,10 @@ Primary goals:
 ### S-01: Dependency Upgrade Pass
 
 - `npm audit --omit=dev --audit-level=high` has no high or critical production
-  advisories, or every remaining advisory has a documented non-reachable reason.
-- NestJS, Swagger, Vite, and related packages are upgraded in grouped commits.
-- CI audit can be changed from informational to blocking.
+  advisories.
+- NestJS, Swagger, Vite, Vitest, and related packages are upgraded in a
+  controlled grouped pass.
+- CI audit is blocking.
 - API tests, web tests, lint, and builds pass after the upgrade.
 
 ### S-05: Swagger Production Protection
@@ -109,4 +110,3 @@ npm run lint
 npm run build:api
 npm run build:web
 ```
-
