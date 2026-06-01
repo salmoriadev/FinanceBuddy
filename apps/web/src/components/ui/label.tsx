@@ -1,7 +1,3 @@
-/**
- * This file implements Label behavior for the frontend component layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import * as React from "react";
 import * as LabelPrimitive from "@radix-ui/react-label";
 import { cva, type VariantProps } from "class-variance-authority";

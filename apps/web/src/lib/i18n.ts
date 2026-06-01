@@ -1,7 +1,3 @@
-/**
- * This file implements I18n behavior for the frontend utility layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 export type Locale = "en" | "pt-BR";
 export type Currency = "USD" | "BRL";
 

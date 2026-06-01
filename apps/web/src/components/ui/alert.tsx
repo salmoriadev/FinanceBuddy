@@ -1,7 +1,3 @@
-/**
- * This file implements Alert behavior for the frontend component layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 

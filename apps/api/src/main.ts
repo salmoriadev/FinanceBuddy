@@ -1,7 +1,3 @@
-/**
- * This file implements Main behavior for the application core layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";

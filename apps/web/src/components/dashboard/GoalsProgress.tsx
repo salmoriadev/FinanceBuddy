@@ -1,7 +1,3 @@
-/**
- * This file implements GoalsProgress behavior for the frontend component layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { SavingsGoal } from "@/types/finance";

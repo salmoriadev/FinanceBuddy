@@ -1,7 +1,3 @@
-/**
- * This file implements Api Mappers behavior for the frontend utility layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import {
   Asset,
   AssetClass,

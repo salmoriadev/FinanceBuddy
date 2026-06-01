@@ -1,7 +1,3 @@
-/**
- * This file implements UseTransactions behavior for the frontend hooks layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "./useAuth";
 import { Transaction, TransactionType } from "@/types/finance";

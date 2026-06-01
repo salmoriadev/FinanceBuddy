@@ -1,7 +1,3 @@
-/**
- * This file implements Default Categories behavior for the backend module layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 export const DEFAULT_CATEGORIES_EN = [
   {
     name: "Food",

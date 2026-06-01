@@ -1,7 +1,3 @@
-/**
- * This file implements Matching behavior for the frontend domain layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import { Category } from "@/types/finance";
 
 export interface CategoryMatcher {

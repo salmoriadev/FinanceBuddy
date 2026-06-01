@@ -1,7 +1,3 @@
-/**
- * This file implements Reports.Controller behavior for the backend module layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";

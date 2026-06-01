@@ -1,7 +1,3 @@
-/**
- * This file implements Api behavior for the frontend utility layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 export class ApiError extends Error {
   status: number;
   details?: unknown;

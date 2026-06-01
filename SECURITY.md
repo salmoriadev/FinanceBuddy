@@ -45,7 +45,7 @@ FinanceBuddy focuses on the risks that matter most for a personal finance API:
 - API4: Unrestricted Resource Consumption
 - API8: Security Misconfiguration
 
-## AppSec Scenario
+## Main Scenario
 
 The most important security scenario is preventing cross-user financial data
 access. For example, if user A changes an ID in a request to reference user B's
@@ -60,7 +60,7 @@ Expected results:
 Returning `404` for another user's resource is intentional. It avoids confirming
 that the target record exists.
 
-## DevSecOps Checks
+## Automated Checks
 
 Security checks run in GitHub Actions for pull requests and pushes to `main`:
 

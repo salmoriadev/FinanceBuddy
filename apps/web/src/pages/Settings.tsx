@@ -1,7 +1,3 @@
-/**
- * This file implements Settings behavior for the frontend page layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { toast } from "sonner";

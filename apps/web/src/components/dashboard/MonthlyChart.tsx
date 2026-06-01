@@ -1,7 +1,3 @@
-/**
- * This file implements MonthlyChart behavior for the frontend component layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import {
   AreaChart,
   Area,

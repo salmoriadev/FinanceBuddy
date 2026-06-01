@@ -1,7 +1,3 @@
-/**
- * This file implements Select behavior for the frontend component layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";

@@ -1,7 +1,3 @@
-/**
- * This file implements App.Module behavior for the application core layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";

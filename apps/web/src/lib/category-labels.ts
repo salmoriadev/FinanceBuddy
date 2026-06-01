@@ -1,7 +1,3 @@
-/**
- * This file implements Category Labels behavior for the frontend utility layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import { Locale } from "@/lib/i18n";
 import { TransactionType } from "@/types/finance";
 

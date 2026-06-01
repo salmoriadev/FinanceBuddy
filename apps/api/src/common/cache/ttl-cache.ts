@@ -1,7 +1,3 @@
-/**
- * This file implements Ttl Cache behavior for the backend shared infrastructure layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 export class TtlCache<TKey, TValue> {
   private readonly store = new Map<TKey, { value: TValue; expiresAt: number }>();
 

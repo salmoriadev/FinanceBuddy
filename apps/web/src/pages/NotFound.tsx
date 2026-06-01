@@ -1,7 +1,3 @@
-/**
- * This file implements NotFound behavior for the frontend page layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import { Link, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { useI18n } from "@/hooks/useI18n";

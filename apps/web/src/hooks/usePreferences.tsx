@@ -1,7 +1,3 @@
-/**
- * This file implements UsePreferences behavior for the frontend hooks layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import { useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Currency, DEFAULT_CURRENCY, DEFAULT_LOCALE, Locale } from "@/lib/i18n";

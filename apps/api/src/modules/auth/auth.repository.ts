@@ -1,7 +1,3 @@
-/**
- * This file implements Auth.Repository behavior for the backend module layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../database/prisma.service";

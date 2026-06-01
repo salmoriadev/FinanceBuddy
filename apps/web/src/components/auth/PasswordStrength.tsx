@@ -1,7 +1,3 @@
-/**
- * This file implements PasswordStrength behavior for the frontend component layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import { Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";

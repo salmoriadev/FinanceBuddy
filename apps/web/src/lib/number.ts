@@ -1,7 +1,3 @@
-/**
- * This file implements Number behavior for the frontend utility layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 export const parseCurrency = (value: string) => {
   const trimmed = value.replace(/\s/g, "");
   if (!trimmed) return 0;

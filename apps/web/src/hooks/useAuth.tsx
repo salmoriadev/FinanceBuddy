@@ -1,7 +1,3 @@
-/**
- * This file implements UseAuth behavior for the frontend hooks layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 /* eslint-disable react-refresh/only-export-components */
 import {
   useState,

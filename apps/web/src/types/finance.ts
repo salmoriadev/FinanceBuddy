@@ -1,7 +1,3 @@
-/**
- * This file implements Finance behavior for the shared types layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 export type TransactionType = "income" | "expense";
 
 export interface Category {

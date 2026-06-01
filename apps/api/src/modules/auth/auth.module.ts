@@ -1,7 +1,3 @@
-/**
- * This file implements Auth.Module behavior for the backend module layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import { Module } from "@nestjs/common";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";

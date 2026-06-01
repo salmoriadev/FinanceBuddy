@@ -1,7 +1,3 @@
-/**
- * This file implements Transactions behavior for the frontend page layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import { useMemo, useState, useDeferredValue, useCallback } from "react";
 import { Navigate } from "react-router-dom";
 import { Plus, Filter, Loader2 } from "lucide-react";

@@ -1,7 +1,3 @@
-/**
- * This file implements Jwt Auth.Guard behavior for the backend shared infrastructure layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import {
   CanActivate,
   ExecutionContext,

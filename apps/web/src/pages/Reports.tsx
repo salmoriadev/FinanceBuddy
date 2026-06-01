@@ -1,7 +1,3 @@
-/**
- * This file implements Reports behavior for the frontend page layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Loader2, TrendingUp, TrendingDown, Calendar } from "lucide-react";

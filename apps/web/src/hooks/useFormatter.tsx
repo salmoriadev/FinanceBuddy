@@ -1,7 +1,3 @@
-/**
- * This file implements UseFormatter behavior for the frontend hooks layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import { useMemo } from "react";
 import { isValid } from "date-fns";
 import { usePreferences } from "@/hooks/usePreferences";

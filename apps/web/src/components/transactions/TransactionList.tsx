@@ -1,7 +1,3 @@
-/**
- * This file implements TransactionList behavior for the frontend component layer.
- * Its role is to keep this responsibility isolated and maintainable within FinanceBuddy.
- */
 import { memo, useMemo } from "react";
 import { Trash2, TrendingDown, TrendingUp, RefreshCw, Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
