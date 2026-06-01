@@ -3,9 +3,10 @@ import * as RechartsPrimitive from "recharts";
 import { useFormatter } from "@/hooks/useFormatter";
 
 import { cn } from "@/lib/utils";
-
-// Format: { THEME_NAME: CSS_SELECTOR }
-const THEMES = { light: "", dark: ".dark" } as const;
+import {
+  getSafeChartStyleRules,
+  type ChartThemeName,
+} from "@/components/ui/chart-style";
 
 export type ChartConfig = {
   [k in string]: {
@@ -13,7 +14,7 @@ export type ChartConfig = {
     icon?: React.ComponentType;
   } & (
     | { color?: string; theme?: never }
-    | { color?: never; theme: Record<keyof typeof THEMES, string> }
+    | { color?: never; theme: Record<ChartThemeName, string> }
   );
 };
 
@@ -70,30 +71,16 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
     ([_, config]) => config.theme || config.color,
   );
+  const styleRules = getSafeChartStyleRules(id, colorConfig);
 
-  if (!colorConfig.length) {
+  if (!styleRules) {
     return null;
   }
 
   return (
     <style
       dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart="${id}"] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
-  })
-  .join("\n")}
-}
-`,
-          )
-          .join("\n"),
+        __html: styleRules,
       }}
     />
   );

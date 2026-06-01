@@ -11,10 +11,12 @@ const hashRefreshToken = (token: string) =>
 
 describe("AuthService", () => {
   const repository = {
+    findUserByEmail: jest.fn(),
     findRefreshTokenByHash: jest.fn(),
     revokeUserTokens: jest.fn(),
     revokeTokenFamily: jest.fn(),
     findUserById: jest.fn(),
+    updateLastLogin: jest.fn(),
     createRefreshToken: jest.fn(),
     revokeRefreshToken: jest.fn(),
     createSecurityEvent: jest.fn(),
@@ -27,6 +29,7 @@ describe("AuthService", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    repository.createSecurityEvent.mockResolvedValue({} as never);
   });
 
   const requestWithRefreshToken = (token: string) =>
@@ -37,6 +40,33 @@ describe("AuthService", () => {
       get: jest.fn(() => "test-agent"),
       ip: "127.0.0.1",
     }) as unknown as Request;
+
+  it("records failed login attempts without storing raw email addresses", async () => {
+    repository.findUserByEmail.mockResolvedValue(null);
+
+    await expect(
+      service.login(
+        { email: "Missing.User@example.com", password: "bad-password" },
+        requestWithRefreshToken("unused"),
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(repository.createSecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "login_failed",
+        severity: "medium",
+        userAgent: "test-agent",
+        ipAddress: "127.0.0.1",
+        metadata: expect.objectContaining({
+          reason: "user_not_found",
+          emailHash: expect.any(String),
+        }),
+      }),
+    );
+    expect(
+      repository.createSecurityEvent.mock.calls[0]?.[0].metadata?.emailHash,
+    ).not.toContain("Missing.User");
+  });
 
   it("revokes active sessions when a revoked refresh token is reused", async () => {
     const rawToken = "stolen-old-refresh-token";
@@ -53,8 +83,6 @@ describe("AuthService", () => {
       revokedAt: new Date("2026-05-31T10:05:00.000Z"),
     });
     repository.revokeTokenFamily.mockResolvedValue({ count: 2 });
-    repository.createSecurityEvent.mockResolvedValue({} as never);
-
     await expect(
       service.refresh(requestWithRefreshToken(rawToken)),
     ).rejects.toBeInstanceOf(UnauthorizedException);
@@ -156,6 +184,18 @@ describe("AuthService", () => {
     expect(repository.revokeRefreshToken).toHaveBeenCalledWith(
       "old-refresh-token-id",
       "new-refresh-token-id",
+    );
+    expect(repository.createSecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-id",
+        type: "refresh_token_rotated",
+        severity: "info",
+        metadata: expect.objectContaining({
+          refreshTokenId: "old-refresh-token-id",
+          familyId: "family-id",
+          replacedByTokenId: "new-refresh-token-id",
+        }),
+      }),
     );
   });
 });

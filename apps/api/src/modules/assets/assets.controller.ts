@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { User } from "../../common/decorators/user.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { AssetsService } from "./assets.service";
@@ -45,11 +46,13 @@ export class AssetsController {
   }
 
   @Post(":id/quotes/refresh")
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   refreshQuote(@User() user: { id: string }, @Param("id") id: string) {
     return this.service.refreshQuote(user.id, id);
   }
 
   @Get(":id/quotes/lookup")
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   lookupQuote(
     @User() user: { id: string },
     @Param("id") id: string,

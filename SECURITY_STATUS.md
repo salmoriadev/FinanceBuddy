@@ -64,6 +64,24 @@ Main files:
 - `apps/api/src/modules/auth/auth.service.ts`
 - `apps/web/src/lib/api.ts`
 
+### S-05: Swagger Production Protection
+
+**Status:** Done
+
+Implemented controls:
+
+- Swagger is enabled in development by default.
+- Production no longer exposes Swagger at runtime, even if
+  `ENABLE_SWAGGER=true` is accidentally set.
+- Deployment documentation now recommends private/static API docs if production
+  docs are needed later.
+
+Main files:
+
+- `apps/api/src/main.ts`
+- `README.md`
+- `docs/security/DEPLOYMENT_SECURITY.md`
+
 ### S-06: Explicit Request Body Limits
 
 **Status:** Done
@@ -99,7 +117,56 @@ Main files:
 - `apps/api/src/modules/**/dto/*.ts`
 - `apps/api/test/financial-dto-validation.spec.ts`
 
+### S-11: Dynamic Chart Style Injection Constraints
+
+**Status:** Done
+
+Implemented controls:
+
+- Chart CSS variable suffixes are allowlisted before style injection.
+- Chart color values are limited to safe hex, CSS variable, RGB(A), and HSL(A)
+  formats.
+- CSS delimiter characters that could break declarations are rejected.
+- Tests cover safe values and rejected CSS injection attempts.
+
+Main files:
+
+- `apps/web/src/components/ui/chart.tsx`
+- `apps/web/src/components/ui/chart-style.ts`
+- `apps/web/test/chart-security.test.ts`
+
+### S-12: Trust Proxy Deployment Documentation
+
+**Status:** Documented
+
+Implemented controls:
+
+- Documented local, same-site production, and cross-site production settings.
+- Documented that `TRUST_PROXY=true` maps to one trusted proxy hop.
+- Added runtime verification checklist for real client IP logging and spoofed
+  forwarded headers.
+
+Main file:
+
+- `docs/security/DEPLOYMENT_SECURITY.md`
+
 ## Partially Done
+
+### S-08: Heavy User-Scoped Read Controls
+
+**Status:** Partially done
+
+Implemented:
+
+- Transaction pagination is capped at 200.
+- Reports service uses short-lived per-user/year cache entries.
+- Heavy report, portfolio audit/monthly report, quote lookup, and quote refresh
+  endpoints have stricter route-level throttles than the global API limit.
+
+Remaining:
+
+- Add materialized/cached portfolio report snapshots if real datasets grow.
+- Add endpoint-specific metrics before tuning limits further.
 
 ### S-09: Security Event Audit Trail
 
@@ -109,12 +176,32 @@ Implemented:
 
 - Added `security_events` table.
 - Persisted `refresh_token_reuse` events.
+- Persisted registration, login success/failure, refresh rotation, refresh
+  expiry, logout, password-change success, and password-change failure events.
+- Raw emails are not stored in security event metadata; login correlation uses a
+  one-way hash.
 
 Remaining:
 
-- Log failed login, password change, logout, rate-limit blocks, and repeated
-  authorization failures.
+- Log rate-limit blocks and repeated authorization failures.
 - Add reporting/retention strategy.
+
+### S-10: Refresh Cookie Hardening
+
+**Status:** Documented
+
+Implemented:
+
+- Documented cookie strategy for local, same-site production, and cross-site
+  production deployments.
+- Documented when to use `COOKIE_SAMESITE=lax` versus `COOKIE_SAMESITE=none`.
+- Documented keeping `COOKIE_DOMAIN` empty unless subdomain sharing is
+  intentional.
+
+Remaining:
+
+- Consider `__Secure-` cookie naming after the final production domain topology
+  is fixed.
 
 ## Remaining
 
@@ -127,45 +214,5 @@ Remaining:
 - Upgrade vulnerable production dependencies in a controlled pass.
 - Make `npm audit --audit-level=high` blocking once advisories are resolved.
 
-### S-05: Swagger Production Protection
-
-**Status:** Todo
-
-Remaining:
-
-- Protect Swagger in production or hard-disable it regardless of
-  `ENABLE_SWAGGER=true`.
-
-### S-08: Heavy User-Scoped Read Controls
-
-**Status:** Todo
-
-Remaining:
-
-- Add stronger limits/caching for report and audit endpoints as portfolio data
-  grows.
-
-### S-10: Refresh Cookie Hardening
-
-**Status:** Todo
-
-Remaining:
-
-- Decide deployment cookie strategy for same-site vs cross-site frontend/API.
-- Consider `__Secure-` cookie naming in production.
-
-### S-11: Dynamic Chart Style Injection Constraints
-
-**Status:** Todo
-
-Remaining:
-
-- Constrain chart color keys and values before injecting style content.
-
-### S-12: Trust Proxy Deployment Verification
-
-**Status:** Todo
-
-Remaining:
-
-- Document `TRUST_PROXY` values per deployment target and verify client IP logs.
+Only S-01 remains completely unstarted. S-08, S-09, and S-10 have explicit
+remaining operational work listed above.

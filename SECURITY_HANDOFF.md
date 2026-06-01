@@ -241,22 +241,34 @@ the new API code there. Refresh-token operations depend on those columns and the
 Tracked in `SECURITY_STATUS.md`:
 
 - S-01: dependency vulnerability upgrade pass.
-- S-05: Swagger production protection.
-- S-08: heavy user-scoped read controls.
-- S-09: complete security event audit trail beyond refresh-token reuse.
-- S-10: final refresh cookie hardening by deployment topology.
-- S-11: constrain dynamic chart style injection.
-- S-12: document and verify `TRUST_PROXY` per deployment.
+- S-08: heavy user-scoped read controls beyond current throttles/cache.
+- S-09: security event logging for rate-limit blocks and repeated
+  authorization failures.
+- S-10: optional final refresh-cookie prefix hardening after production topology
+  is fixed.
+- S-01: dependency vulnerability upgrade pass.
+
+Completed or documented since the original report:
+
+- S-05: Swagger is disabled in production application code.
+- S-10: deployment cookie strategy is documented.
+- S-11: chart style keys/colors are constrained before dynamic CSS injection.
+- S-12: `TRUST_PROXY` deployment assumptions and verification steps are
+  documented.
 
 Recommended next order:
 
-1. S-05: protect/disable Swagger in production. Small and low-risk.
-2. S-12: document deployment proxy/cookie assumptions. Low-risk and useful.
-3. S-11: constrain chart style values. Small frontend hardening.
-4. S-09: expand security event logging.
-5. S-08: add report/query resource controls.
-6. S-01: dependency upgrade pass. Highest operational risk because it may
+1. S-09: add security events for rate-limit blocks and repeated authorization
+   failures if an admin review surface is added.
+2. S-08: add materialized/cached report snapshots if real portfolio datasets
+   grow.
+3. S-01: dependency upgrade pass. Highest operational risk because it may
    require Nest/Vite/Swagger major upgrades.
+
+Security requirement and deployment documents:
+
+- `docs/security/SECURITY_REQUIREMENTS.md`
+- `docs/security/DEPLOYMENT_SECURITY.md`
 
 ## Coordination Rules For Two Sessions
 
@@ -281,8 +293,9 @@ Before either session starts coding:
 
 Suggested split:
 
-- Session A: S-05, S-12, documentation/deployment hardening.
-- Session B: S-11 or S-09, but only after checking current Git state.
+- Session A: S-01 dependency pass.
+- Session B: S-08/S-09 operational hardening, but only after checking current
+  Git state.
 
 Avoid doing S-01 in parallel with other API work. Dependency upgrades can create
 large lockfile churn and framework-level breakage.
@@ -299,5 +312,7 @@ FinanceBuddy now has a stronger security story:
 - Request bodies have a configured size limit.
 - Financial inputs now have bounds, so invalid values cannot silently distort
   reports.
+- Swagger is local-only, heavy report/quote endpoints are throttled, and chart
+  CSS injection is constrained.
 - Security status is tracked in a dedicated file so future work can continue
   without guessing what was already completed.

@@ -50,6 +50,13 @@ export class AuthService {
     });
 
     await this.ensureDefaultCategories(user.id, user.locale);
+    await this.recordSecurityEvent({
+      userId: user.id,
+      type: "user_registered",
+      severity: "info",
+      metadata: { emailHash: this.hashAuditEmail(email) },
+      req,
+    });
 
     const tokens = await this.issueTokens(user.id, user.email, req);
     return { user: this.safeUser(user), ...tokens };
@@ -59,16 +66,42 @@ export class AuthService {
     const email = dto.email.toLowerCase().trim();
     const user = await this.repository.findUserByEmail(email);
     if (!user) {
+      await this.recordSecurityEvent({
+        type: "login_failed",
+        severity: "medium",
+        metadata: {
+          reason: "user_not_found",
+          emailHash: this.hashAuditEmail(email),
+        },
+        req,
+      });
       throw new UnauthorizedException("Invalid credentials");
     }
 
     const valid = await this.verifyPassword(dto.password, user.passwordHash);
     if (!valid) {
+      await this.recordSecurityEvent({
+        userId: user.id,
+        type: "login_failed",
+        severity: "medium",
+        metadata: {
+          reason: "invalid_password",
+          emailHash: this.hashAuditEmail(email),
+        },
+        req,
+      });
       throw new UnauthorizedException("Invalid credentials");
     }
 
     await this.repository.updateLastLogin(user.id);
     await this.ensureDefaultCategories(user.id, user.locale);
+    await this.recordSecurityEvent({
+      userId: user.id,
+      type: "login_success",
+      severity: "info",
+      metadata: { emailHash: this.hashAuditEmail(email) },
+      req,
+    });
     const tokens = await this.issueTokens(user.id, user.email, req);
     return { user: this.safeUser(user), ...tokens };
   }
@@ -82,6 +115,12 @@ export class AuthService {
     const tokenHash = this.hashRefreshToken(refreshToken);
     const stored = await this.repository.findRefreshTokenByHash(tokenHash);
     if (!stored) {
+      await this.recordSecurityEvent({
+        type: "refresh_token_invalid",
+        severity: "medium",
+        metadata: { reason: "unknown_token" },
+        req,
+      });
       throw new UnauthorizedException("Refresh token invalid");
     }
 
@@ -103,6 +142,16 @@ export class AuthService {
     }
 
     if (stored.expiresAt.getTime() < Date.now()) {
+      await this.recordSecurityEvent({
+        userId: stored.userId,
+        type: "refresh_token_expired",
+        severity: "info",
+        metadata: {
+          refreshTokenId: stored.id,
+          familyId: stored.familyId,
+        },
+        req,
+      });
       throw new UnauthorizedException("Refresh token expired");
     }
 
@@ -115,6 +164,17 @@ export class AuthService {
       familyId: stored.familyId,
     });
     await this.repository.revokeRefreshToken(stored.id, tokens.refreshTokenId);
+    await this.recordSecurityEvent({
+      userId: stored.userId,
+      type: "refresh_token_rotated",
+      severity: "info",
+      metadata: {
+        refreshTokenId: stored.id,
+        familyId: stored.familyId,
+        replacedByTokenId: tokens.refreshTokenId,
+      },
+      req,
+    });
     return tokens;
   }
 
@@ -125,10 +185,20 @@ export class AuthService {
     const stored = await this.repository.findRefreshTokenByHash(tokenHash);
     if (stored && !stored.revokedAt) {
       await this.repository.revokeRefreshToken(stored.id);
+      await this.recordSecurityEvent({
+        userId: stored.userId,
+        type: "logout",
+        severity: "info",
+        metadata: {
+          refreshTokenId: stored.id,
+          familyId: stored.familyId,
+        },
+        req,
+      });
     }
   }
 
-  async changePassword(userId: string, dto: ChangePasswordDto) {
+  async changePassword(userId: string, dto: ChangePasswordDto, req?: Request) {
     this.assertPasswordStrength(dto.newPassword);
     const user = await this.repository.findUserById(userId);
     if (!user) {
@@ -136,11 +206,25 @@ export class AuthService {
     }
     const valid = await this.verifyPassword(dto.currentPassword, user.passwordHash);
     if (!valid) {
+      await this.recordSecurityEvent({
+        userId,
+        type: "password_change_failed",
+        severity: "medium",
+        metadata: { reason: "invalid_current_password" },
+        req,
+      });
       throw new UnauthorizedException("Current password is invalid");
     }
     const passwordHash = await this.hashPassword(dto.newPassword);
     await this.repository.updatePassword(userId, passwordHash, "argon2id");
     await this.repository.revokeUserTokens(userId);
+    await this.recordSecurityEvent({
+      userId,
+      type: "password_changed",
+      severity: "high",
+      metadata: { revokedRefreshTokens: true },
+      req,
+    });
   }
 
   async getProfile(userId: string) {
@@ -199,6 +283,27 @@ export class AuthService {
       locale: user.locale ?? "en",
       currency: user.currency ?? "BRL",
     };
+  }
+
+  private async recordSecurityEvent(data: {
+    userId?: string | null;
+    type: string;
+    severity: "info" | "medium" | "high" | "critical";
+    metadata?: Record<string, string | number | boolean | null>;
+    req?: Request;
+  }) {
+    await this.repository.createSecurityEvent({
+      userId: data.userId,
+      type: data.type,
+      severity: data.severity,
+      metadata: data.metadata,
+      userAgent: data.req?.get("user-agent"),
+      ipAddress: data.req?.ip,
+    });
+  }
+
+  private hashAuditEmail(email: string) {
+    return crypto.createHash("sha256").update(email).digest("hex");
   }
 
   private async ensureDefaultCategories(userId: string, locale?: string | null) {

@@ -61,7 +61,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new LoggingInterceptor());
 
   const enableSwagger =
-    !isProd || configService.get<string>("ENABLE_SWAGGER") === "true";
+    !isProd && configService.get<string>("ENABLE_SWAGGER") !== "false";
   if (enableSwagger) {
     const swaggerConfig = new DocumentBuilder()
       .setTitle("FinanceBuddy API")

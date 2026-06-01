@@ -88,6 +88,7 @@ ARGON2_PARALLELISM=1
 ACCESS_TOKEN_TTL_MINUTES=15
 REFRESH_TOKEN_TTL_DAYS=30
 CORS_ORIGIN=http://localhost:8080
+TRUST_PROXY=false
 PORT=4000
 REQUEST_BODY_LIMIT=100kb
 
@@ -112,7 +113,7 @@ Use the Supabase SQL editor to execute the files in timestamp order.
 - Swagger (local): `http://localhost:4000/docs`
 - Health check: `http://localhost:4000/api/v1/health`
 
-> Swagger is enabled in development by default. In production, set `ENABLE_SWAGGER=true` to expose it.
+> Swagger is enabled in development by default and intentionally disabled in production.
 
 ## Security
 
@@ -125,10 +126,11 @@ FinanceBuddy includes security controls focused on authentication, authorization
 - Rotating refresh tokens stored as hashes
 - HttpOnly refresh cookies
 - CSRF protection on cookie-authenticated refresh/logout endpoints
-- Global rate limiting, with tighter limits on auth endpoints
+- Global rate limiting, with tighter limits on auth and heavy report/quote endpoints
 - DTO request validation with NestJS `ValidationPipe`
 - Authorization checks for user-owned financial resources
 - Anti-enumeration behavior for cross-user resource access
+- Security event logging for authentication and refresh-token activity
 
 ### Automated checks
 
@@ -142,7 +144,10 @@ FinanceBuddy includes security controls focused on authentication, authorization
 
 A user must never be able to access another user's financial data by modifying IDs in API requests. FinanceBuddy tests this against real resources such as transactions, budgets, goals, assets, portfolios, and monthly portfolio reports.
 
-See [`SECURITY.md`](./SECURITY.md) for security notes and [`SECURITY_REPORT.md`](./SECURITY_REPORT.md) for the historical hardening report.
+See [`SECURITY.md`](./SECURITY.md) for security notes,
+[`SECURITY_STATUS.md`](./SECURITY_STATUS.md) for implementation status, and
+[`docs/security/SECURITY_REQUIREMENTS.md`](./docs/security/SECURITY_REQUIREMENTS.md)
+for the current requirements checklist.
 
 This is a portfolio project with common web security controls. It is not audited financial software and should not be treated as banking infrastructure without further review.
 

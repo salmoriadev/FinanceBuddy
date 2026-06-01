@@ -22,15 +22,17 @@ goals, assets, portfolios, dividends, or reports by changing request IDs.
 - Short-lived JWT access tokens
 - Rotating refresh tokens stored as hashes
 - Refresh token families with rotation links and reuse detection
-- Persisted security events for refresh token reuse
+- Persisted security events for auth, session, and refresh-token activity
 - HttpOnly refresh token cookies
 - Double-submit CSRF tokens on cookie-authenticated endpoints
-- Rate limiting globally and tighter limits on auth endpoints
+- Rate limiting globally and tighter limits on auth, report, and quote endpoints
 - Explicit request body size limits
 - DTO validation with NestJS `ValidationPipe`
 - Financial DTO bounds for money, quantity, pagination, and text inputs
 - Ownership checks using `userId` scoped repositories and services
 - RLS and client-role denial policies for API-managed auth tables
+- Production Swagger disabled in application code
+- Constrained chart style generation before dynamic CSS injection
 - Anti-enumeration behavior for user-owned resources by returning `404` when a
   resource does not belong to the authenticated user
 - Automated tests for authorization boundaries and API protections
@@ -77,3 +79,9 @@ The dependency audit job is currently informational because the existing
 dependency tree includes advisories that require a separate upgrade pass,
 including some major-version framework updates. Keeping the job visible makes
 that security debt explicit without blocking unrelated portfolio improvements.
+
+## Requirements And Deployment Notes
+
+- Current security requirements: [`docs/security/SECURITY_REQUIREMENTS.md`](./docs/security/SECURITY_REQUIREMENTS.md)
+- Deployment security checklist: [`docs/security/DEPLOYMENT_SECURITY.md`](./docs/security/DEPLOYMENT_SECURITY.md)
+- Implementation status: [`SECURITY_STATUS.md`](./SECURITY_STATUS.md)

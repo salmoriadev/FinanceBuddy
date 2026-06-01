@@ -167,6 +167,10 @@ token. If CORS is accidentally widened, the header check becomes weaker.
 
 **Severity:** Medium
 
+**Status:** Addressed. Swagger is now development-only in application code;
+`NODE_ENV=production` does not expose `/docs` even if `ENABLE_SWAGGER=true` is
+configured accidentally.
+
 **Location:** `apps/api/src/main.ts:55`
 
 **Evidence:** Swagger is enabled outside production or when
@@ -241,6 +245,11 @@ unbounded strings can increase storage/log/UI risk.
 
 **Severity:** Medium
 
+**Status:** Partially addressed. Transaction pagination is capped, reports are
+cached per user/year, and heavy report/audit/quote endpoints have route-level
+throttles. Materialized report snapshots remain future work if real datasets
+grow.
+
 **Location:** `apps/api/src/modules/transactions/dto/transactions-query.dto.ts:13`,
 `apps/api/src/modules/portfolios/portfolios.repository.ts:191`,
 `apps/api/src/modules/portfolios/portfolios.controller.ts:67`
@@ -263,6 +272,11 @@ and degrade API/database performance.
 ### S-09: Security Event Audit Trail Is Thin
 
 **Severity:** Medium
+
+**Status:** Partially addressed. The API now persists security events for
+registration, login success/failure, refresh rotation, refresh reuse, refresh
+expiry, logout, and password-change success/failure. Rate-limit blocks and
+repeated authorization failures remain future work.
 
 **Location:** `apps/api/src/common/interceptors/logging.interceptor.ts:23`,
 `apps/api/src/modules/auth/auth.service.ts:62`
@@ -289,6 +303,11 @@ This is an important portfolio differentiator for AppSec/DevSecOps.
 
 **Severity:** Low
 
+**Status:** Documented. Deployment cookie settings for local, same-site
+production, and cross-site production are documented in
+`docs/security/DEPLOYMENT_SECURITY.md`. Secure cookie prefixes remain optional
+future work after the final production topology is fixed.
+
 **Location:** `apps/api/src/modules/auth/auth.service.ts:210`
 
 **Evidence:** The refresh cookie is HttpOnly, Secure in production, and scoped to
@@ -309,6 +328,9 @@ secure prefix.
 
 **Severity:** Low
 
+**Status:** Addressed. Chart CSS variable keys and color values are allowlisted
+before `dangerouslySetInnerHTML`, and tests cover rejected CSS injection values.
+
 **Location:** `apps/web/src/components/ui/chart.tsx:83`
 
 **Evidence:** The chart component uses `dangerouslySetInnerHTML` to inject CSS
@@ -327,6 +349,10 @@ chart config could include API-provided values.
 ### S-12: Trust Proxy Configuration Needs Deployment Verification
 
 **Severity:** Low
+
+**Status:** Documented. Local, same-site production, and cross-site production
+`TRUST_PROXY` settings plus client-IP verification steps are documented in
+`docs/security/DEPLOYMENT_SECURITY.md`.
 
 **Location:** `apps/api/src/main.ts:20`
 

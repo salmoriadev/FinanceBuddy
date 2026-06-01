@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { User } from "../../common/decorators/user.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { CreateDividendReceiptDto } from "./dto/create-dividend-receipt.dto";
@@ -65,6 +66,7 @@ export class PortfoliosController {
   }
 
   @Get(":id/reports/monthly")
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   getMonthlyReport(
     @User() user: { id: string },
     @Param("id") id: string,
@@ -74,11 +76,13 @@ export class PortfoliosController {
   }
 
   @Get(":id/audit")
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   getAudit(@User() user: { id: string }, @Param("id") id: string) {
     return this.service.getAudit(user.id, id);
   }
 
   @Post(":id/quotes/refresh")
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   refreshQuotes(@User() user: { id: string }, @Param("id") id: string) {
     return this.service.refreshQuotes(user.id, id);
   }

@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { User } from "../../common/decorators/user.decorator";
 import { InvestmentsService } from "./investments.service";
@@ -36,6 +37,7 @@ export class InvestmentsController {
   }
 
   @Post("market-data/refresh")
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   refreshMarketData(
     @User() user: { id: string },
     @Body() dto: RefreshInvestmentQuotesDto,
