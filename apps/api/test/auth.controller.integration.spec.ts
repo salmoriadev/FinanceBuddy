@@ -14,6 +14,7 @@ import { JwtAuthGuard } from "../src/common/guards/jwt-auth.guard";
 
 describe("AuthController (integration)", () => {
   let app: INestApplication;
+  const csrfToken = "b".repeat(64);
 
   const authServiceMock = {
     register: jest.fn(),
@@ -22,6 +23,7 @@ describe("AuthController (integration)", () => {
     logout: jest.fn(),
     setRefreshCookie: jest.fn(),
     clearRefreshCookie: jest.fn(),
+    issueCsrfToken: jest.fn(() => csrfToken),
     getProfile: jest.fn(),
     updateProfile: jest.fn(),
     changePassword: jest.fn(),
@@ -72,6 +74,15 @@ describe("AuthController (integration)", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    authServiceMock.issueCsrfToken.mockReturnValue(csrfToken);
+  });
+
+  it("GET /auth/csrf issues a CSRF token", async () => {
+    const response = await request(app.getHttpServer()).get("/api/v1/auth/csrf");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ csrfToken });
+    expect(authServiceMock.issueCsrfToken).toHaveBeenCalledTimes(1);
   });
 
   it("POST /auth/refresh blocks requests without CSRF header", async () => {
@@ -82,6 +93,7 @@ describe("AuthController (integration)", () => {
 
     const response = await request(app.getHttpServer())
       .post("/api/v1/auth/refresh")
+      .set("X-CSRF-Token", csrfToken)
       .set("Origin", "http://localhost:8080");
 
     expect(response.status).toBe(403);
@@ -97,6 +109,8 @@ describe("AuthController (integration)", () => {
     const response = await request(app.getHttpServer())
       .post("/api/v1/auth/refresh")
       .set("X-Requested-With", "XMLHttpRequest")
+      .set("X-CSRF-Token", csrfToken)
+      .set("Cookie", [`csrf_token=${csrfToken}`])
       .set("Origin", "http://evil.example");
 
     expect(response.status).toBe(403);
@@ -112,6 +126,8 @@ describe("AuthController (integration)", () => {
     const response = await request(app.getHttpServer())
       .post("/api/v1/auth/refresh")
       .set("X-Requested-With", "XMLHttpRequest")
+      .set("X-CSRF-Token", csrfToken)
+      .set("Cookie", [`csrf_token=${csrfToken}`])
       .set("Origin", "http://localhost:8080");
 
     expect(response.status).toBe(201);
@@ -126,6 +142,7 @@ describe("AuthController (integration)", () => {
   it("POST /auth/logout enforces CSRF header and clears cookie on success", async () => {
     const blocked = await request(app.getHttpServer())
       .post("/api/v1/auth/logout")
+      .set("X-CSRF-Token", csrfToken)
       .set("Origin", "http://localhost:8080");
 
     expect(blocked.status).toBe(403);
@@ -133,6 +150,8 @@ describe("AuthController (integration)", () => {
     const allowed = await request(app.getHttpServer())
       .post("/api/v1/auth/logout")
       .set("X-Requested-With", "XMLHttpRequest")
+      .set("X-CSRF-Token", csrfToken)
+      .set("Cookie", [`csrf_token=${csrfToken}`])
       .set("Origin", "http://localhost:8080");
 
     expect(allowed.status).toBe(201);

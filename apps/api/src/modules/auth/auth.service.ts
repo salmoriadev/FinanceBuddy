@@ -12,7 +12,7 @@ import { ConfigService } from "@nestjs/config";
 import { Request, Response } from "express";
 import crypto from "crypto";
 import argon2 from "argon2";
-import jwt from "jsonwebtoken";
+import jwt, { SignOptions } from "jsonwebtoken";
 import { AuthRepository } from "./auth.repository";
 import { RegisterDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
@@ -90,7 +90,19 @@ export class AuthService {
     }
 
     if (stored.revokedAt) {
-      await this.repository.revokeUserTokens(stored.userId);
+      await this.repository.createSecurityEvent({
+        userId: stored.userId,
+        type: "refresh_token_reuse",
+        severity: "high",
+        metadata: {
+          refreshTokenId: stored.id,
+          familyId: stored.familyId,
+          replacedByTokenId: stored.replacedByTokenId,
+        },
+        userAgent: req.get("user-agent"),
+        ipAddress: req.ip,
+      });
+      await this.repository.revokeTokenFamily(stored.userId, stored.familyId);
       throw new UnauthorizedException("Refresh token invalid");
     }
 
@@ -103,8 +115,10 @@ export class AuthService {
       throw new UnauthorizedException("Invalid user");
     }
 
-    await this.repository.revokeRefreshToken(stored.id);
-    const tokens = await this.issueTokens(stored.userId, user.email, req);
+    const tokens = await this.issueTokens(stored.userId, user.email, req, {
+      familyId: stored.familyId,
+    });
+    await this.repository.revokeRefreshToken(stored.id, tokens.refreshTokenId);
     return tokens;
   }
 
@@ -169,6 +183,12 @@ export class AuthService {
     res.clearCookie("refresh_token", this.getRefreshCookieOptions());
   }
 
+  issueCsrfToken(res: Response) {
+    const csrfToken = crypto.randomBytes(32).toString("hex");
+    res.cookie("csrf_token", csrfToken, this.getCsrfCookieOptions());
+    return csrfToken;
+  }
+
   private safeUser(user: {
     id: string;
     email: string;
@@ -228,22 +248,49 @@ export class AuthService {
     };
   }
 
-  private async issueTokens(userId: string, email: string | undefined, req: Request) {
+  private getCsrfCookieOptions() {
+    const isProd = this.configService.get<string>("NODE_ENV") === "production";
+    const cookieDomain = this.configService.get<string>("COOKIE_DOMAIN");
+    const sameSite =
+      this.configService.get<string>("COOKIE_SAMESITE") ||
+      (isProd ? "none" : "lax");
+
+    return {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: sameSite as "lax" | "strict" | "none",
+      path: "/api/v1/auth",
+      domain: cookieDomain || undefined,
+    };
+  }
+
+  private async issueTokens(
+    userId: string,
+    email: string | undefined,
+    req: Request,
+    options: { familyId?: string | null } = {},
+  ) {
     const accessToken = this.signAccessToken(userId, email);
     const refreshToken = this.generateRefreshToken();
     const tokenHash = this.hashRefreshToken(refreshToken);
     const ttlDays = this.getRefreshTtlDays();
     const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000);
 
-    await this.repository.createRefreshToken({
+    const familyId = options.familyId ?? crypto.randomUUID();
+    const storedRefreshToken = await this.repository.createRefreshToken({
       userId,
       tokenHash,
+      familyId,
       expiresAt,
       userAgent: req.get("user-agent"),
       ipAddress: req.ip,
     });
 
-    return { accessToken, refreshToken };
+    return {
+      accessToken,
+      refreshToken,
+      refreshTokenId: storedRefreshToken.id,
+    };
   }
 
   private signAccessToken(userId: string, email?: string) {
@@ -253,11 +300,11 @@ export class AuthService {
     const audience = this.configService.get<string>("AUTH_JWT_AUD");
     const expiresIn = this.getAccessTtlMinutes() * 60;
 
-    return jwt.sign(payload, secret, {
-      expiresIn,
-      issuer: issuer || undefined,
-      audience: audience || undefined,
-    });
+    const options: SignOptions = { expiresIn };
+    if (issuer) options.issuer = issuer;
+    if (audience) options.audience = audience;
+
+    return jwt.sign(payload, secret, options);
   }
 
   private getJwtSecret() {

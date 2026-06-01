@@ -29,6 +29,11 @@ import { CsrfProtectionGuard } from "../../common/guards/csrf-protection.guard";
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Get("csrf")
+  csrf(@Res({ passthrough: true }) res: Response) {
+    return { csrfToken: this.authService.issueCsrfToken(res) };
+  }
+
   @Post("register")
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   async register(

@@ -18,7 +18,8 @@ clearer production security posture.
 
 - Access tokens are kept in React state instead of `localStorage` or
   `sessionStorage`: `apps/web/src/hooks/useAuth.tsx:43`.
-- Reused revoked refresh tokens now revoke active sessions for the user:
+- Reused revoked refresh tokens now log a security event and revoke the token
+  family:
   `apps/api/src/modules/auth/auth.service.ts:88`.
 - API requests include credentials only for the API client and use bearer access
   tokens for protected resources: `apps/web/src/lib/api.ts:44`.
@@ -64,14 +65,14 @@ issues depending on reachable code paths.
 
 **Severity:** High
 
-**Status:** Partially addressed. A reused revoked refresh token now revokes the
-user's active refresh tokens. A future pass can add token-family metadata and a
-persisted security event.
+**Status:** Addressed. Refresh tokens now have family metadata, rotation links,
+family revocation on reuse, and persisted `refresh_token_reuse` security events.
 
 **Location:** `apps/api/src/modules/auth/auth.service.ts:80`
 
 **Evidence:** On refresh, the service looks up the refresh token hash, rejects
-missing tokens, and revokes active sessions if a revoked token is presented:
+missing tokens, logs a security event, and revokes the token family if a revoked
+token is presented:
 
 ```ts
 const stored = await this.repository.findRefreshTokenByHash(tokenHash);
@@ -80,7 +81,8 @@ if (!stored) {
 }
 
 if (stored.revokedAt) {
-  await this.repository.revokeUserTokens(stored.userId);
+  await this.repository.createSecurityEvent(...);
+  await this.repository.revokeTokenFamily(stored.userId, stored.familyId);
   throw new UnauthorizedException("Refresh token invalid");
 }
 ```
@@ -139,6 +141,9 @@ metadata; `users` stores password hashes.
 
 **Severity:** Medium
 
+**Status:** Addressed. Cookie-authenticated endpoints now require a
+double-submit CSRF token, `X-Requested-With`, and production origin validation.
+
 **Location:** `apps/api/src/common/guards/csrf-protection.guard.ts:29`,
 `apps/api/src/modules/auth/auth.controller.ts:56`
 
@@ -186,6 +191,9 @@ make endpoint discovery easier and may expose internal assumptions.
 
 **Severity:** Medium
 
+**Status:** Addressed. API bootstrap now disables implicit body parsing and
+sets explicit JSON and URL-encoded body limits with `REQUEST_BODY_LIMIT`.
+
 **Location:** `apps/api/src/main.ts:17`
 
 **Evidence:** The app uses Nest's default Express body parser behavior. There is
@@ -204,6 +212,9 @@ reduce resource-consumption risk as endpoints grow.
 ### S-07: Financial DTOs Need Stronger Business Bounds
 
 **Severity:** Medium
+
+**Status:** Addressed. Financial DTOs now include positive/max bounds and text
+length limits, and transaction pagination is capped at 200.
 
 **Location:** examples include
 `apps/api/src/modules/transactions/dto/create-transaction.dto.ts:22`,

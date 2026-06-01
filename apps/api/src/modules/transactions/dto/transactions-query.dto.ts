@@ -10,7 +10,7 @@ export class TransactionsQueryDto {
   @Transform(({ value }) => Number(value))
   @IsInt()
   @Min(1)
-  @Max(5000)
+  @Max(200)
   limit?: number;
 
   @IsOptional()

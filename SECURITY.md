@@ -21,11 +21,14 @@ goals, assets, portfolios, dividends, or reports by changing request IDs.
 - Argon2id password hashing with a server-side pepper
 - Short-lived JWT access tokens
 - Rotating refresh tokens stored as hashes
-- Refresh token reuse detection that revokes active sessions for the user
+- Refresh token families with rotation links and reuse detection
+- Persisted security events for refresh token reuse
 - HttpOnly refresh token cookies
-- CSRF protection on cookie-authenticated endpoints
+- Double-submit CSRF tokens on cookie-authenticated endpoints
 - Rate limiting globally and tighter limits on auth endpoints
+- Explicit request body size limits
 - DTO validation with NestJS `ValidationPipe`
+- Financial DTO bounds for money, quantity, pagination, and text inputs
 - Ownership checks using `userId` scoped repositories and services
 - RLS and client-role denial policies for API-managed auth tables
 - Anti-enumeration behavior for user-owned resources by returning `404` when a

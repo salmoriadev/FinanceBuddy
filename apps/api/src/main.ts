@@ -8,13 +8,17 @@ import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import compression from "compression";
+import { json, urlencoded } from "express";
 import { AppModule } from "./app.module";
 import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
 import { ConfigService } from "@nestjs/config";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: false });
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: false,
+    cors: false,
+  });
   const configService = app.get(ConfigService);
 
   const corsOrigin = configService.get<string>("CORS_ORIGIN");
@@ -35,10 +39,18 @@ async function bootstrap() {
           ? false
           : true,
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "X-CSRF-Token",
+    ],
   });
 
   app.use(helmet());
+  const bodyLimit = configService.get<string>("REQUEST_BODY_LIMIT") || "100kb";
+  app.use(json({ limit: bodyLimit }));
+  app.use(urlencoded({ extended: true, limit: bodyLimit, parameterLimit: 100 }));
   app.use(cookieParser());
   app.use(compression());
   app.setGlobalPrefix("api/v1");

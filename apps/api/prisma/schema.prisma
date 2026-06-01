@@ -101,25 +101,47 @@ model User {
   lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(6)
 
   refreshTokens RefreshToken[]
+  securityEvents SecurityEvent[]
 
   @@unique([email])
   @@map("users")
 }
 
+model SecurityEvent {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  type      String
+  severity  String   @default("info")
+  metadata  Json?
+  userAgent String?  @map("user_agent")
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt], map: "idx_security_events_user_created")
+  @@index([type, createdAt], map: "idx_security_events_type_created")
+  @@map("security_events")
+}
+
 model RefreshToken {
-  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String    @map("user_id") @db.Uuid
-  tokenHash String    @map("token_hash")
-  userAgent String?   @map("user_agent")
-  ipAddress String?   @map("ip_address")
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
-  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  tokenHash         String    @map("token_hash")
+  familyId          String    @map("family_id") @db.Uuid
+  replacedByTokenId String?   @map("replaced_by_token_id") @db.Uuid
+  userAgent         String?   @map("user_agent")
+  ipAddress         String?   @map("ip_address")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt         DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt         DateTime? @map("revoked_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId], map: "idx_refresh_tokens_user")
   @@index([tokenHash], map: "idx_refresh_tokens_hash")
+  @@index([familyId], map: "idx_refresh_tokens_family")
+  @@index([replacedByTokenId], map: "idx_refresh_tokens_replaced_by")
   @@map("refresh_tokens")
 }
 

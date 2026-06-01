@@ -4,6 +4,7 @@
  */
 import { IsInt, IsNumber, IsUUID, Max, Min } from "class-validator";
 import { Transform } from "class-transformer";
+import { MAX_MONEY_VALUE } from "../../../common/validators/financial-values";
 
 export class CreateBudgetDto {
   @IsUUID()
@@ -11,6 +12,8 @@ export class CreateBudgetDto {
 
   @Transform(({ value }) => Number(value))
   @IsNumber()
+  @Min(0.01)
+  @Max(MAX_MONEY_VALUE)
   amount!: number;
 
   @Transform(({ value }) => Number(value))

@@ -6,10 +6,15 @@ import { ExecutionContext, ForbiddenException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { CsrfProtectionGuard } from "../src/common/guards/csrf-protection.guard";
 
-const createContext = (headers: Record<string, string | undefined>) =>
+const CSRF_TOKEN = "a".repeat(64);
+
+const createContext = (
+  headers: Record<string, string | undefined>,
+  cookies: Record<string, string | undefined> = {},
+) =>
   ({
     switchToHttp: () => ({
-      getRequest: () => ({ headers }),
+      getRequest: () => ({ cookies, headers }),
     }),
   }) as unknown as ExecutionContext;
 
@@ -35,16 +40,35 @@ describe("CsrfProtectionGuard", () => {
     ).toThrow(ForbiddenException);
   });
 
-  it("allows requests with X-Requested-With in development", () => {
+  it("rejects requests without matching CSRF token", () => {
+    configServiceMock.get = jest.fn((key: string) => {
+      if (key === "NODE_ENV") return "development";
+      return undefined;
+    });
+
+    expect(() =>
+      guard.canActivate(
+        createContext({
+          "x-requested-with": "XMLHttpRequest",
+        }),
+      ),
+    ).toThrow(ForbiddenException);
+  });
+
+  it("allows requests with matching CSRF token in development", () => {
     configServiceMock.get = jest.fn((key: string) => {
       if (key === "NODE_ENV") return "development";
       return undefined;
     });
 
     const allowed = guard.canActivate(
-      createContext({
-        "x-requested-with": "XMLHttpRequest",
-      }),
+      createContext(
+        {
+          "x-requested-with": "XMLHttpRequest",
+          "x-csrf-token": CSRF_TOKEN,
+        },
+        { csrf_token: CSRF_TOKEN },
+      ),
     );
 
     expect(allowed).toBe(true);
@@ -59,10 +83,14 @@ describe("CsrfProtectionGuard", () => {
 
     expect(() =>
       guard.canActivate(
-        createContext({
-          "x-requested-with": "XMLHttpRequest",
-          origin: "http://evil.example",
-        }),
+        createContext(
+          {
+            "x-requested-with": "XMLHttpRequest",
+            "x-csrf-token": CSRF_TOKEN,
+            origin: "http://evil.example",
+          },
+          { csrf_token: CSRF_TOKEN },
+        ),
       ),
     ).toThrow(ForbiddenException);
   });
@@ -75,12 +103,37 @@ describe("CsrfProtectionGuard", () => {
     });
 
     const allowed = guard.canActivate(
-      createContext({
-        "x-requested-with": "XMLHttpRequest",
-        origin: "http://localhost:8080",
-      }),
+      createContext(
+        {
+          "x-requested-with": "XMLHttpRequest",
+          "x-csrf-token": CSRF_TOKEN,
+          origin: "http://localhost:8080",
+        },
+        { csrf_token: CSRF_TOKEN },
+      ),
     );
 
     expect(allowed).toBe(true);
+  });
+
+  it("rejects production requests when CORS_ORIGIN is not configured", () => {
+    configServiceMock.get = jest.fn((key: string) => {
+      if (key === "NODE_ENV") return "production";
+      if (key === "CORS_ORIGIN") return "";
+      return undefined;
+    });
+
+    expect(() =>
+      guard.canActivate(
+        createContext(
+          {
+            "x-requested-with": "XMLHttpRequest",
+            "x-csrf-token": CSRF_TOKEN,
+            origin: "http://localhost:8080",
+          },
+          { csrf_token: CSRF_TOKEN },
+        ),
+      ),
+    ).toThrow(ForbiddenException);
   });
 });

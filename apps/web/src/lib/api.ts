@@ -25,6 +25,32 @@ const buildUrl = (path: string) => {
   return `${trimmed}${normalizedPath}`;
 };
 
+let csrfToken: string | null = null;
+
+const requiresCsrfToken = (method: string, path: string) => {
+  const normalizedMethod = method.toUpperCase();
+  if (normalizedMethod === "GET" || normalizedMethod === "HEAD") return false;
+  return path !== "/auth/csrf";
+};
+
+const ensureCsrfToken = async () => {
+  if (csrfToken) return csrfToken;
+  const response = await fetch(buildUrl("/auth/csrf"), {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "X-Requested-With": "XMLHttpRequest",
+    },
+    credentials: "include",
+  });
+  const payload = await response.json();
+  if (!response.ok || typeof payload?.csrfToken !== "string") {
+    throw new ApiError("Unable to initialize CSRF token", response.status, payload);
+  }
+  csrfToken = payload.csrfToken;
+  return csrfToken;
+};
+
 export async function apiRequest<T>(
   path: string,
   options: {
@@ -53,6 +79,10 @@ export async function apiRequest<T>(
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
+  }
+
+  if (requiresCsrfToken(method, path)) {
+    headers["X-CSRF-Token"] = await ensureCsrfToken();
   }
 
   const response = await fetch(buildUrl(path), {

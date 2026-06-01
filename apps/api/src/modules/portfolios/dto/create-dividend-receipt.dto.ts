@@ -6,7 +6,13 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  MaxLength,
 } from "class-validator";
+import {
+  IsFinancialDecimal,
+  MAX_MONEY_VALUE,
+  MAX_QUANTITY_VALUE,
+} from "../../../common/validators/financial-values";
 
 export const DIVIDEND_EVENT_STATUSES = [
   "announced",
@@ -32,24 +38,29 @@ export class CreateDividendReceiptDto {
   @Transform(toOptionalStringValue)
   @IsOptional()
   @IsNumberString()
+  @IsFinancialDecimal({ max: MAX_QUANTITY_VALUE })
   quantity?: string;
 
   @Transform(toOptionalStringValue)
   @IsNumberString()
+  @IsFinancialDecimal()
   amountPerShare!: string;
 
   @Transform(toOptionalStringValue)
   @IsOptional()
   @IsNumberString()
+  @IsFinancialDecimal({ allowZero: true })
   taxes?: string;
 
   @Transform(toOptionalStringValue)
   @IsOptional()
   @IsNumberString()
+  @IsFinancialDecimal({ max: MAX_MONEY_VALUE })
   totalAmount?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(12)
   currency?: string | null;
 
   @IsOptional()
@@ -61,9 +72,11 @@ export class CreateDividendReceiptDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(64)
   source?: string | null;
 
   @IsOptional()
   @IsString()
+  @MaxLength(1000)
   notes?: string | null;
 }
