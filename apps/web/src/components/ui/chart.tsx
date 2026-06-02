@@ -77,13 +77,7 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null;
   }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: styleRules,
-      }}
-    />
-  );
+  return <style>{styleRules}</style>;
 };
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
