@@ -2,6 +2,9 @@
   "name": "financebuddy-api",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "start": "node dist/main",
     "start:dev": "nest start --watch",

@@ -5,10 +5,15 @@
     "apps/web",
     "apps/api"
   ],
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "npm run dev --workspace=apps/web",
     "dev:web": "npm run dev --workspace=apps/web",
     "dev:api": "npm run start:dev --workspace=apps/api",
+    "start": "npm run start --workspace=apps/api",
+    "start:api": "npm run start --workspace=apps/api",
     "build": "npm run build --workspace=apps/web",
     "build:web": "npm run build --workspace=apps/web",
     "build:api": "npm run build --workspace=apps/api",
