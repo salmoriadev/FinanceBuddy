@@ -298,6 +298,7 @@ export function TransactionDialog({
   onSubmit,
   isSubmitting,
   canSubmit,
+  portfolioStatusMessage,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -321,6 +322,7 @@ export function TransactionDialog({
   onSubmit: (event: FormEvent) => void;
   isSubmitting: boolean;
   canSubmit: boolean;
+  portfolioStatusMessage: string | null;
 }) {
   const filteredAssets = assets.filter((asset) => asset.class === assetClass);
 
@@ -524,9 +526,9 @@ export function TransactionDialog({
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Registrar evento
             </Button>
-            {!canSubmit && (
+            {!canSubmit && portfolioStatusMessage && (
               <span className="text-sm text-muted-foreground">
-                Carregando carteira
+                {portfolioStatusMessage}
               </span>
             )}
             {quoteLoading && (

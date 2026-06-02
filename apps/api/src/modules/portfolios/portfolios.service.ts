@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { assertResourceFound } from "../../common/services/resource-assertions";
 import { buildLegacyTicker } from "../assets/asset-normalization";
@@ -91,6 +91,8 @@ const calculateRealizedGainByAsset = (
 
 @Injectable()
 export class PortfoliosService {
+  private readonly logger = new Logger(PortfoliosService.name);
+
   constructor(
     private readonly repository: PortfoliosRepository,
     private readonly assetsService: AssetsService,
@@ -506,40 +508,48 @@ export class PortfoliosService {
     const legacyInvestments = await this.repository.findLegacyInvestments(userId);
 
     for (const investment of legacyInvestments) {
-      const migrated = await this.repository.findLegacyMigration(userId, investment.id);
-      if (migrated) continue;
+      try {
+        const migrated = await this.repository.findLegacyMigration(userId, investment.id);
+        if (migrated) continue;
 
-      const asset = await this.repository.upsertLegacyAsset(userId, {
-        ticker: investment.assetSymbol ?? buildLegacyTicker(investment.id),
-        name: investment.name,
-        class: "custom",
-        sector: investment.category,
-        currency: investment.quoteCurrency ?? "BRL",
-      });
-      const quantity = new Prisma.Decimal(investment.quantity ?? 1);
-      const openingAmount = new Prisma.Decimal(investment.investedAmount);
+        const asset = await this.repository.upsertLegacyAsset(userId, {
+          ticker: investment.assetSymbol ?? buildLegacyTicker(investment.id),
+          name: investment.name,
+          class: "custom",
+          sector: investment.category,
+          currency: investment.quoteCurrency ?? "BRL",
+        });
+        const quantity = new Prisma.Decimal(investment.quantity ?? 1);
+        const openingAmount = new Prisma.Decimal(investment.investedAmount);
 
-      await this.repository.createLegacyQuote(
-        userId,
-        asset.id,
-        new Prisma.Decimal(investment.marketPrice ?? investment.currentValue),
-      );
-      await this.repository.createTransaction(userId, portfolio.id, {
-        assetId: asset.id,
-        type: "opening_balance",
-        quantity,
-        unitPrice: quantity.gt(ZERO) ? openingAmount.dividedBy(quantity) : openingAmount,
-        grossAmount: openingAmount,
-        fees: ZERO,
-        taxes: ZERO,
-        totalAmount: openingAmount,
-        currency: investment.quoteCurrency ?? "BRL",
-        occurredAt: investment.startDate ?? investment.createdAt,
-        notes: investment.notes,
-        source: "legacy_manual",
-        sourceType: "legacy_manual",
-        legacyInvestmentId: investment.id,
-      });
+        await this.repository.createLegacyQuote(
+          userId,
+          asset.id,
+          new Prisma.Decimal(investment.marketPrice ?? investment.currentValue),
+        );
+        await this.repository.createTransaction(userId, portfolio.id, {
+          assetId: asset.id,
+          type: "opening_balance",
+          quantity,
+          unitPrice: quantity.gt(ZERO) ? openingAmount.dividedBy(quantity) : openingAmount,
+          grossAmount: openingAmount,
+          fees: ZERO,
+          taxes: ZERO,
+          totalAmount: openingAmount,
+          currency: investment.quoteCurrency ?? "BRL",
+          occurredAt: investment.startDate ?? investment.createdAt,
+          notes: investment.notes,
+          source: "legacy_manual",
+          sourceType: "legacy_manual",
+          legacyInvestmentId: investment.id,
+        });
+      } catch (error) {
+        this.logger.warn(
+          `Skipping legacy investment migration ${investment.id}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
     }
   }
 }

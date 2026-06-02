@@ -74,7 +74,11 @@ export default function Investments() {
   const { formatCurrency, formatNumber, formatPercent, formatDate } =
     useFormatter();
   const { assets, addAsset, lookupQuote, searchAssets } = useAssets();
-  const { defaultPortfolio, isLoading: portfoliosLoading } = usePortfolios();
+  const {
+    defaultPortfolio,
+    isLoading: portfoliosLoading,
+    error: portfoliosError,
+  } = usePortfolios();
   const { positions, isLoading: positionsLoading } = usePortfolioPositions(
     defaultPortfolio?.id,
   );
@@ -562,6 +566,13 @@ export default function Investments() {
   };
 
   const isBusy = portfoliosLoading || positionsLoading;
+  const portfolioStatusMessage = portfoliosLoading
+    ? "Carregando carteira"
+    : portfoliosError
+      ? getErrorMessage(portfoliosError, "Nao foi possivel carregar carteira")
+      : defaultPortfolio
+        ? null
+        : "Carteira indisponivel";
 
   return (
     <AppLayout>
@@ -629,6 +640,7 @@ export default function Investments() {
               onSubmit={handleCreateTransaction}
               isSubmitting={addTransaction.isPending || addAsset.isPending}
               canSubmit={!!defaultPortfolio && !portfoliosLoading}
+              portfolioStatusMessage={portfolioStatusMessage}
             />
             <DividendDialog
               open={dividendDialogOpen}

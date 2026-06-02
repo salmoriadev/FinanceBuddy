@@ -76,6 +76,7 @@ export function usePortfolios() {
       portfoliosQuery.data?.[0] ??
       null,
     isLoading: portfoliosQuery.isLoading,
+    error: portfoliosQuery.error,
   };
 }
 

@@ -24,6 +24,9 @@ describe("PortfoliosService", () => {
     updateDividendEventStatus: jest.fn(),
     ensureDefault: jest.fn(),
     findLegacyInvestments: jest.fn(),
+    findLegacyMigration: jest.fn(),
+    upsertLegacyAsset: jest.fn(),
+    createLegacyQuote: jest.fn(),
   } as unknown as jest.Mocked<PortfoliosRepository>;
 
   const assetsService = {
@@ -34,6 +37,33 @@ describe("PortfoliosService", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it("returns portfolios even when one legacy investment migration fails", async () => {
+    const portfolio = { id: "portfolio-1", isDefault: true };
+    repository.ensureDefault.mockResolvedValue(portfolio as never);
+    repository.findLegacyInvestments.mockResolvedValue([
+      {
+        id: "legacy-1",
+        name: "Legacy position",
+        category: "Acoes",
+        assetSymbol: "PETR4",
+        quantity: dec(1),
+        investedAmount: dec(40),
+        currentValue: dec(45),
+        marketPrice: dec(45),
+        quoteCurrency: "BRL",
+        startDate: new Date("2026-01-01"),
+        createdAt: new Date("2026-01-01"),
+        notes: null,
+      },
+    ] as never);
+    repository.findLegacyMigration.mockResolvedValue(null as never);
+    repository.upsertLegacyAsset.mockRejectedValue(new Error("legacy asset failed"));
+    repository.findAllByUser.mockResolvedValue([portfolio] as never);
+
+    await expect(service.findAll("user-1")).resolves.toEqual([portfolio]);
+    expect(repository.findAllByUser).toHaveBeenCalledWith("user-1");
   });
 
   it("marks a dividend as received by appending a dividend transaction", async () => {
