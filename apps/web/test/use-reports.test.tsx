@@ -78,4 +78,26 @@ describe("useReportAnalytics", () => {
 
     queryClient.clear();
   });
+
+  it("exposes a rejected analytics request for an explicit error state", async () => {
+    const requestError = new Error("analytics unavailable");
+    mockedApiRequest.mockRejectedValueOnce(requestError);
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    const { result } = renderHook(() => useReportAnalytics(2026), { wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(result.current.analytics).toBeNull();
+    expect(result.current.error).toBe(requestError);
+    expect(result.current.refetch).toEqual(expect.any(Function));
+
+    queryClient.clear();
+  });
 });

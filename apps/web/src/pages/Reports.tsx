@@ -1,6 +1,12 @@
 import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { Loader2, TrendingUp, TrendingDown, Calendar } from "lucide-react";
+import {
+  AlertCircle,
+  Calendar,
+  Loader2,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -16,6 +22,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -40,7 +47,12 @@ export default function Reports() {
   const selectedYearNumber = Number.isFinite(parsedSelectedYear)
     ? parsedSelectedYear
     : currentYear;
-  const { analytics, isLoading: isReportsLoading } = useReportAnalytics(selectedYearNumber);
+  const {
+    analytics,
+    isLoading: isReportsLoading,
+    isError: isReportsError,
+    refetch: refetchReports,
+  } = useReportAnalytics(selectedYearNumber);
   const { investments } = useInvestments();
   const { formatCurrency, formatPercent, formatCompactCurrency, monthsShort } = useFormatter();
   const { t } = useI18n();
@@ -157,6 +169,28 @@ export default function Reports() {
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
               <span>{t("common.loading")}</span>
             </div>
+          </div>
+        ) : isReportsError || !analytics ? (
+          <div
+            className="flex min-h-[240px] flex-col items-center justify-center gap-4 rounded-lg border border-destructive/40 bg-destructive/5 p-6 text-center"
+            role="alert"
+          >
+            <AlertCircle className="h-7 w-7 text-destructive" />
+            <div className="space-y-1">
+              <p className="font-medium text-foreground">
+                {t("reports.loadError")}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {t("reports.loadErrorHint")}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void refetchReports()}
+            >
+              {t("reports.retry")}
+            </Button>
           </div>
         ) : (
           <div className="space-y-6">

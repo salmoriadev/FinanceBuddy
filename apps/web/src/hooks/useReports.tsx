@@ -26,6 +26,9 @@ export function useReportAnalytics(year: number) {
 
   return {
     analytics: analyticsQuery.data ?? null,
-    isLoading: analyticsQuery.isLoading,
+    isLoading: analyticsQuery.isPending,
+    isError: analyticsQuery.isError,
+    error: analyticsQuery.error,
+    refetch: analyticsQuery.refetch,
   };
 }

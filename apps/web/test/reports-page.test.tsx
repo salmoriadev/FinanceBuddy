@@ -117,6 +117,25 @@ const analyticsFor = (
 });
 
 describe("Reports page", () => {
+  it("shows a retryable error instead of zero balances when analytics fail", () => {
+    const refetch = vi.fn();
+    mockedUseReportAnalytics.mockReturnValue({
+      analytics: null,
+      isLoading: false,
+      isError: true,
+      error: new Error("network unavailable"),
+      refetch,
+    });
+
+    render(<Reports />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("reports.loadError");
+    expect(screen.queryByText(/^currency:/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "reports.retry" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps a historical year selected and masks old analytics while it loads", () => {
     const currentYear = new Date().getFullYear();
     const historicalYear = currentYear - 1;
@@ -131,11 +150,26 @@ describe("Reports page", () => {
             5_000,
           ),
           isLoading: false,
+          isError: false,
+          error: null,
+          refetch: vi.fn(),
         };
       }
       return historicalAnalytics
-        ? { analytics: historicalAnalytics, isLoading: false }
-        : { analytics: null, isLoading: true };
+        ? {
+            analytics: historicalAnalytics,
+            isLoading: false,
+            isError: false,
+            error: null,
+            refetch: vi.fn(),
+          }
+        : {
+            analytics: null,
+            isLoading: true,
+            isError: false,
+            error: null,
+            refetch: vi.fn(),
+          };
     });
 
     const { rerender } = render(<Reports />);
