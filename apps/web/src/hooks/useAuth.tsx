@@ -1,12 +1,19 @@
 /* eslint-disable react-refresh/only-export-components */
 import {
+  useCallback,
   useState,
   useEffect,
+  useRef,
   createContext,
   useContext,
   ReactNode,
 } from "react";
-import { apiRequest, ApiError } from "@/lib/api";
+import {
+  apiRequest,
+  ApiError,
+  configureAuthSession,
+  invalidateAuthSession,
+} from "@/lib/api";
 
 interface AuthUser {
   id: string;
@@ -40,59 +47,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const sessionVersion = useRef(0);
+  const refreshAllowed = useRef(true);
 
-  const persistToken = (token: string | null) => {
+  const persistToken = useCallback((token: string | null) => {
     setAccessToken(token);
-  };
+  }, []);
 
-  const fetchMe = async (token: string) => {
+  const clearSession = useCallback(() => {
+    sessionVersion.current += 1;
+    refreshAllowed.current = false;
+    invalidateAuthSession();
+    persistToken(null);
+    setUser(null);
+  }, [persistToken]);
+
+  const fetchMe = useCallback(async (token: string) => {
     const data = await apiRequest<{ user: AuthUser }>("/auth/me", {
       token,
     });
     setUser(data.user);
-  };
+  }, []);
 
-  const refreshSession = async () => {
+  const requestAccessToken = useCallback(async () => {
+    if (!refreshAllowed.current) return null;
+    const requestVersion = sessionVersion.current;
+    const data = await apiRequest<{ accessToken: string }>("/auth/refresh", {
+      method: "POST",
+    });
+    if (requestVersion !== sessionVersion.current) return null;
+    if (!data?.accessToken) return null;
+
+    persistToken(data.accessToken);
+    return data.accessToken;
+  }, [persistToken]);
+
+  const refreshSession = useCallback(async () => {
     try {
-      const data = await apiRequest<{ accessToken: string }>("/auth/refresh", {
-        method: "POST",
-      });
-      if (data?.accessToken) {
-        persistToken(data.accessToken);
-        await fetchMe(data.accessToken);
+      const token = await requestAccessToken();
+      if (token) {
+        await fetchMe(token);
         return true;
       }
       return false;
     } catch {
+      clearSession();
       return false;
     }
-  };
+  }, [clearSession, fetchMe, requestAccessToken]);
+
+  useEffect(
+    () =>
+      configureAuthSession({
+        refreshAccessToken: requestAccessToken,
+        onSessionExpired: clearSession,
+      }),
+    [clearSession, requestAccessToken],
+  );
 
   useEffect(() => {
     let isMounted = true;
     (async () => {
       try {
-        if (accessToken) {
-          try {
-            await fetchMe(accessToken);
-          } catch (error) {
-            if (error instanceof ApiError && error.status === 401) {
-              const refreshed = await refreshSession();
-              if (!refreshed && isMounted) {
-                persistToken(null);
-                setUser(null);
-              }
-            } else {
-              throw error;
-            }
-          }
-        } else {
-          await refreshSession();
+        const refreshed = await refreshSession();
+        if (!refreshed && isMounted) {
+          clearSession();
         }
       } catch {
         if (isMounted) {
-          persistToken(null);
-          setUser(null);
+          clearSession();
         }
       } finally {
         if (isMounted) {
@@ -104,11 +127,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       isMounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [clearSession, refreshSession]);
 
   const signUp = async (email: string, password: string) => {
     try {
+      sessionVersion.current += 1;
       const data = await apiRequest<{ user: AuthUser; accessToken: string }>(
         "/auth/register",
         {
@@ -116,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           body: { email, password },
         },
       );
+      refreshAllowed.current = true;
       persistToken(data.accessToken);
       setUser(data.user);
       return { error: null };
@@ -126,6 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
+      sessionVersion.current += 1;
       const data = await apiRequest<{ user: AuthUser; accessToken: string }>(
         "/auth/login",
         {
@@ -133,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           body: { email, password },
         },
       );
+      refreshAllowed.current = true;
       persistToken(data.accessToken);
       setUser(data.user);
       return { error: null };
@@ -188,11 +214,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    clearSession();
     try {
       await apiRequest("/auth/logout", { method: "POST" });
-    } finally {
-      persistToken(null);
-      setUser(null);
+    } catch {
+      // The local session is already cleared even if the server is unavailable.
     }
   };
 
