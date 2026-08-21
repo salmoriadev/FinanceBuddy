@@ -1,0 +1,85 @@
+name: Bug report
+description: Report a reproducible problem using synthetic or redacted data.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve FinanceBuddy. Do not report security vulnerabilities here; use the private security advisory link shown when choosing an issue type.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Web application
+        - API
+        - Database or migration
+        - Tooling or CI
+        - Documentation
+    validations:
+      required: true
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: Describe the problem in one sentence.
+      placeholder: A saved budget does not appear after changing months.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest reproducible sequence using synthetic data.
+      placeholder: |
+        1. Sign in with a test account
+        2. Open Budgets
+        3. Create a synthetic budget
+        4. Change the selected month
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, browser, Node version, and relevant commit or branch.
+      placeholder: Ubuntu 24.04, Firefox 141, Node 22.17, main@abcdef0
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Optional logs or screenshots. Remove tokens, cookies, URLs with credentials, email addresses, and financial data.
+      render: shell
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Data-safety confirmation
+      options:
+        - label: I removed secrets, credentials, tokens, cookies, database URLs, and real financial or personal data from this report.
+          required: true
+        - label: This report does not disclose a security vulnerability.
+          required: true

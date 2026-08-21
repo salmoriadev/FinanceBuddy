@@ -1,6 +1,18 @@
 {
   "name": "financebuddy",
+  "version": "0.1.0",
   "private": true,
+  "description": "Security-focused personal finance platform built with React, NestJS, Prisma, and PostgreSQL.",
+  "license": "MIT",
+  "author": "Arthur de Farias Salmoria",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/salmoriadev/FinanceBuddy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/salmoriadev/FinanceBuddy/issues"
+  },
+  "homepage": "https://github.com/salmoriadev/FinanceBuddy#readme",
   "workspaces": [
     "apps/web",
     "apps/api"

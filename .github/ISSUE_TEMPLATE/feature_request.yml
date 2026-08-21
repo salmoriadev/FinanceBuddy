@@ -1,0 +1,65 @@
+name: Feature request
+description: Propose a focused product or engineering improvement.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Explain the user problem before prescribing an implementation. Use synthetic examples and keep security reports private.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Dashboard and reports
+        - Transactions, budgets, or goals
+        - Investments and portfolios
+        - Authentication and settings
+        - API or database
+        - Developer experience or CI
+        - Documentation
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: Who benefits, and what is difficult today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed outcome
+      description: Describe the desired behavior without requiring a specific implementation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Note workarounds or smaller approaches you considered.
+
+  - type: textarea
+    id: security
+    attributes:
+      label: Security, privacy, and data considerations
+      description: Identify new data, permissions, integrations, trust boundaries, or migration needs.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Data-safety confirmation
+      options:
+        - label: This request contains no secrets, credentials, tokens, database URLs, or real financial or personal data.
+          required: true
+        - label: This is not a vulnerability report; security issues will be submitted privately.
+          required: true

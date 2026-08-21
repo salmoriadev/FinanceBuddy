@@ -1,7 +1,14 @@
 {
-  "name": "financebuddy-api",
+  "name": "@financebuddy/api",
   "version": "0.1.0",
   "private": true,
+  "description": "NestJS API for FinanceBuddy personal finance and portfolio workflows.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/salmoriadev/FinanceBuddy.git",
+    "directory": "apps/api"
+  },
   "engines": {
     "node": ">=22.12"
   },

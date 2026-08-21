@@ -1,87 +1,82 @@
-# Security Notes
+# Security Policy
 
-FinanceBuddy is a personal finance application designed around user-owned
-financial data. The core security goal is that one authenticated user must not
-be able to read or mutate another user's transactions, categories, budgets,
-goals, assets, portfolios, dividends, or reports by changing request IDs.
+FinanceBuddy handles user-owned financial records, so security reports are taken seriously even though this is a portfolio project and not audited financial software.
 
-## Main Risks
+## Reporting a vulnerability
 
-- Broken Object Level Authorization / IDOR across financial resources
-- Broken authentication or weak session handling
-- Refresh token theft or reuse
-- CSRF against cookie-based refresh and logout endpoints
-- Brute-force login attempts
-- Sensitive financial data exposure
-- Security misconfiguration in API or CORS settings
-- Leaked secrets in repository history or pull requests
+Please report suspected vulnerabilities privately through [GitHub Security Advisories](https://github.com/salmoriadev/FinanceBuddy/security/advisories/new).
 
-## Implemented Controls
+Do **not** open a public issue, discussion, or pull request for an undisclosed vulnerability. Do not include secrets, active credentials, access or refresh tokens, database connection strings, real financial records, or other people's personal data in a report. Use the smallest synthetic proof of concept that demonstrates the issue.
 
-- Argon2id password hashing with a server-side pepper
-- Short-lived JWT access tokens
-- Rotating refresh tokens stored as hashes
-- Refresh token families with rotation links and reuse detection
-- Persisted security events for auth, session, and refresh-token activity
-- HttpOnly refresh token cookies
-- Double-submit CSRF tokens on cookie-authenticated endpoints
-- Rate limiting globally and tighter limits on auth, report, and quote endpoints
-- Explicit request body size limits
-- DTO validation with NestJS `ValidationPipe`
-- Financial DTO bounds for money, quantity, pagination, and text inputs
-- Ownership checks using `userId` scoped repositories and services
-- RLS and client-role denial policies for API-managed auth tables
-- Production Swagger disabled in application code
-- Constrained chart style generation before dynamic CSS injection
-- Anti-enumeration behavior for user-owned resources by returning `404` when a
-  resource does not belong to the authenticated user
-- Automated tests for authorization boundaries and API protections
+A useful report includes:
 
-## OWASP API Security Alignment
+- The affected component, route, or commit.
+- The vulnerability class and expected security boundary.
+- Reproduction steps using synthetic data.
+- The likely impact and any prerequisites.
+- A suggested mitigation, if you have one.
 
-FinanceBuddy focuses on the risks that matter most for a personal finance API:
+This project is maintained as an open-source portfolio, so no formal response SLA is promised. The maintainer will coordinate validation, remediation, and disclosure through the private advisory whenever possible. Please allow a reasonable remediation window before public disclosure.
 
-- API1: Broken Object Level Authorization
-- API2: Broken Authentication
-- API3: Broken Object Property Level Authorization
-- API4: Unrestricted Resource Consumption
-- API8: Security Misconfiguration
+## Supported versions
 
-## Main Scenario
+FinanceBuddy is currently pre-1.0 and does not publish stable binary releases.
 
-The most important security scenario is preventing cross-user financial data
-access. For example, if user A changes an ID in a request to reference user B's
-transaction, budget, goal, asset, portfolio, or report, the API must reject it.
+| Version | Supported |
+| --- | --- |
+| Latest commit on `main` | Yes |
+| Older commits, forks, or modified deployments | No |
 
-Expected results:
+Security fixes are applied to `main`. Operators are responsible for their own deployment configuration, secrets, database access, and timely updates.
 
-- Missing or invalid access token: `401 Unauthorized`
-- Category owned by another user: `403 Forbidden`
-- User-owned financial resource that does not belong to the caller: `404 Not Found`
+## Security model
 
-Returning `404` for another user's resource is intentional. It avoids confirming
-that the target record exists.
+The primary security goal is strict isolation of user-owned financial data. An authenticated user must not be able to read or mutate another user's transactions, categories, budgets, goals, assets, portfolios, dividends, security events, or reports by changing identifiers in an API request.
 
-## Automated Checks
+The principal risks considered by the project are:
 
-Security checks run in GitHub Actions for pull requests and pushes to `main`:
+- Broken Object Level Authorization (BOLA/IDOR).
+- Broken authentication and session handling.
+- Refresh-token theft, replay, or reuse.
+- CSRF against cookie-authenticated refresh and logout operations.
+- Brute-force and resource-exhaustion attacks.
+- Sensitive financial data or secret exposure.
+- Unsafe CORS, proxy, cookie, API documentation, or database configuration.
 
-- Secret scanning with Gitleaks
-- SAST with Semgrep OWASP rules
-- Filesystem vulnerability scanning with Trivy
-- Dependency checks with `npm audit --audit-level=high`
+## Implemented controls
 
-Trivy runs in filesystem mode because this repository does not currently ship a
-Dockerfile. Container image scanning should be added only if a production image
-is introduced.
+- Argon2id password hashing with optional server-side peppering.
+- Short-lived JWT access tokens.
+- Hashed refresh tokens in HttpOnly cookies, with token-family rotation links and reuse detection.
+- Double-submit CSRF tokens for cookie-authenticated session operations.
+- Global rate limiting and tighter route limits for authentication, reporting, and market-data operations.
+- Explicit request body and form-parameter limits.
+- NestJS DTO validation with unknown fields rejected.
+- Bounds for money, quantities, pagination, names, notes, and tickers.
+- User-scoped repository and service queries for financial resources.
+- Anti-enumeration responses for resources outside the caller's ownership scope.
+- PostgreSQL RLS and client-role denial policies for API-managed authentication tables.
+- Persisted, sanitized security events for authentication, session, throttling, and repeated authorization activity.
+- An authenticated security-event review route restricted by `SECURITY_ADMIN_EMAILS`.
+- Runtime Swagger disabled in production.
+- Constrained chart-style generation before dynamic CSS injection.
+- Automated authorization, authentication, CSRF, validation, throttling, event, and integration tests.
 
-The dependency audit job is currently informational because the existing
-dependency tree includes advisories that require a separate upgrade pass,
-including some major-version framework updates. Keeping the job visible makes
-that security debt explicit without blocking unrelated portfolio improvements.
+## Automated security checks
 
-## Requirements And Deployment Notes
+GitHub Actions runs the following blocking checks on pull requests and pushes to `main`:
 
-- Current security requirements: [`docs/security/SECURITY_REQUIREMENTS.md`](./docs/security/SECURITY_REQUIREMENTS.md)
-- Deployment security checklist: [`docs/security/DEPLOYMENT_SECURITY.md`](./docs/security/DEPLOYMENT_SECURITY.md)
-- Implementation status: [`SECURITY_STATUS.md`](./SECURITY_STATUS.md)
+- Gitleaks secret scanning.
+- Semgrep SAST with OWASP rules.
+- Trivy filesystem scanning for fixed high and critical vulnerabilities.
+- `npm audit --audit-level=high` for dependency advisories.
+
+The committed dependency tree is expected to pass the npm audit gate with zero known advisories at the configured threshold. A high or critical dependency finding fails CI; it is not informational.
+
+## Operational responsibility
+
+Repository controls do not replace secure deployment practices. Operators must use unique secrets, restrict database access, apply all ordered Supabase SQL migrations, configure an exact CORS origin, choose the correct cookie policy, validate trusted-proxy topology, protect logs, and keep dependencies current.
+
+See the [security requirements](./docs/security/SECURITY_REQUIREMENTS.md), [deployment security checklist](./docs/security/DEPLOYMENT_SECURITY.md), and [implementation status](./SECURITY_STATUS.md) for additional detail.
+
+FinanceBuddy has not been independently audited and should not be treated as banking infrastructure. It does not provide financial, investment, tax, or legal advice. Public demos, bug reports, tests, and screenshots should use synthetic data only.

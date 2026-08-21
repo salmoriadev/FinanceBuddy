@@ -1,7 +1,14 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "@financebuddy/web",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "React web application for FinanceBuddy personal finance and portfolio management.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/salmoriadev/FinanceBuddy.git",
+    "directory": "apps/web"
+  },
   "type": "module",
   "engines": {
     "node": ">=22.12"
