@@ -113,6 +113,7 @@ const analyticsFor = (
     variation: null,
     hasVariationBaseline: false,
   },
+  currentMonthCategories: [],
   availableYears,
 });
 

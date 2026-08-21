@@ -255,6 +255,10 @@ export interface ReportCategorySpending {
   value: number;
 }
 
+export interface ReportCurrentMonthCategory extends ReportCategorySpending {
+  categoryId: string;
+}
+
 export interface ReportCurrentMonthComparison {
   currentExpense: number;
   lastExpense: number;
@@ -268,5 +272,6 @@ export interface ReportAnalytics {
   monthly: ReportMonthlyData[];
   categories: ReportCategorySpending[];
   currentMonthComparison: ReportCurrentMonthComparison;
+  currentMonthCategories: ReportCurrentMonthCategory[];
   availableYears: number[];
 }

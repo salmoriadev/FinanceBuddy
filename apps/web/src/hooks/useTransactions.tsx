@@ -1,7 +1,6 @@
 import {
-  keepPreviousData,
+  useInfiniteQuery,
   useMutation,
-  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import { useAuth } from "./useAuth";
@@ -9,25 +8,50 @@ import { Transaction, TransactionType } from "@/types/finance";
 import { apiRequest } from "@/lib/api";
 import { ApiTransaction, mapTransaction } from "@/lib/api-mappers";
 
+const TRANSACTIONS_PAGE_SIZE = 100;
+
+type ApiTransactionsPage = {
+  items: ApiTransaction[];
+  pageInfo: {
+    hasMore: boolean;
+    nextCursor: string | null;
+  };
+};
+
 export function useTransactions() {
   const { user, accessToken } = useAuth();
   const queryClient = useQueryClient();
   const token = accessToken;
 
-  const transactionsQuery = useQuery({
+  const transactionsQuery = useInfiniteQuery({
     queryKey: ["transactions", user?.id],
-    queryFn: async () => {
-      if (!user || !token) return [];
-      const data = await apiRequest<ApiTransaction[]>("/transactions", {
+    queryFn: async ({ pageParam }) => {
+      if (!user || !token) {
+        return {
+          items: [],
+          pageInfo: { hasMore: false, nextCursor: null },
+        } satisfies ApiTransactionsPage;
+      }
+      const query = new URLSearchParams({
+        limit: String(TRANSACTIONS_PAGE_SIZE),
+      });
+      if (pageParam) query.set("cursor", pageParam);
+      return apiRequest<ApiTransactionsPage>(`/transactions?${query}`, {
         token,
       });
-      return data.map(mapTransaction) as Transaction[];
     },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) =>
+      lastPage.pageInfo.hasMore ? lastPage.pageInfo.nextCursor : undefined,
     enabled: !!user && !!token,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
-    placeholderData: keepPreviousData,
   });
+
+  const transactions =
+    transactionsQuery.data?.pages.flatMap((page) =>
+      page.items.map(mapTransaction),
+    ) ?? [];
 
   const addTransaction = useMutation({
     mutationFn: async (transaction: {
@@ -101,8 +125,15 @@ export function useTransactions() {
   });
 
   return {
-    transactions: transactionsQuery.data ?? [],
-    isLoading: transactionsQuery.isLoading,
+    transactions: transactions as Transaction[],
+    isLoading: transactionsQuery.isPending,
+    isError: transactionsQuery.isError,
+    isFetchNextPageError: transactionsQuery.isFetchNextPageError,
+    error: transactionsQuery.error,
+    refetch: transactionsQuery.refetch,
+    fetchNextPage: transactionsQuery.fetchNextPage,
+    hasNextPage: transactionsQuery.hasNextPage,
+    isFetchingNextPage: transactionsQuery.isFetchingNextPage,
     addTransaction,
     updateTransaction,
     deleteTransaction,

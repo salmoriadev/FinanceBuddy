@@ -1,13 +1,13 @@
 import { useMemo, useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
-import { Plus, Loader2, Trash2, Edit2 } from "lucide-react";
+import { AlertCircle, Edit2, Loader2, Plus, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import { useBudgets } from "@/hooks/useBudgets";
 import { useCategories } from "@/hooks/useCategories";
-import { useTransactions } from "@/hooks/useTransactions";
+import { useReportAnalytics } from "@/hooks/useReports";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +37,6 @@ import {
 } from "@/components/ui/form";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { parseDateInput } from "@/lib/date";
 import { parseCurrency } from "@/lib/number";
 import { useFormatter } from "@/hooks/useFormatter";
 import { useI18n } from "@/hooks/useI18n";
@@ -62,7 +61,6 @@ export default function Budgets() {
   const { user, loading } = useAuth();
   const { budgets, isLoading, addBudget, updateBudget, deleteBudget } = useBudgets();
   const { categories } = useCategories();
-  const { transactions } = useTransactions();
   const { formatCurrency, monthsLong, locale } = useFormatter();
   const { t } = useI18n();
   const { labelForCategory } = useCategoryLabels();
@@ -91,6 +89,12 @@ export default function Budgets() {
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
+  const {
+    analytics,
+    isLoading: analyticsLoading,
+    isError: analyticsError,
+    refetch: refetchAnalytics,
+  } = useReportAnalytics(currentYear);
 
   const expenseCategories = categories.filter((c) => c.type === "expense");
   const currentBudgets = budgets.filter(
@@ -120,20 +124,46 @@ export default function Budgets() {
     return <Navigate to="/auth" replace />;
   }
 
-  const budgetsWithSpent = currentBudgets.map((budget) => {
-    const spent = transactions
-      .filter((t) => {
-        const date = parseDateInput(t.date);
-        return (
-          t.type === "expense" &&
-          t.category_id === budget.category_id &&
-          date.getMonth() + 1 === currentMonth &&
-          date.getFullYear() === currentYear
-        );
-      })
-      .reduce((sum, t) => sum + Number(t.amount), 0);
+  if (analyticsLoading) {
+    return (
+      <AppLayout>
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
-    return { ...budget, spent };
+  if (analyticsError || !analytics) {
+    return (
+      <AppLayout>
+        <div
+          className="flex min-h-64 flex-col items-center justify-center gap-4 text-center"
+          role="alert"
+        >
+          <AlertCircle className="h-7 w-7 text-destructive" />
+          <p className="text-sm text-muted-foreground">
+            {t("budgets.analyticsError")}
+          </p>
+          <Button type="button" variant="outline" onClick={() => void refetchAnalytics()}>
+            {t("transactions.retry")}
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const spentByCategory = new Map(
+    analytics.currentMonthCategories.map((category) => [
+      category.categoryId,
+      category.value,
+    ]),
+  );
+  const budgetsWithSpent = currentBudgets.map((budget) => {
+    return {
+      ...budget,
+      spent: spentByCategory.get(budget.category_id) ?? 0,
+    };
   });
 
   const totalBudget = budgetsWithSpent.reduce(

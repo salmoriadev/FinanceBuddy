@@ -1,6 +1,6 @@
 import { useMemo, useState, useDeferredValue, useCallback } from "react";
 import { Navigate } from "react-router-dom";
-import { Plus, Filter, Loader2 } from "lucide-react";
+import { AlertCircle, Filter, Loader2, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
@@ -37,6 +37,12 @@ export default function Transactions() {
   const {
     transactions,
     isLoading,
+    isError,
+    isFetchNextPageError,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
     addTransaction,
     updateTransaction,
     deleteTransaction,
@@ -318,12 +324,62 @@ export default function Transactions() {
               <div className="flex items-center justify-center h-32">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
+            ) : isError && transactions.length === 0 ? (
+              <div
+                className="flex min-h-40 flex-col items-center justify-center gap-3 text-center"
+                role="alert"
+              >
+                <AlertCircle className="h-6 w-6 text-destructive" />
+                <p className="text-sm text-muted-foreground">
+                  {t("transactions.loadError")}
+                </p>
+                <Button type="button" variant="outline" onClick={() => void refetch()}>
+                  {t("transactions.retry")}
+                </Button>
+              </div>
             ) : (
-              <TransactionList
-                transactions={filteredTransactions}
-                onDelete={handleDeleteTransaction}
-                onEdit={handleEditTransaction}
-              />
+              <div className="space-y-4">
+                <TransactionList
+                  transactions={filteredTransactions}
+                  onDelete={handleDeleteTransaction}
+                  onEdit={handleEditTransaction}
+                />
+                {isFetchNextPageError && (
+                  <div
+                    className="flex items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/5 p-3"
+                    role="alert"
+                  >
+                    <span className="text-sm text-muted-foreground">
+                      {t("transactions.loadMoreError")}
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void fetchNextPage()}
+                    >
+                      {t("transactions.retry")}
+                    </Button>
+                  </div>
+                )}
+                {hasNextPage && !isFetchNextPageError && (
+                  <div className="flex justify-center">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isFetchingNextPage}
+                      onClick={() => void fetchNextPage()}
+                    >
+                      {isFetchingNextPage && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      {isFetchingNextPage
+                        ? t("transactions.loadingMore")
+                        : t("transactions.loadMore")}
+                    </Button>
+                  </div>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>

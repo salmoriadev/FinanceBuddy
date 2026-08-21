@@ -36,6 +36,7 @@ const analyticsFor = (year: number): ReportAnalytics => ({
     variation: null,
     hasVariationBaseline: false,
   },
+  currentMonthCategories: [],
   availableYears: [year],
 });
 

@@ -1,6 +1,13 @@
 import { useMemo } from "react";
 import { Navigate } from "react-router-dom";
-import { Wallet, TrendingUp, TrendingDown, Scale, Loader2 } from "lucide-react";
+import {
+  AlertCircle,
+  Loader2,
+  Scale,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useBudgets } from "@/hooks/useBudgets";
@@ -13,11 +20,12 @@ import { BudgetProgress } from "@/components/dashboard/BudgetProgress";
 import { GoalsProgress } from "@/components/dashboard/GoalsProgress";
 import { TransactionList } from "@/components/transactions/TransactionList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { CategorySpending, MonthlyData } from "@/types/finance";
-import { parseDateInput } from "@/lib/date";
 import { useFormatter } from "@/hooks/useFormatter";
 import { useI18n } from "@/hooks/useI18n";
 import { useCategoryLabels } from "@/hooks/useCategoryLabels";
+import { useReportAnalytics } from "@/hooks/useReports";
 
 type DashboardAggregates = {
   stats: {
@@ -35,6 +43,8 @@ export default function Index() {
   const {
     transactions,
     isLoading: transLoading,
+    isError: transactionsError,
+    refetch: refetchTransactions,
     deleteTransaction,
   } = useTransactions();
   const { budgets } = useBudgets();
@@ -42,84 +52,50 @@ export default function Index() {
   const { formatCurrency, formatPercent, monthsShort } = useFormatter();
   const { t: tText } = useI18n();
   const { labelFor } = useCategoryLabels();
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth() + 1;
+  const {
+    analytics,
+    isLoading: analyticsLoading,
+    isError: analyticsError,
+    refetch: refetchAnalytics,
+  } = useReportAnalytics(currentYear);
 
-  const dashboardAggregates = useMemo((): DashboardAggregates => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    const monthlyTotals = Array.from({ length: 12 }, () => ({
-      income: 0,
-      expense: 0,
-    }));
-    const currentMonthByCategory = new Map<string, CategorySpending>();
+  const dashboardAggregates = useMemo((): DashboardAggregates | null => {
+    if (!analytics) return null;
+    const currentMonthTotals = analytics.monthly.find(
+      (item) => item.month === currentMonth,
+    );
     const budgetsByCategoryCurrentMonth = new Map<string, number>();
-    let currentMonthIncome = 0;
-    let currentMonthExpense = 0;
-
-    for (const transaction of transactions) {
-      const date = parseDateInput(transaction.date);
-      const txYear = date.getFullYear();
-      if (txYear !== currentYear) continue;
-      const txMonth = date.getMonth();
-      const amount = Number(transaction.amount);
-
-      if (transaction.type === "income") {
-        monthlyTotals[txMonth].income += amount;
-        if (txMonth === currentMonth) currentMonthIncome += amount;
-        continue;
-      }
-
-      monthlyTotals[txMonth].expense += amount;
-      if (txMonth === currentMonth) {
-        currentMonthExpense += amount;
-        if (transaction.category_id) {
-          const previous = budgetsByCategoryCurrentMonth.get(transaction.category_id) ?? 0;
-          budgetsByCategoryCurrentMonth.set(transaction.category_id, previous + amount);
-        }
-
-        const categoryName = transaction.category
-          ? labelFor(transaction.category.name, transaction.category.type)
-          : tText("common.none");
-        const categoryColor = transaction.category?.color || "#6366f1";
-        const currentCategory = currentMonthByCategory.get(categoryName);
-        if (currentCategory) {
-          currentCategory.value += amount;
-        } else {
-          currentMonthByCategory.set(categoryName, {
-            name: categoryName,
-            value: amount,
-            color: categoryColor,
-          });
-        }
-      }
+    for (const category of analytics.currentMonthCategories) {
+      budgetsByCategoryCurrentMonth.set(category.categoryId, category.value);
     }
 
     return {
       stats: {
-        income: currentMonthIncome,
-        expense: currentMonthExpense,
-        balance: currentMonthIncome - currentMonthExpense,
+        income: currentMonthTotals?.income ?? 0,
+        expense: currentMonthTotals?.expense ?? 0,
+        balance: currentMonthTotals?.balance ?? 0,
       },
-      categorySpending: Array.from(currentMonthByCategory.values()).sort(
-        (a, b) => b.value - a.value,
-      ),
-      monthlyData: monthsShort
-        .map((month, index) => ({
-          month,
-          income: monthlyTotals[index].income,
-          expense: monthlyTotals[index].expense,
+      categorySpending: analytics.currentMonthCategories.map((category) => ({
+        name: labelFor(category.name, category.type),
+        value: category.value,
+        color: category.color || "#6366f1",
+      })),
+      monthlyData: analytics.monthly
+        .map((item) => ({
+          month: monthsShort[item.month - 1] ?? String(item.month),
+          income: item.income,
+          expense: item.expense,
         }))
-        .filter((d) => d.income > 0 || d.expense > 0),
+        .filter((item) => item.income > 0 || item.expense > 0),
       budgetsByCategoryCurrentMonth,
     };
-  }, [transactions, tText, labelFor, monthsShort]);
-
-  const { stats, categorySpending, monthlyData } = dashboardAggregates;
+  }, [analytics, currentMonth, labelFor, monthsShort]);
 
   const budgetsWithSpent = useMemo(() => {
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1;
-    const currentYear = now.getFullYear();
+    if (!dashboardAggregates) return [];
     return budgets
       .filter((b) => b.month === currentMonth && b.year === currentYear)
       .map((budget) => {
@@ -127,7 +103,7 @@ export default function Index() {
 
         return { ...budget, spent };
       });
-  }, [budgets, dashboardAggregates.budgetsByCategoryCurrentMonth]);
+  }, [budgets, currentMonth, currentYear, dashboardAggregates]);
 
   if (authLoading) {
     return (
@@ -141,7 +117,7 @@ export default function Index() {
     return <Navigate to="/auth" replace />;
   }
 
-  if (transLoading) {
+  if (analyticsLoading) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center h-64">
@@ -150,6 +126,27 @@ export default function Index() {
       </AppLayout>
     );
   }
+
+  if (analyticsError || !dashboardAggregates) {
+    return (
+      <AppLayout>
+        <div
+          className="flex min-h-64 flex-col items-center justify-center gap-4 text-center"
+          role="alert"
+        >
+          <AlertCircle className="h-7 w-7 text-destructive" />
+          <p className="text-sm text-muted-foreground">
+            {tText("dashboard.analyticsError")}
+          </p>
+          <Button type="button" variant="outline" onClick={() => void refetchAnalytics()}>
+            {tText("transactions.retry")}
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const { stats, categorySpending, monthlyData } = dashboardAggregates;
 
   return (
     <AppLayout>
@@ -208,10 +205,30 @@ export default function Index() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <TransactionList
-              transactions={transactions.slice(0, 5)}
-              onDelete={(id) => deleteTransaction.mutate(id)}
-            />
+            {transLoading ? (
+              <div className="flex h-24 items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : transactionsError ? (
+              <div className="flex flex-col items-center gap-3 py-8 text-center" role="alert">
+                <p className="text-sm text-muted-foreground">
+                  {tText("transactions.loadError")}
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void refetchTransactions()}
+                >
+                  {tText("transactions.retry")}
+                </Button>
+              </div>
+            ) : (
+              <TransactionList
+                transactions={transactions.slice(0, 5)}
+                onDelete={(id) => deleteTransaction.mutate(id)}
+              />
+            )}
           </CardContent>
         </Card>
       </div>
