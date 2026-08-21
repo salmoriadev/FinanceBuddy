@@ -195,7 +195,7 @@ The pull-request workflow runs the same test, lint, typecheck, and build gate. A
 
 Investment quotes and asset search use [brapi.dev](https://brapi.dev/) through the API. `BRAPI_TOKEN` is optional for endpoints supported without a token.
 
-When `MARKET_DATA_ENABLE_MOCK_FALLBACK=true`, an unavailable market-data request may return deterministic mock quotes. Fallback responses identify their provider as `mock`, and quote records created from them use the `estimated` status; they are suitable for local development, not real portfolio decisions. The fallback defaults to off in production unless it is explicitly enabled.
+When `MARKET_DATA_ENABLE_MOCK_FALLBACK=true`, an unavailable market-data request may return deterministic mock quotes. Fallback responses identify their provider as `mock`, and quote records created from them use the `estimated` status; they are suitable for local development, not real portfolio decisions. Production startup requires this setting to be explicitly `false`.
 
 Manual asset quotes remain available independently of the external provider.
 
@@ -203,7 +203,7 @@ Manual asset quotes remain available independently of the external provider.
 
 [`apps/web/vercel.json`](./apps/web/vercel.json) contains the SPA rewrite needed when `apps/web` is deployed to Vercel. Configure `VITE_API_URL` with the public `/api/v1` URL of the API.
 
-The API can run on a Node.js `>=22.12` host using `npm run build:api` and `npm run start:api`. Apply the SQL migrations before starting it and keep database credentials, JWT secrets, the password pepper, and provider tokens in the hosting platform's secret store.
+The API can run on a Node.js `>=22.12` host using `npm run build:api` and `npm run start:api`. Apply the SQL migrations before starting it and keep database credentials, JWT secrets, the password pepper, and provider tokens in the hosting platform's secret store. With `NODE_ENV=production`, startup validates required secrets, token lifetimes, the exact HTTPS CORS origin, cookie policy, proxy trust, request size, and disabled mock market data; an unsafe or incomplete configuration fails closed.
 
 Cookie, CORS, proxy, Swagger, and production market-data settings depend on where the two applications are hosted. Review the [`deployment security checklist`](./docs/security/DEPLOYMENT_SECURITY.md) before exposing an instance publicly.
 

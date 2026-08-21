@@ -43,6 +43,7 @@ Implemented controls:
 
 - Refresh tokens have a `family_id` to group a session chain.
 - Refresh rotation stores `replaced_by_token_id` on the old token.
+- A refresh token is claimed and its single replacement is created atomically.
 - Reusing a revoked refresh token writes a `refresh_token_reuse` security event.
 - Reusing a revoked refresh token revokes the active tokens in that family.
 - Unit tests cover unknown token handling, token-family rotation, and reuse
@@ -134,7 +135,7 @@ Implemented controls:
 
 - Added positive/max bounds to transaction, budget, goal, quote, portfolio
   transaction, and dividend values.
-- Lowered transaction list limit from 5000 to 200.
+- Transaction pages default to 100 rows and are capped at 200 rows.
 - Added max length constraints for user-controlled names, notes, tickers,
   sectors, sources, icons, colors, and currencies.
 - Added DTO validation tests for invalid financial values.

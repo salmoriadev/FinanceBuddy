@@ -23,7 +23,35 @@ Expected behavior:
 
 - Swagger is available at `/docs`.
 - Refresh cookies are HttpOnly and scoped to `/api/v1/auth`.
-- CSRF refresh/logout calls require `X-CSRF-Token` and `X-Requested-With`.
+- Registration, login, refresh, and logout calls require `X-CSRF-Token` and
+  `X-Requested-With`.
+
+## Required Production Configuration
+
+Production startup fails closed unless the security-sensitive runtime contract
+is complete. Set these values through the hosting platform's secret and
+configuration controls; the placeholders below are not valid runtime values.
+
+```bash
+NODE_ENV=production
+DATABASE_URL=<postgresql-url-with-a-strong-password>
+AUTH_JWT_SECRET=<output-from-openssl-rand-base64-48>
+AUTH_JWT_ISSUER=financebuddy-api
+AUTH_JWT_AUD=financebuddy-web
+ACCESS_TOKEN_TTL_MINUTES=15
+REFRESH_TOKEN_TTL_DAYS=30
+CORS_ORIGIN=https://app.example.com
+COOKIE_SAMESITE=lax
+TRUST_PROXY=true
+REQUEST_BODY_LIMIT=100kb
+MARKET_DATA_ENABLE_MOCK_FALLBACK=false
+```
+
+Use a unique database password and JWT secret for each environment. Set
+`PASSWORD_PEPPER` only to an independent secret; never reuse the JWT secret.
+`CORS_ORIGIN` accepts a comma-separated list only when every entry is an exact
+HTTPS origin. The deployment-specific examples below show which cookie and
+proxy values to choose.
 
 ## Same-Site Production
 
@@ -37,6 +65,7 @@ COOKIE_SAMESITE=lax
 COOKIE_DOMAIN=
 TRUST_PROXY=true
 ENABLE_SWAGGER=false
+MARKET_DATA_ENABLE_MOCK_FALLBACK=false
 ```
 
 Notes:
@@ -59,6 +88,7 @@ COOKIE_SAMESITE=none
 COOKIE_DOMAIN=
 TRUST_PROXY=true
 ENABLE_SWAGGER=false
+MARKET_DATA_ENABLE_MOCK_FALLBACK=false
 ```
 
 Notes:
