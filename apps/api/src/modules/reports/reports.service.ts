@@ -157,7 +157,11 @@ export class ReportsService {
     }
 
     const years: number[] = [];
-    for (let year = maxDate.getFullYear(); year >= minDate.getFullYear(); year -= 1) {
+    for (
+      let year = maxDate.getUTCFullYear();
+      year >= minDate.getUTCFullYear();
+      year -= 1
+    ) {
       years.push(year);
     }
     if (!years.includes(currentYear)) {

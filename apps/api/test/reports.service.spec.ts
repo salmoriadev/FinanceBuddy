@@ -216,6 +216,39 @@ describe("ReportsService", () => {
     ]);
   });
 
+  it("derives available years from UTC database dates", async () => {
+    const originalTimezone = process.env.TZ;
+    process.env.TZ = "America/Sao_Paulo";
+
+    try {
+      jest
+        .useFakeTimers()
+        .setSystemTime(new Date("2026-08-21T15:00:00.000Z"));
+      ensureRecurringTransactionsMock.mockResolvedValue({
+        generated: 0,
+      } as never);
+      queryRawMock
+        .mockResolvedValueOnce([] as never)
+        .mockResolvedValueOnce([] as never)
+        .mockResolvedValueOnce([] as never)
+        .mockResolvedValueOnce([] as never);
+      aggregateMock.mockResolvedValue({
+        _min: { date: new Date("2025-01-01T00:00:00.000Z") },
+        _max: { date: new Date("2026-01-01T00:00:00.000Z") },
+      } as never);
+
+      const analytics = await service.getAnalytics("user-boundary", 2026);
+
+      expect(analytics.availableYears).toEqual([2026, 2025]);
+    } finally {
+      if (originalTimezone === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = originalTimezone;
+      }
+    }
+  });
+
   it("returns cached analytics on repeated calls", async () => {
     ensureRecurringTransactionsMock.mockResolvedValue({ generated: 0 } as never);
     queryRawMock
