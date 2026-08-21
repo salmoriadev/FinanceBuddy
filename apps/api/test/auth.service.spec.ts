@@ -19,6 +19,7 @@ describe("AuthService", () => {
     findUserById: jest.fn(),
     updateLastLogin: jest.fn(),
     createRefreshToken: jest.fn(),
+    rotateRefreshToken: jest.fn(),
     revokeRefreshToken: jest.fn(),
   } as unknown as jest.Mocked<AuthRepository>;
   const configService = {
@@ -198,7 +199,7 @@ describe("AuthService", () => {
       updatedAt: new Date(),
       lastLoginAt: null,
     });
-    repository.createRefreshToken.mockResolvedValue({
+    repository.rotateRefreshToken.mockResolvedValue({
       id: "new-refresh-token-id",
       userId: "user-id",
       tokenHash: "new-token-hash",
@@ -210,7 +211,6 @@ describe("AuthService", () => {
       expiresAt: new Date(Date.now() + 60_000),
       revokedAt: null,
     });
-    repository.revokeRefreshToken.mockResolvedValue({} as never);
     configService.get.mockImplementation((key: string) => {
       if (key === "AUTH_JWT_SECRET") return "test-secret";
       if (key === "ACCESS_TOKEN_TTL_MINUTES") return "15";
@@ -222,15 +222,12 @@ describe("AuthService", () => {
 
     expect(result.accessToken).toEqual(expect.any(String));
     expect(result.refreshToken).toEqual(expect.any(String));
-    expect(repository.createRefreshToken).toHaveBeenCalledWith(
+    expect(repository.rotateRefreshToken).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "user-id",
         familyId: "family-id",
+        currentTokenId: "old-refresh-token-id",
       }),
-    );
-    expect(repository.revokeRefreshToken).toHaveBeenCalledWith(
-      "old-refresh-token-id",
-      "new-refresh-token-id",
     );
     expect(securityEvents.record).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -243,6 +240,73 @@ describe("AuthService", () => {
           replacedByTokenId: "new-refresh-token-id",
         }),
       }),
+    );
+  });
+
+  it("allows only one winner when the same refresh token is used in parallel", async () => {
+    const rawToken = "parallel-refresh-token";
+    const stored = {
+      id: "old-refresh-token-id",
+      userId: "user-id",
+      tokenHash: hashRefreshToken(rawToken),
+      familyId: "family-id",
+      replacedByTokenId: null,
+      userAgent: "test-agent",
+      ipAddress: "127.0.0.1",
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+    };
+    repository.findRefreshTokenByHash.mockResolvedValue(stored);
+    repository.findUserById.mockResolvedValue({
+      id: "user-id",
+      email: "user@example.com",
+      name: null,
+      locale: "pt-BR",
+      currency: "BRL",
+      passwordHash: "hash",
+      passwordAlgo: "argon2id",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastLoginAt: null,
+    });
+    let claimed = false;
+    repository.rotateRefreshToken.mockImplementation(async (data) => {
+      if (claimed) return null;
+      claimed = true;
+      return {
+        id: "winning-refresh-token-id",
+        userId: data.userId,
+        tokenHash: data.tokenHash,
+        familyId: data.familyId,
+        replacedByTokenId: null,
+        userAgent: data.userAgent ?? null,
+        ipAddress: data.ipAddress ?? null,
+        createdAt: new Date(),
+        expiresAt: data.expiresAt,
+        revokedAt: null,
+      };
+    });
+    repository.revokeTokenFamily.mockResolvedValue({ count: 1 });
+    configService.get.mockImplementation((key: string) => {
+      if (key === "AUTH_JWT_SECRET") return "test-secret";
+      if (key === "ACCESS_TOKEN_TTL_MINUTES") return "15";
+      if (key === "REFRESH_TOKEN_TTL_DAYS") return "30";
+      return undefined;
+    });
+    const request = requestWithRefreshToken(rawToken);
+
+    const results = await Promise.allSettled([
+      service.refresh(request),
+      service.refresh(request),
+    ]);
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+    expect(repository.rotateRefreshToken).toHaveBeenCalledTimes(2);
+    expect(repository.revokeTokenFamily).toHaveBeenCalledWith(
+      "user-id",
+      "family-id",
     );
   });
 });

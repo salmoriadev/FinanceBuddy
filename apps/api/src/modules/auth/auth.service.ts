@@ -134,23 +134,7 @@ export class AuthService {
     }
 
     if (stored.revokedAt) {
-      await this.repository.revokeTokenFamily(stored.userId, stored.familyId);
-      try {
-        await this.securityEvents.record({
-          userId: stored.userId,
-          type: "refresh_token_reuse",
-          severity: "high",
-          metadata: {
-            refreshTokenId: stored.id,
-            familyId: stored.familyId,
-            replacedByTokenId: stored.replacedByTokenId,
-          },
-          req,
-        });
-      } catch {
-        this.logger.warn("Unable to record refresh token reuse security event");
-      }
-      throw new UnauthorizedException("Refresh token invalid");
+      return this.rejectRefreshTokenReuse(stored, req);
     }
 
     if (stored.expiresAt.getTime() < Date.now()) {
@@ -172,10 +156,29 @@ export class AuthService {
       throw new UnauthorizedException("Invalid user");
     }
 
-    const tokens = await this.issueTokens(stored.userId, user.email, req, {
+    const replacementRefreshToken = this.generateRefreshToken();
+    const tokenHashForReplacement = this.hashRefreshToken(
+      replacementRefreshToken,
+    );
+    const expiresAt = new Date(
+      Date.now() + this.getRefreshTtlDays() * 24 * 60 * 60 * 1000,
+    );
+    const replacement = await this.repository.rotateRefreshToken({
+      currentTokenId: stored.id,
+      userId: stored.userId,
       familyId: stored.familyId,
+      tokenHash: tokenHashForReplacement,
+      expiresAt,
+      userAgent: req.get("user-agent"),
+      ipAddress: req.ip,
     });
-    await this.repository.revokeRefreshToken(stored.id, tokens.refreshTokenId);
+
+    if (!replacement) {
+      const latest = await this.repository.findRefreshTokenByHash(tokenHash);
+      return this.rejectRefreshTokenReuse(latest ?? stored, req);
+    }
+
+    const accessToken = this.signAccessToken(stored.userId, user.email);
     await this.recordSecurityEvent({
       userId: stored.userId,
       type: "refresh_token_rotated",
@@ -183,11 +186,15 @@ export class AuthService {
       metadata: {
         refreshTokenId: stored.id,
         familyId: stored.familyId,
-        replacedByTokenId: tokens.refreshTokenId,
+        replacedByTokenId: replacement.id,
       },
       req,
     });
-    return tokens;
+    return {
+      accessToken,
+      refreshToken: replacementRefreshToken,
+      refreshTokenId: replacement.id,
+    };
   }
 
   async logout(req: Request) {
@@ -311,6 +318,34 @@ export class AuthService {
       metadata: data.metadata,
       req: data.req,
     });
+  }
+
+  private async rejectRefreshTokenReuse(
+    stored: {
+      id: string;
+      userId: string;
+      familyId: string;
+      replacedByTokenId: string | null;
+    },
+    req: Request,
+  ): Promise<never> {
+    await this.repository.revokeTokenFamily(stored.userId, stored.familyId);
+    try {
+      await this.securityEvents.record({
+        userId: stored.userId,
+        type: "refresh_token_reuse",
+        severity: "high",
+        metadata: {
+          refreshTokenId: stored.id,
+          familyId: stored.familyId,
+          replacedByTokenId: stored.replacedByTokenId,
+        },
+        req,
+      });
+    } catch {
+      this.logger.warn("Unable to record refresh token reuse security event");
+    }
+    throw new UnauthorizedException("Refresh token invalid");
   }
 
   private hashAuditEmail(email: string) {

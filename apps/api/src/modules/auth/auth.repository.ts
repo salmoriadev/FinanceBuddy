@@ -68,6 +68,50 @@ export class AuthRepository {
     });
   }
 
+  rotateRefreshToken(data: {
+    currentTokenId: string;
+    userId: string;
+    familyId: string;
+    tokenHash: string;
+    expiresAt: Date;
+    userAgent?: string | null;
+    ipAddress?: string | null;
+  }) {
+    return this.prisma.$transaction(async (transaction) => {
+      const rotatedAt = new Date();
+      const claimed = await transaction.refreshToken.updateMany({
+        where: {
+          id: data.currentTokenId,
+          userId: data.userId,
+          familyId: data.familyId,
+          revokedAt: null,
+        },
+        data: { revokedAt: rotatedAt },
+      });
+
+      if (claimed.count !== 1) {
+        return null;
+      }
+
+      const replacement = await transaction.refreshToken.create({
+        data: {
+          userId: data.userId,
+          tokenHash: data.tokenHash,
+          familyId: data.familyId,
+          expiresAt: data.expiresAt,
+          userAgent: data.userAgent ?? null,
+          ipAddress: data.ipAddress ?? null,
+        },
+      });
+      await transaction.refreshToken.update({
+        where: { id: data.currentTokenId },
+        data: { replacedByTokenId: replacement.id },
+      });
+
+      return replacement;
+    });
+  }
+
   findRefreshTokenByHash(tokenHash: string) {
     return this.prisma.refreshToken.findFirst({
       where: { tokenHash },
