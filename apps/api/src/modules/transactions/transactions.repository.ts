@@ -5,6 +5,7 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
 import { runUpdateAndFind } from "../../database/repository-helpers";
+import { DEFAULT_TRANSACTIONS_LIMIT } from "./transactions.constants";
 
 @Injectable()
 export class TransactionsRepository {
@@ -15,8 +16,8 @@ export class TransactionsRepository {
       where: { userId },
       include: { category: true },
       orderBy: { date: "desc" },
-      take: opts?.limit,
-      skip: opts?.offset,
+      take: opts?.limit ?? DEFAULT_TRANSACTIONS_LIMIT,
+      skip: opts?.offset ?? 0,
     });
   }
 

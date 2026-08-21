@@ -13,6 +13,7 @@ import {
   assertResourceDeleted,
   assertResourceFound,
 } from "../../common/services/resource-assertions";
+import { DEFAULT_TRANSACTIONS_LIMIT } from "./transactions.constants";
 
 type TransactionCreateData = {
   description: string;
@@ -62,8 +63,8 @@ export class TransactionsService {
   async findAll(userId: string, query?: TransactionsQueryDto) {
     await this.recurring.ensureRecurringTransactions(userId);
     return this.repository.findAllByUser(userId, {
-      limit: query?.limit,
-      offset: query?.offset,
+      limit: query?.limit ?? DEFAULT_TRANSACTIONS_LIMIT,
+      offset: query?.offset ?? 0,
     });
   }
 
