@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { AssetsService } from "../src/modules/assets/assets.service";
+import { calculatePosition } from "../src/modules/portfolios/portfolio-calculations";
 import { PortfoliosRepository } from "../src/modules/portfolios/portfolios.repository";
 import { PortfoliosService } from "../src/modules/portfolios/portfolios.service";
 
@@ -37,6 +38,58 @@ describe("PortfoliosService", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it("keeps net sale proceeds consistent from the service through position calculations", async () => {
+    repository.findById.mockResolvedValue({ id: "portfolio-1" } as never);
+    repository.findAsset.mockResolvedValue({
+      id: "asset-1",
+      currency: "BRL",
+    } as never);
+    (repository.createTransaction as jest.Mock).mockImplementation(
+      async (_userId, _portfolioId, data) => ({
+        id: `tx-${data.type}`,
+        ...data,
+      }),
+    );
+
+    const buy = await service.addTransaction("user-1", "portfolio-1", {
+      assetId: "asset-1",
+      type: "buy",
+      quantity: "10",
+      unitPrice: "15",
+      fees: "2",
+      taxes: "3",
+      occurredAt: "2026-01-01",
+    });
+    const sell = await service.addTransaction("user-1", "portfolio-1", {
+      assetId: "asset-1",
+      type: "sell",
+      quantity: "5",
+      unitPrice: "30",
+      fees: "1",
+      taxes: "2",
+      occurredAt: "2026-01-02",
+    });
+
+    expect(buy).toEqual(
+      expect.objectContaining({
+        grossAmount: dec(150),
+        totalAmount: dec(155),
+      }),
+    );
+    expect(sell).toEqual(
+      expect.objectContaining({
+        grossAmount: dec(150),
+        totalAmount: dec(147),
+      }),
+    );
+
+    const position = calculatePosition([buy as never, sell as never]);
+
+    expect(position.quantity.toString()).toBe("5");
+    expect(position.costBasis.toString()).toBe("77.5");
+    expect(position.realizedGain.toString()).toBe("69.5");
   });
 
   it("returns portfolios even when one legacy investment migration fails", async () => {
@@ -133,9 +186,10 @@ describe("PortfoliosService", () => {
       type: "sell",
       quantity: dec(4),
       unitPrice: dec(20),
-      totalAmount: dec(80),
-      fees: dec(0),
-      taxes: dec(0),
+      grossAmount: dec(80),
+      totalAmount: dec(78),
+      fees: dec(1),
+      taxes: dec(1),
       occurredAt: new Date("2026-05-10"),
       createdAt: new Date("2026-05-10"),
       asset,
@@ -177,9 +231,9 @@ describe("PortfoliosService", () => {
 
     expect(report).toMatchObject({
       contributions: 100,
-      sales: 80,
+      sales: 78,
       dividendsReceived: 12.5,
-      estimatedCapitalGain: 40,
+      estimatedCapitalGain: 38,
       portfolioValue: 120,
       pendingData: {
         staleQuotes: 0,

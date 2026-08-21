@@ -24,7 +24,7 @@ describe("portfolio calculations", () => {
         type: "sell",
         quantity: "5",
         unitPrice: "30",
-        totalAmount: "150",
+        totalAmount: "149",
         fees: "1",
         occurredAt: new Date("2026-01-03"),
       },

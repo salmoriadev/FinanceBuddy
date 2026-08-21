@@ -7,6 +7,10 @@ export type PositionInputTransaction = {
   type: "buy" | "sell" | "dividend" | "fee" | "manual_adjustment" | "opening_balance";
   quantity?: DecimalInput;
   unitPrice?: DecimalInput;
+  /**
+   * Effective cash amount: acquisition costs include fees/taxes, while sale
+   * proceeds and dividends are already net of fees/taxes.
+   */
   totalAmount: DecimalInput;
   fees?: DecimalInput;
   taxes?: DecimalInput;
@@ -43,9 +47,6 @@ export const calculatePosition = (
   )) {
     const transactionQuantity = decimal(transaction.quantity);
     const totalAmount = decimal(transaction.totalAmount);
-    const fees = decimal(transaction.fees);
-    const taxes = decimal(transaction.taxes);
-
     if (transaction.type === "buy" || transaction.type === "opening_balance") {
       quantity = quantity.plus(transactionQuantity);
       costBasis = costBasis.plus(totalAmount);
@@ -58,9 +59,7 @@ export const calculatePosition = (
       const releasedCost = averageBeforeSale.times(transactionQuantity);
       quantity = quantity.minus(transactionQuantity);
       costBasis = costBasis.minus(releasedCost);
-      realizedGain = realizedGain.plus(
-        totalAmount.minus(releasedCost).minus(fees).minus(taxes),
-      );
+      realizedGain = realizedGain.plus(totalAmount.minus(releasedCost));
     }
 
     if (transaction.type === "dividend") {
