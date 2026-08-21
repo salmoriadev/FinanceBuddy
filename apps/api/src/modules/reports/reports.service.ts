@@ -1,6 +1,6 @@
 /**
  * Builds financial report summaries by combining recurring transaction materialization
- * with cached, database-aggregated totals for the requested year.
+ * with database-aggregated totals for the requested year.
  */
 import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
