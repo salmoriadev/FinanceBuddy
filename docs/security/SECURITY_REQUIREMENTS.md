@@ -70,6 +70,9 @@ Primary goals:
   failure.
 - Do log: rate-limit blocks as `rate_limit_blocked` with method, normalized
   route, configured limit, TTL, total hits, and block-expiry metadata.
+- Rate-limit events must be deduplicated per tracker, throttler, and normalized
+  route during the block window. Audit persistence must not delay or weaken the
+  `429` response, and deduplication state must be bounded.
 - Do log: repeated authorization failures as
   `repeated_authorization_failure` after five `401`, `403`, or `404` responses
   for the same IP, method, and normalized route within ten minutes.

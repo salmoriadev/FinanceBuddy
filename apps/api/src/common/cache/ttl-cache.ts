@@ -23,7 +23,7 @@ export class TtlCache<TKey, TValue> {
     return entry.value;
   }
 
-  set(key: TKey, value: TValue) {
+  set(key: TKey, value: TValue, ttlMs = this.ttlMs) {
     if (!this.store.has(key) && this.maxEntries !== undefined) {
       this.deleteExpiredEntries();
 
@@ -36,7 +36,12 @@ export class TtlCache<TKey, TValue> {
 
     // Refresh insertion order so frequently updated entries are evicted last.
     this.store.delete(key);
-    this.store.set(key, { value, expiresAt: Date.now() + this.ttlMs });
+    this.store.set(key, { value, expiresAt: Date.now() + ttlMs });
+  }
+
+  get size() {
+    this.deleteExpiredEntries();
+    return this.store.size;
   }
 
   delete(key: TKey) {

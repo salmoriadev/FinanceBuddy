@@ -16,4 +16,15 @@ describe("TtlCache", () => {
   it("rejects invalid size limits", () => {
     expect(() => new TtlCache<string, number>(60_000, 0)).toThrow(RangeError);
   });
+
+  it("supports an entry-specific TTL", () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-08-21T00:00:00.000Z"));
+    const cache = new TtlCache<string, number>(60_000);
+
+    cache.set("short-lived", 1, 1_000);
+    jest.advanceTimersByTime(1_001);
+
+    expect(cache.get("short-lived")).toBeNull();
+    jest.useRealTimers();
+  });
 });

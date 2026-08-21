@@ -158,7 +158,9 @@ Implemented:
 - Raw emails are not stored in security event metadata; login correlation uses a
   one-way hash.
 - Rate-limit blocks are logged as `rate_limit_blocked` events with method,
-  normalized route, limit, TTL, hit count, and block-expiry metadata.
+  normalized route, limit, TTL, hit count, and block-expiry metadata. Events are
+  deduplicated per tracker, throttler, and route during each block window, and
+  audit persistence never delays the `429` response.
 - Repeated `401`, `403`, and `404` responses are logged as
   `repeated_authorization_failure` after five failures for the same IP, method,
   and normalized route within ten minutes.
