@@ -1,4 +1,4 @@
-import { UnauthorizedException } from "@nestjs/common";
+import { Logger, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Request } from "express";
 import crypto from "crypto";
@@ -38,6 +38,10 @@ describe("AuthService", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     securityEvents.record.mockResolvedValue({} as never);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   const requestWithRefreshToken = (token: string) =>
@@ -123,6 +127,43 @@ describe("AuthService", () => {
 
     expect(repository.revokeUserTokens).not.toHaveBeenCalled();
     expect(repository.revokeTokenFamily).not.toHaveBeenCalled();
+  });
+
+  it("revokes a reused token family even when audit persistence fails", async () => {
+    const rawToken = "stolen-refresh-token";
+    repository.findRefreshTokenByHash.mockResolvedValue({
+      id: "reused-token-id",
+      userId: "user-id",
+      tokenHash: hashRefreshToken(rawToken),
+      familyId: "compromised-family-id",
+      replacedByTokenId: "active-token-id",
+      userAgent: "test-agent",
+      ipAddress: "127.0.0.1",
+      createdAt: new Date("2026-05-31T10:00:00.000Z"),
+      expiresAt: new Date("2026-06-30T10:00:00.000Z"),
+      revokedAt: new Date("2026-05-31T10:05:00.000Z"),
+    });
+    repository.revokeTokenFamily.mockResolvedValue({ count: 1 });
+    securityEvents.record.mockRejectedValueOnce(new Error("database unavailable"));
+    const warnSpy = jest
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => undefined);
+
+    await expect(
+      service.refresh(requestWithRefreshToken(rawToken)),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(repository.revokeTokenFamily).toHaveBeenCalledWith(
+      "user-id",
+      "compromised-family-id",
+    );
+    expect(securityEvents.record).toHaveBeenCalled();
+    expect(
+      repository.revokeTokenFamily.mock.invocationCallOrder[0],
+    ).toBeLessThan(securityEvents.record.mock.invocationCallOrder[0]);
+    expect(warnSpy).toHaveBeenCalledWith(
+      "Unable to record refresh token reuse security event",
+    );
   });
 
   it("rotates valid refresh tokens inside the same token family", async () => {

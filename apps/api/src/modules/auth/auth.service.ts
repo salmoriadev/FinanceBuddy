@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -32,6 +33,8 @@ const PASSWORD_RULES = {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly repository: AuthRepository,
     private readonly configService: ConfigService,
@@ -131,18 +134,22 @@ export class AuthService {
     }
 
     if (stored.revokedAt) {
-      await this.securityEvents.record({
-        userId: stored.userId,
-        type: "refresh_token_reuse",
-        severity: "high",
-        metadata: {
-          refreshTokenId: stored.id,
-          familyId: stored.familyId,
-          replacedByTokenId: stored.replacedByTokenId,
-        },
-        req,
-      });
       await this.repository.revokeTokenFamily(stored.userId, stored.familyId);
+      try {
+        await this.securityEvents.record({
+          userId: stored.userId,
+          type: "refresh_token_reuse",
+          severity: "high",
+          metadata: {
+            refreshTokenId: stored.id,
+            familyId: stored.familyId,
+            replacedByTokenId: stored.replacedByTokenId,
+          },
+          req,
+        });
+      } catch {
+        this.logger.warn("Unable to record refresh token reuse security event");
+      }
       throw new UnauthorizedException("Refresh token invalid");
     }
 
