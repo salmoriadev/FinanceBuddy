@@ -21,7 +21,7 @@ cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
 ```
 
-Apply the ordered SQL files under `supabase/migrations/`, configure the two local `.env` files, then start the workspaces:
+Apply the ordered SQL files under `supabase/migrations/`, configure the two local `.env` files, then start the workspaces in separate terminals:
 
 ```bash
 npm run prisma:generate --workspace=apps/api

@@ -1,6 +1,7 @@
 # FinanceBuddy Security Review
 
-**Review date:** 2026-08-21  
+**Review date:** 2026-08-21
+
 **Scope:** React web application, NestJS API, Prisma data access, Supabase SQL migrations, automated tests, and GitHub Actions workflows in this repository.
 
 ## Executive summary
