@@ -1,5 +1,4 @@
 import { Injectable } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../database/prisma.service";
 
 @Injectable()
@@ -96,26 +95,6 @@ export class AuthRepository {
     return this.prisma.refreshToken.updateMany({
       where: { userId, familyId, revokedAt: null },
       data: { revokedAt: new Date() },
-    });
-  }
-
-  createSecurityEvent(data: {
-    userId?: string | null;
-    type: string;
-    severity: "info" | "medium" | "high" | "critical";
-    metadata?: Prisma.InputJsonObject;
-    userAgent?: string | null;
-    ipAddress?: string | null;
-  }) {
-    return this.prisma.securityEvent.create({
-      data: {
-        userId: data.userId ?? null,
-        type: data.type,
-        severity: data.severity,
-        metadata: data.metadata,
-        userAgent: data.userAgent ?? null,
-        ipAddress: data.ipAddress ?? null,
-      },
     });
   }
 }

@@ -4,14 +4,40 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Injectable,
 } from "@nestjs/common";
+import { Request } from "express";
+import { TtlCache } from "../cache/ttl-cache";
+import { SecurityEventService } from "../../modules/security/security-event.service";
+import { normalizeSecurityRoute } from "../../modules/security/security-route.util";
+
+const AUTH_AUDITED_ROUTES = new Set([
+  "/auth/login",
+  "/auth/register",
+  "/auth/refresh",
+]);
+const AUTH_FAILURE_STATUSES = new Set([
+  HttpStatus.UNAUTHORIZED,
+  HttpStatus.FORBIDDEN,
+  HttpStatus.NOT_FOUND,
+]);
+const REPEATED_FAILURE_THRESHOLD = 5;
+const AUTHORIZATION_FAILURE_CACHE_LIMIT = 10_000;
 
 @Catch()
+@Injectable()
 export class HttpExceptionFilter implements ExceptionFilter {
-  catch(exception: unknown, host: ArgumentsHost) {
+  private readonly authorizationFailures = new TtlCache<string, number>(
+    10 * 60 * 1000,
+    AUTHORIZATION_FAILURE_CACHE_LIMIT,
+  );
+
+  constructor(private readonly securityEvents: SecurityEventService) {}
+
+  async catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse();
-    const request = ctx.getRequest();
+    const request = ctx.getRequest<Request>();
 
     const isHttpException = exception instanceof HttpException;
     const status = isHttpException
@@ -25,6 +51,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const isProd = process.env.NODE_ENV === "production";
     const includeDetails = !isProd || status < HttpStatus.INTERNAL_SERVER_ERROR;
 
+    await this.auditRepeatedAuthorizationFailure(request, status);
+
     response.status(status).json({
       statusCode: status,
       path: request.url,
@@ -32,6 +60,40 @@ export class HttpExceptionFilter implements ExceptionFilter {
       details: includeDetails ? rawResponse : undefined,
       timestamp: new Date().toISOString(),
     });
+  }
+
+  private async auditRepeatedAuthorizationFailure(
+    request: Request,
+    status: number,
+  ) {
+    if (!AUTH_FAILURE_STATUSES.has(status)) return;
+
+    const route = normalizeSecurityRoute(request);
+    if (AUTH_AUDITED_ROUTES.has(route)) return;
+
+    const key = `${request.ip || "unknown"}:${request.method}:${route}`;
+    const count = (this.authorizationFailures.get(key) ?? 0) + 1;
+    this.authorizationFailures.set(key, count);
+
+    if (count !== REPEATED_FAILURE_THRESHOLD) return;
+
+    try {
+      await this.securityEvents.record({
+        userId: (request as Request & { user?: { id?: string } }).user?.id,
+        type: "repeated_authorization_failure",
+        severity: "high",
+        metadata: {
+          method: request.method,
+          route,
+          statusCode: status,
+          failureCount: count,
+          windowSeconds: 10 * 60,
+        },
+        req: request,
+      });
+    } catch {
+      // Audit write failures must not change the HTTP error response.
+    }
   }
 
   private normalizeMessage(response: unknown): string {

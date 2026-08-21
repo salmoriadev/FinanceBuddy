@@ -1,8 +1,9 @@
 import { Module } from "@nestjs/common";
-import { APP_GUARD } from "@nestjs/core";
+import { APP_FILTER, APP_GUARD } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
-import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { ThrottlerModule } from "@nestjs/throttler";
 import { PrismaModule } from "./database/prisma.module";
+import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { AuthModule } from "./modules/auth/auth.module";
 import { HealthModule } from "./modules/health/health.module";
 import { TransactionsModule } from "./modules/transactions/transactions.module";
@@ -13,17 +14,20 @@ import { AssetsModule } from "./modules/assets/assets.module";
 import { PortfoliosModule } from "./modules/portfolios/portfolios.module";
 import { CategoriesModule } from "./modules/categories/categories.module";
 import { ReportsModule } from "./modules/reports/reports.module";
+import { SecurityModule } from "./modules/security/security.module";
+import { AuditedThrottlerGuard } from "./modules/security/audited-throttler.guard";
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([
       {
-        ttl: 60,
+        ttl: 60_000,
         limit: 100,
       },
     ]),
     PrismaModule,
+    SecurityModule,
     AuthModule,
     HealthModule,
     TransactionsModule,
@@ -38,7 +42,11 @@ import { ReportsModule } from "./modules/reports/reports.module";
   providers: [
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: AuditedThrottlerGuard,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter,
     },
   ],
 })

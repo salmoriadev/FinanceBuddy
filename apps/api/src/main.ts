@@ -6,7 +6,6 @@ import cookieParser from "cookie-parser";
 import compression from "compression";
 import { json, urlencoded } from "express";
 import { AppModule } from "./app.module";
-import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
 import { ConfigService } from "@nestjs/config";
 
@@ -57,7 +56,6 @@ async function bootstrap() {
       transform: true,
     }),
   );
-  app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new LoggingInterceptor());
 
   const enableSwagger =

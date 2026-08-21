@@ -93,11 +93,14 @@ before changing the app from one-hop trust.
 
 ## Security Event Retention
 
-The API now records authentication/session security events. Until an admin
-reporting screen exists, retention should be handled operationally:
+The API records authentication/session security events, rate-limit blocks, and
+repeated authorization failures. Retention should be handled operationally:
 
 - Keep security events at least 90 days in production-like environments.
 - Do not export events to public analytics tools.
 - Do not store raw passwords, raw tokens, cookies, or full request bodies.
 - Treat `security_events` as sensitive operational data.
-
+- Set `SECURITY_ADMIN_EMAILS` to a comma-separated allowlist of admin reviewer
+  emails that may call `GET /api/v1/security/events`; matching is
+  case-insensitive.
+- Keep the allowlist narrow and review it whenever team access changes.

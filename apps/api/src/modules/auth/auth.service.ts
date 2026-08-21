@@ -16,6 +16,11 @@ import { ChangePasswordDto } from "./dto/change-password.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { CategoriesService } from "../categories/categories.service";
 import { getDefaultCategories } from "../categories/default-categories";
+import { SecurityEventService } from "../security/security-event.service";
+import {
+  SecurityEventMetadata,
+  SecurityEventSeverity,
+} from "../security/security-event.types";
 
 const PASSWORD_RULES = {
   minLength: 8,
@@ -31,6 +36,7 @@ export class AuthService {
     private readonly repository: AuthRepository,
     private readonly configService: ConfigService,
     private readonly categoriesService: CategoriesService,
+    private readonly securityEvents: SecurityEventService,
   ) {}
 
   async register(dto: RegisterDto, req: Request) {
@@ -125,7 +131,7 @@ export class AuthService {
     }
 
     if (stored.revokedAt) {
-      await this.repository.createSecurityEvent({
+      await this.securityEvents.record({
         userId: stored.userId,
         type: "refresh_token_reuse",
         severity: "high",
@@ -134,8 +140,7 @@ export class AuthService {
           familyId: stored.familyId,
           replacedByTokenId: stored.replacedByTokenId,
         },
-        userAgent: req.get("user-agent"),
-        ipAddress: req.ip,
+        req,
       });
       await this.repository.revokeTokenFamily(stored.userId, stored.familyId);
       throw new UnauthorizedException("Refresh token invalid");
@@ -288,17 +293,16 @@ export class AuthService {
   private async recordSecurityEvent(data: {
     userId?: string | null;
     type: string;
-    severity: "info" | "medium" | "high" | "critical";
-    metadata?: Record<string, string | number | boolean | null>;
+    severity: SecurityEventSeverity;
+    metadata?: SecurityEventMetadata;
     req?: Request;
   }) {
-    await this.repository.createSecurityEvent({
+    await this.securityEvents.record({
       userId: data.userId,
       type: data.type,
       severity: data.severity,
       metadata: data.metadata,
-      userAgent: data.req?.get("user-agent"),
-      ipAddress: data.req?.ip,
+      req: data.req,
     });
   }
 

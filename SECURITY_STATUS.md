@@ -1,6 +1,6 @@
 # FinanceBuddy Security Status
 
-Last updated: 2026-06-01
+Last updated: 2026-08-21
 
 This file tracks the security improvement backlog from
 `security_best_practices_report.md` and records what has been implemented.
@@ -143,6 +143,32 @@ Main files:
 - `apps/api/src/modules/**/dto/*.ts`
 - `apps/api/test/financial-dto-validation.spec.ts`
 
+### S-09: Security Event Audit Trail
+
+**Status:** Done
+
+Implemented:
+
+- Added `security_events` table.
+- Persisted `refresh_token_reuse` events.
+- Persisted registration, login success/failure, refresh rotation, refresh
+  expiry, logout, password-change success, and password-change failure events.
+- Raw emails are not stored in security event metadata; login correlation uses a
+  one-way hash.
+- Rate-limit blocks are logged as `rate_limit_blocked` events with method,
+  normalized route, limit, TTL, hit count, and block-expiry metadata.
+- Repeated `401`, `403`, and `404` responses are logged as
+  `repeated_authorization_failure` after five failures for the same IP, method,
+  and normalized route within ten minutes.
+- Auth endpoints that already emit auth-specific events are excluded from
+  repeated authorization failure detection.
+- `GET /api/v1/security/events` exposes newest-first event review for JWT users
+  whose email case-insensitively matches `SECURITY_ADMIN_EMAILS`.
+- Production retention is an operational responsibility: keep
+  `security_events` for at least 90 days and treat them as sensitive
+  operational data. Alerting and incident-response integration remain
+  deployment concerns rather than repository controls.
+
 ### S-11: Dynamic Chart Style Injection Constraints
 
 **Status:** Done
@@ -160,21 +186,6 @@ Main files:
 - `apps/web/src/components/ui/chart.tsx`
 - `apps/web/src/components/ui/chart-style.ts`
 - `apps/web/test/chart-security.test.ts`
-
-### S-12: Trust Proxy Deployment Documentation
-
-**Status:** Documented
-
-Implemented controls:
-
-- Documented local, same-site production, and cross-site production settings.
-- Documented that `TRUST_PROXY=true` maps to one trusted proxy hop.
-- Added runtime verification checklist for real client IP logging and spoofed
-  forwarded headers.
-
-Main file:
-
-- `docs/security/DEPLOYMENT_SECURITY.md`
 
 ## Partially Done
 
@@ -194,23 +205,7 @@ Remaining:
 - Add materialized/cached portfolio report snapshots if real datasets grow.
 - Add endpoint-specific metrics before tuning limits further.
 
-### S-09: Security Event Audit Trail
-
-**Status:** Partially done
-
-Implemented:
-
-- Added `security_events` table.
-- Persisted `refresh_token_reuse` events.
-- Persisted registration, login success/failure, refresh rotation, refresh
-  expiry, logout, password-change success, and password-change failure events.
-- Raw emails are not stored in security event metadata; login correlation uses a
-  one-way hash.
-
-Remaining:
-
-- Log rate-limit blocks and repeated authorization failures.
-- Add reporting/retention strategy.
+## Documented
 
 ### S-10: Refresh Cookie Hardening
 
@@ -229,6 +224,23 @@ Remaining:
 - Consider `__Secure-` cookie naming after the final production domain topology
   is fixed.
 
+### S-12: Trust Proxy Deployment Documentation
+
+**Status:** Documented
+
+Implemented controls:
+
+- Documented local, same-site production, and cross-site production settings.
+- Documented that `TRUST_PROXY=true` maps to one trusted proxy hop.
+- Added runtime verification checklist for real client IP logging and spoofed
+  forwarded headers.
+
+Main file:
+
+- `docs/security/DEPLOYMENT_SECURITY.md`
+
 ## Remaining
 
-S-08, S-09, and S-10 have explicit remaining operational work listed above.
+S-08 and S-10 have explicit implementation or deployment work listed above.
+S-09 is complete at the repository level; its retention, alerting, and incident
+response follow-up must be completed by each production operator.

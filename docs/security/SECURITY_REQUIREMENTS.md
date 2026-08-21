@@ -68,11 +68,20 @@ Primary goals:
 - Do log: registration, login success, login failure, refresh rotation, refresh
   reuse, refresh expiry, logout, password-change success, and password-change
   failure.
+- Do log: rate-limit blocks as `rate_limit_blocked` with method, normalized
+  route, configured limit, TTL, total hits, and block-expiry metadata.
+- Do log: repeated authorization failures as
+  `repeated_authorization_failure` after five `401`, `403`, or `404` responses
+  for the same IP, method, and normalized route within ten minutes.
 - Do not log: raw passwords, raw refresh tokens, access tokens, session cookies,
   request bodies, or raw email addresses.
 - Email correlation must use a one-way hash.
-- Remaining work: add rate-limit block events and repeated authorization
-  failure detection if the product adds an admin/security review surface.
+- The admin review API is `GET /api/v1/security/events`; it requires a valid JWT
+  and a case-insensitive email match in `SECURITY_ADMIN_EMAILS`.
+- Admin event queries may filter by `type`, `severity`, `userId`, `from`, `to`,
+  and `limit`; `limit` defaults to 50 and is capped at 100.
+- Event responses must expose only sanitized event fields: `id`, `userId`,
+  `type`, `severity`, `metadata`, `userAgent`, `ipAddress`, and `createdAt`.
 
 ### S-10: Refresh Cookie Strategy
 
