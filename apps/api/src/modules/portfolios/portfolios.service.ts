@@ -125,8 +125,9 @@ export class PortfoliosService {
     const unitPrice = toDecimalOrNull(dto.unitPrice);
     const fees = toDecimalOrNull(dto.fees) ?? ZERO;
     const taxes = toDecimalOrNull(dto.taxes) ?? ZERO;
+    const explicitGrossAmount = toDecimalOrNull(dto.totalAmount);
     const grossAmount =
-      quantity && unitPrice ? quantity.times(unitPrice) : toDecimalOrNull(dto.totalAmount);
+      explicitGrossAmount ?? (quantity && unitPrice ? quantity.times(unitPrice) : null);
 
     if (
       ["buy", "sell", "opening_balance"].includes(dto.type) &&
@@ -135,13 +136,13 @@ export class PortfoliosService {
       throw new BadRequestException("Quantity is required for this transaction");
     }
 
-    const totalAmount =
-      toDecimalOrNull(dto.totalAmount) ??
-      (grossAmount
-        ? dto.type === "sell"
-          ? grossAmount.minus(fees).minus(taxes)
-          : grossAmount.plus(fees).plus(taxes)
-        : null);
+    const totalAmount = grossAmount
+      ? ["sell", "dividend"].includes(dto.type)
+        ? grossAmount.minus(fees).minus(taxes)
+        : ["buy", "opening_balance"].includes(dto.type)
+          ? grossAmount.plus(fees).plus(taxes)
+          : grossAmount
+      : null;
 
     if (!totalAmount) {
       throw new BadRequestException("Total amount or quantity/unitPrice is required");
