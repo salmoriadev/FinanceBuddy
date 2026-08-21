@@ -260,6 +260,49 @@ describe("PortfoliosRepository.createTransaction position guard", () => {
     expect(transactionClient.$queryRaw).toHaveBeenCalledTimes(1);
   });
 
+  it("allows a current sale after a legacy negative prefix was restored", async () => {
+    const create = jest.fn(async ({ data }) => ({ id: "transaction-4", ...data }));
+    const transactionClient = {
+      $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
+      portfolioTransaction: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            type: "buy",
+            quantity: dec(10),
+            occurredAt: new Date("2026-01-01T00:00:00.000Z"),
+            createdAt: new Date("2026-01-01T10:00:00.000Z"),
+          },
+          {
+            type: "sell",
+            quantity: dec(15),
+            occurredAt: new Date("2026-01-02T00:00:00.000Z"),
+            createdAt: new Date("2026-01-02T10:00:00.000Z"),
+          },
+          {
+            type: "buy",
+            quantity: dec(10),
+            occurredAt: new Date("2026-01-03T00:00:00.000Z"),
+            createdAt: new Date("2026-01-03T10:00:00.000Z"),
+          },
+        ]),
+        create,
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback) => callback(transactionClient)),
+    } as unknown as PrismaService;
+    const repository = new PortfoliosRepository(prisma);
+
+    await expect(
+      repository.createTransaction(
+        "user-1",
+        "portfolio-1",
+        transactionData("1", "2026-01-04T00:00:00.000Z"),
+      ),
+    ).resolves.toEqual(expect.objectContaining({ id: "transaction-4" }));
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
   it("serializes concurrent sales so only the quantity still available can be sold", async () => {
     const persisted = [
       {

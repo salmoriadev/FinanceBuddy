@@ -181,12 +181,16 @@ export class PortfoliosRepository {
         });
         const candidateCreatedAt = new Date(8_640_000_000_000_000);
         const chronological = [
-          ...existing,
+          ...existing.map((transaction) => ({
+            ...transaction,
+            isCandidate: false,
+          })),
           {
             type: data.type,
             quantity: data.quantity ?? null,
             occurredAt: data.occurredAt,
             createdAt: candidateCreatedAt,
+            isCandidate: true,
           },
         ].sort(
           (left, right) =>
@@ -195,11 +199,13 @@ export class PortfoliosRepository {
         );
 
         let available = new Prisma.Decimal(0);
+        let candidateReached = false;
         for (const transaction of chronological) {
+          candidateReached ||= transaction.isCandidate;
           available = available.plus(
             portfolioTransactionQuantityChange(transaction.type, transaction.quantity),
           );
-          if (available.isNegative()) {
+          if (candidateReached && available.isNegative()) {
             throw new InsufficientPortfolioPositionError();
           }
         }
