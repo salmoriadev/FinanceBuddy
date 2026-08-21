@@ -3,6 +3,7 @@ import {
   BadgeDollarSign,
   CheckCircle2,
   Coins,
+  Loader2,
   PieChart as PieChartIcon,
   TrendingUp,
   WalletCards,

@@ -2,7 +2,7 @@
  * Fetches pre-aggregated report analytics so the UI can render charts and KPI
  * cards without scanning the full transactions dataset on the client.
  */
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useAuth } from "./useAuth";
 import { apiRequest } from "@/lib/api";
 import { ReportAnalytics } from "@/types/finance";
@@ -22,7 +22,7 @@ export function useReportAnalytics(year: number) {
     enabled: !!user && !!token,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   return {

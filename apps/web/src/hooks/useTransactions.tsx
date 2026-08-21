@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useAuth } from "./useAuth";
 import { Transaction, TransactionType } from "@/types/finance";
 import { apiRequest } from "@/lib/api";
@@ -21,7 +26,7 @@ export function useTransactions() {
     enabled: !!user && !!token,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const addTransaction = useMutation({

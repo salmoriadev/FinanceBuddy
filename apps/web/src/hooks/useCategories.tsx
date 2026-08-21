@@ -1,5 +1,10 @@
 import { useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useAuth } from "./useAuth";
 import { Category, TransactionType } from "@/types/finance";
 import { apiRequest } from "@/lib/api";
@@ -35,7 +40,7 @@ export function useCategories() {
     enabled: !!user && !!token,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const categories = useMemo(

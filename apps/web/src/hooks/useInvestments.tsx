@@ -2,7 +2,12 @@
  * Provides investment queries and mutations while translating UI-friendly field
  * names into API payloads with safe partial-update semantics.
  */
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useAuth } from "./useAuth";
 import { Investment, InvestmentAssetSearchResult } from "@/types/finance";
 import { apiRequest } from "@/lib/api";
@@ -74,7 +79,7 @@ export function useInvestments() {
     enabled: !!user && !!token,
     staleTime: 60_000,
     refetchOnWindowFocus: false,
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const addInvestment = useMutation({
