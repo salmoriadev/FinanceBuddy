@@ -62,7 +62,8 @@ The principal risks considered by the project are:
 - Anti-enumeration responses for resources outside the caller's ownership scope.
 - PostgreSQL RLS and client-role denial policies for API-managed authentication tables.
 - Persisted, sanitized security events for authentication, session, throttling, and repeated authorization activity.
-- An authenticated security-event review route restricted by `SECURITY_ADMIN_EMAILS`.
+- An authenticated security-event review route restricted by immutable user
+  UUIDs in `SECURITY_ADMIN_USER_IDS`; account email does not grant access.
 - Runtime Swagger disabled in production.
 - Constrained chart-style generation before dynamic CSS injection.
 - Automated authorization, authentication, CSRF, validation, throttling, event, and integration tests.

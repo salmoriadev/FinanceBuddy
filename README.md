@@ -36,7 +36,7 @@ FinanceBuddy is a security-conscious personal finance platform that brings cash 
 - Double-submit CSRF protection for cookie-authenticated session operations.
 - Global and route-specific throttling, explicit request-size limits, strict DTO validation, and controlled CORS/proxy configuration.
 - User-scoped repository queries and anti-enumeration behavior for financial resources.
-- Security event persistence plus a narrowly allowlisted administrative review endpoint.
+- Security event persistence plus an administrative review endpoint allowlisted by immutable user UUID.
 - CI gates for tests, lint, typechecking, builds, dependency audit, secret scanning, SAST, and filesystem vulnerability scanning.
 
 ## Architecture
@@ -108,7 +108,7 @@ CORS_ORIGIN="http://localhost:8080"
 COOKIE_DOMAIN=""
 COOKIE_SAMESITE="lax"
 TRUST_PROXY="false"
-SECURITY_ADMIN_EMAILS=""
+SECURITY_ADMIN_USER_IDS=""
 REQUEST_BODY_LIMIT=100kb
 PORT=4000
 ENABLE_SWAGGER=true

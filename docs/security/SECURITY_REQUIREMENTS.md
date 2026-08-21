@@ -77,7 +77,9 @@ Primary goals:
   request bodies, or raw email addresses.
 - Email correlation must use a one-way hash.
 - The admin review API is `GET /api/v1/security/events`; it requires a valid JWT
-  and a case-insensitive email match in `SECURITY_ADMIN_EMAILS`.
+  whose immutable `sub`/user UUID is listed in `SECURITY_ADMIN_USER_IDS`.
+- Admin authorization must never depend on the account email. Invalid UUIDs in
+  configuration are ignored, and an empty allowlist denies all access.
 - Admin event queries may filter by `type`, `severity`, `userId`, `from`, `to`,
   and `limit`; `limit` defaults to 50 and is capped at 100.
 - Event responses must expose only sanitized event fields: `id`, `userId`,

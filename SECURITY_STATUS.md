@@ -165,7 +165,8 @@ Implemented:
 - Auth endpoints that already emit auth-specific events are excluded from
   repeated authorization failure detection.
 - `GET /api/v1/security/events` exposes newest-first event review for JWT users
-  whose email case-insensitively matches `SECURITY_ADMIN_EMAILS`.
+  whose immutable user UUID is listed in `SECURITY_ADMIN_USER_IDS`; malformed
+  configuration entries are ignored and an empty allowlist denies all access.
 - Production retention is an operational responsibility: keep
   `security_events` for at least 90 days and treat them as sensitive
   operational data. Alerting and incident-response integration remain

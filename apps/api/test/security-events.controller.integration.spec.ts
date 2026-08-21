@@ -9,6 +9,9 @@ import { SecurityAdminGuard } from "../src/modules/security/security-admin.guard
 import { SecurityEventService } from "../src/modules/security/security-event.service";
 import { SecurityEventsController } from "../src/modules/security/security-events.controller";
 
+const ADMIN_USER_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const OTHER_USER_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+
 describe("SecurityEventsController (integration)", () => {
   let app: INestApplication;
   const prisma = {
@@ -20,14 +23,14 @@ describe("SecurityEventsController (integration)", () => {
   const configService = {
     get: jest.fn((key: string) => {
       if (key === "AUTH_JWT_SECRET") return "test-secret";
-      if (key === "SECURITY_ADMIN_EMAILS") return "admin@example.com";
+      if (key === "SECURITY_ADMIN_USER_IDS") return ADMIN_USER_ID;
       return undefined;
     }),
   };
 
-  const tokenFor = (email: string) =>
+  const tokenFor = (userId: string, email = "user@example.com") =>
     jwt.sign(
-      { sub: "00000000-0000-4000-8000-000000000001", email },
+      { sub: userId, email },
       "test-secret",
       { algorithm: "HS256" },
     );
@@ -72,10 +75,13 @@ describe("SecurityEventsController (integration)", () => {
     expect(response.status).toBe(401);
   });
 
-  it("returns 403 for authenticated users outside the allowlist", async () => {
+  it("returns 403 for a matching email whose user id is not allowlisted", async () => {
     const response = await request(app.getHttpServer())
       .get("/api/v1/security/events")
-      .set("Authorization", `Bearer ${tokenFor("user@example.com")}`);
+      .set(
+        "Authorization",
+        `Bearer ${tokenFor(OTHER_USER_ID, "admin@example.com")}`,
+      );
 
     expect(response.status).toBe(403);
   });
@@ -98,7 +104,7 @@ describe("SecurityEventsController (integration)", () => {
       .get(
         "/api/v1/security/events?type=rate_limit_blocked&severity=medium&limit=10",
       )
-      .set("Authorization", `Bearer ${tokenFor("admin@example.com")}`);
+      .set("Authorization", `Bearer ${tokenFor(ADMIN_USER_ID)}`);
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual([
@@ -128,7 +134,7 @@ describe("SecurityEventsController (integration)", () => {
   it("rejects limit values above 100", async () => {
     const response = await request(app.getHttpServer())
       .get("/api/v1/security/events?limit=101")
-      .set("Authorization", `Bearer ${tokenFor("admin@example.com")}`);
+      .set("Authorization", `Bearer ${tokenFor(ADMIN_USER_ID)}`);
 
     expect(response.status).toBe(400);
     expect(prisma.securityEvent.findMany).not.toHaveBeenCalled();

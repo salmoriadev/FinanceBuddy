@@ -100,7 +100,8 @@ repeated authorization failures. Retention should be handled operationally:
 - Do not export events to public analytics tools.
 - Do not store raw passwords, raw tokens, cookies, or full request bodies.
 - Treat `security_events` as sensitive operational data.
-- Set `SECURITY_ADMIN_EMAILS` to a comma-separated allowlist of admin reviewer
-  emails that may call `GET /api/v1/security/events`; matching is
-  case-insensitive.
+- Set `SECURITY_ADMIN_USER_IDS` to a comma-separated allowlist of immutable user
+  UUIDs that may call `GET /api/v1/security/events`. Email addresses are not an
+  authorization input; malformed UUIDs are ignored and an empty allowlist
+  denies everyone.
 - Keep the allowlist narrow and review it whenever team access changes.
