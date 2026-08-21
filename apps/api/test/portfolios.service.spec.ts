@@ -250,4 +250,53 @@ describe("PortfoliosService", () => {
       },
     });
   });
+
+  it("evaluates historical quote freshness against the report boundary", async () => {
+    const historicalQuote = {
+      price: dec(20),
+      sourceType: "external",
+      status: "current",
+      quotedAt: new Date("2026-05-31T23:55:00.000Z"),
+    };
+    const buy = {
+      id: "buy-1",
+      assetId: "asset-1",
+      type: "buy",
+      quantity: dec(10),
+      unitPrice: dec(10),
+      totalAmount: dec(100),
+      fees: dec(0),
+      taxes: dec(0),
+      occurredAt: new Date("2026-05-01"),
+      createdAt: new Date("2026-05-01"),
+      asset: {
+        id: "asset-1",
+        ticker: "HGLG11",
+        quotes: [historicalQuote],
+      },
+    };
+
+    repository.findById.mockResolvedValue({ id: "portfolio-1" } as never);
+    repository.findPortfolioTransactionsBetween.mockResolvedValue([buy] as never);
+    repository.findPortfolioTransactionsUntil
+      .mockResolvedValueOnce([buy] as never)
+      .mockResolvedValueOnce([] as never);
+    repository.findDividendReceiptsBetween.mockResolvedValue([] as never);
+
+    const report = await service.getMonthlyReport("user-1", "portfolio-1", "2026-05");
+
+    expect(report.portfolioValue).toBe(200);
+    expect(report.pendingData).toEqual({
+      staleQuotes: 0,
+      missingQuotes: 0,
+      pendingDividends: 0,
+      hasPendingData: false,
+    });
+    expect(repository.findPortfolioTransactionsUntil).toHaveBeenNthCalledWith(
+      1,
+      "user-1",
+      "portfolio-1",
+      new Date("2026-05-31T23:59:59.999Z"),
+    );
+  });
 });

@@ -222,6 +222,7 @@ export class PortfoliosRepository {
         asset: {
           include: {
             quotes: {
+              where: { quotedAt: { lte: endDate } },
               orderBy: { quotedAt: "desc" },
               take: 1,
             },

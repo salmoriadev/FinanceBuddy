@@ -25,7 +25,7 @@ const parseDateOnly = (value: string) => new Date(`${value}T00:00:00.000Z`);
 const parseMonth = (month: string) => {
   const [year, monthNumber] = month.split("-").map(Number);
   const start = new Date(Date.UTC(year, monthNumber - 1, 1));
-  const end = new Date(Date.UTC(year, monthNumber, 0));
+  const end = new Date(Date.UTC(year, monthNumber, 0, 23, 59, 59, 999));
   if (
     !Number.isInteger(year) ||
     !Number.isInteger(monthNumber) ||
@@ -449,7 +449,7 @@ export class PortfoliosService {
         })),
       );
       const latestQuote = assetTransactions[0].asset.quotes[0] ?? null;
-      const status = getEffectiveQuoteStatus(latestQuote);
+      const status = getEffectiveQuoteStatus(latestQuote, end);
       if (status === "incomplete") missingQuotes += 1;
       if (status === "stale") staleQuotes += 1;
       portfolioValue = portfolioValue.plus(

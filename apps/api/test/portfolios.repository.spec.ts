@@ -204,3 +204,55 @@ describe("PortfoliosRepository.receiveDividendAtomically", () => {
     });
   });
 });
+
+describe("PortfoliosRepository historical quotes", () => {
+  it("selects the latest quote at or before the report boundary", async () => {
+    const historicalQuote = {
+      id: "quote-before",
+      price: dec(20),
+      quotedAt: new Date("2026-05-31T20:00:00.000Z"),
+    };
+    const futureQuote = {
+      id: "quote-after",
+      price: dec(200),
+      quotedAt: new Date("2026-06-01T10:00:00.000Z"),
+    };
+    const findMany = jest.fn(async (query) => {
+      const endDate = query.include.asset.include.quotes.where.quotedAt.lte;
+      const quotes = [futureQuote, historicalQuote]
+        .filter((quote) => quote.quotedAt <= endDate)
+        .sort((left, right) => right.quotedAt.getTime() - left.quotedAt.getTime())
+        .slice(0, query.include.asset.include.quotes.take);
+
+      return [{ id: "buy-1", asset: { id: "asset-1", quotes } }];
+    });
+    const prisma = {
+      portfolioTransaction: { findMany },
+    } as unknown as PrismaService;
+    const repository = new PortfoliosRepository(prisma);
+    const periodEnd = new Date("2026-05-31T23:59:59.999Z");
+
+    const transactions = await repository.findPortfolioTransactionsUntil(
+      "user-1",
+      "portfolio-1",
+      periodEnd,
+    );
+
+    expect(transactions[0].asset.quotes).toEqual([historicalQuote]);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: {
+          asset: {
+            include: {
+              quotes: {
+                where: { quotedAt: { lte: periodEnd } },
+                orderBy: { quotedAt: "desc" },
+                take: 1,
+              },
+            },
+          },
+        },
+      }),
+    );
+  });
+});
