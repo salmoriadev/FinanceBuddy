@@ -2,6 +2,10 @@
 
 Data da pesquisa: 2026-05-24
 
+> Historical research artifact. Product comparisons and FinanceBuddy gaps are a
+> point-in-time record from the date above, not a description of the current
+> implementation.
+
 Este documento transforma evidencias publicas do Investidor10, Investidor10 Pro e Investor10 internacional em requisitos acionaveis para o FinanceBuddy. A pesquisa usa paginas abertas, paginas de suporte, comunicados publicos e feedback publico de usuarios. Nao houve scraping de base de dados, copia de UI, copia de textos comerciais, copia de relatorios pagos ou uso de carteiras recomendadas proprietarias.
 
 ## Fontes principais

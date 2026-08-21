@@ -2,6 +2,10 @@
 
 Baseado no benchmark publico do Investidor10/Investidor10 Pro em 2026-05-24 e no estado atual do FinanceBuddy.
 
+> Historical planning artifact. These requirements capture the May 2026 product
+> direction and are not a current implementation-status checklist. See the
+> repository README and current source code for the implemented scope.
+
 ## Principios de produto
 
 - Nao copiar UI, textos, relatorios, carteiras recomendadas ou organizacao proprietaria de concorrentes.
@@ -164,4 +168,3 @@ Baseado no benchmark publico do Investidor10/Investidor10 Pro em 2026-05-24 e no
 - Dados externos devem entrar em staging antes de virar dado canonico.
 - Deve haver estrategia de deduplicacao e normalizacao por ticker/ISIN/CNPJ quando disponivel.
 - Contratos e licencas devem ser aprovados antes do uso em producao.
-

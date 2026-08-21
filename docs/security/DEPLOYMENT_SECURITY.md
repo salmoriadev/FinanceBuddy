@@ -1,6 +1,6 @@
 # FinanceBuddy Deployment Security Checklist
 
-Last updated: 2026-06-01
+Last updated: 2026-08-21
 
 This checklist documents the production assumptions behind cookies, CORS,
 Swagger, and proxy trust. It should be reviewed whenever the frontend/API host

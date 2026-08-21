@@ -2,6 +2,10 @@
 
 Roadmap priorizado para transformar o FinanceBuddy em uma plataforma competitiva para investidor pessoa fisica brasileiro, sem copiar UI, copy, relatorios ou carteiras proprietarias do Investidor10.
 
+> Historical planning artifact. This roadmap records the original sequencing;
+> several early portfolio capabilities have since been implemented. It is kept
+> for design-history context and is not the active delivery plan.
+
 Escala de complexidade: S, M, L, XL.
 
 ## Fase 1. Base de ativos e cotacoes

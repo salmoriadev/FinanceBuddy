@@ -2,8 +2,10 @@
 
 Last updated: 2026-08-21
 
-This file tracks the security improvement backlog from
-`security_best_practices_report.md` and records what has been implemented.
+This file records the repository's implemented security improvements and
+remaining operational work. The current review and acceptance criteria live in
+`docs/security/SECURITY_REVIEW.md` and
+`docs/security/SECURITY_REQUIREMENTS.md`.
 
 ## Done
 

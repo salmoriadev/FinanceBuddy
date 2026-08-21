@@ -2,6 +2,11 @@
 
 Data: 2026-05-24
 
+> Historical research artifact. This analysis reflects the product on the date
+> above, before the current asset, portfolio transaction, quote, dividend, and
+> reporting features were implemented. See the repository README and current
+> source code for the implemented scope.
+
 ## Estado atual do FinanceBuddy
 
 FinanceBuddy e hoje um gerenciador de financas pessoais com dashboard, transacoes, categorias, orcamentos, metas, relatorios e um modulo simples de investimentos. O modulo atual de investimentos permite CRUD manual de registros com:
@@ -107,4 +112,3 @@ O FinanceBuddy nao deve tentar replicar todo o Investidor10 no primeiro ciclo. A
 3. Adicionar rankings/comparador como camada de descoberta.
 4. Usar metas e rebalanceamento para diferenciar pela integracao com financas pessoais.
 5. So depois entrar em IRPF/DARF, B3 automatizado e conteudo premium.
-
