@@ -147,6 +147,19 @@ export default function Reports() {
           </Select>
         </div>
 
+        {isReportsLoading ? (
+          <div
+            className="flex min-h-[240px] items-center justify-center rounded-lg border border-border/70 bg-muted/20"
+            role="status"
+            aria-label={t("common.loading")}
+          >
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span>{t("common.loading")}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="contents">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-6">
@@ -299,15 +312,6 @@ export default function Reports() {
               <CardTitle>{t("reports.incomeVsExpense")}</CardTitle>
             </CardHeader>
             <CardContent>
-              {isReportsLoading ? (
-                <div
-                  className="flex items-center justify-center h-[300px]"
-                  role="status"
-                  aria-label={t("common.loading")}
-                >
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                </div>
-              ) : (
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={monthlyData}>
@@ -353,7 +357,6 @@ export default function Reports() {
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              )}
             </CardContent>
           </Card>
 
@@ -410,6 +413,8 @@ export default function Reports() {
             </div>
           </CardContent>
         </Card>
+          </div>
+        )}
       </div>
     </AppLayout>
   );

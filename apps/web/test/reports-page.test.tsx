@@ -95,11 +95,12 @@ vi.mock("recharts", () => ({
 const analyticsFor = (
   year: number,
   availableYears: number[],
+  income: number,
 ): ReportAnalytics => ({
   year,
   summary: {
     year,
-    income: 5_000,
+    income,
     expense: 1_000,
     balance: 4_000,
     savingsRate: 80,
@@ -119,17 +120,25 @@ describe("Reports page", () => {
   it("keeps a historical year selected and masks old analytics while it loads", () => {
     const currentYear = new Date().getFullYear();
     const historicalYear = currentYear - 1;
+    let historicalAnalytics: ReportAnalytics | null = null;
 
-    mockedUseReportAnalytics.mockImplementation((year: number) =>
-      year === currentYear
-        ? {
-            analytics: analyticsFor(currentYear, [currentYear, historicalYear]),
-            isLoading: false,
-          }
-        : { analytics: null, isLoading: true },
-    );
+    mockedUseReportAnalytics.mockImplementation((year: number) => {
+      if (year === currentYear) {
+        return {
+          analytics: analyticsFor(
+            currentYear,
+            [currentYear, historicalYear],
+            5_000,
+          ),
+          isLoading: false,
+        };
+      }
+      return historicalAnalytics
+        ? { analytics: historicalAnalytics, isLoading: false }
+        : { analytics: null, isLoading: true };
+    });
 
-    render(<Reports />);
+    const { rerender } = render(<Reports />);
 
     expect(screen.getByText("currency:5000")).toBeInTheDocument();
 
@@ -141,8 +150,29 @@ describe("Reports page", () => {
     expect(yearSelect).toHaveValue(historicalYear.toString());
     expect(mockedUseReportAnalytics).toHaveBeenLastCalledWith(historicalYear);
     expect(screen.queryByText("currency:5000")).not.toBeInTheDocument();
+    expect(screen.queryByText(/^currency:/)).not.toBeInTheDocument();
     expect(
       screen.getByRole("status", { name: "common.loading" }),
     ).toBeInTheDocument();
+
+    historicalAnalytics = analyticsFor(
+      historicalYear,
+      [currentYear, historicalYear],
+      2_400,
+    );
+    rerender(<Reports />);
+
+    expect(yearSelect).toHaveValue(historicalYear.toString());
+    expect(
+      screen.queryByRole("status", { name: "common.loading" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(`reports.income ${historicalYear}`),
+    ).toBeInTheDocument();
+    expect(screen.getByText("currency:2400")).toBeInTheDocument();
+    expect(screen.queryByText("currency:5000")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(`reports.income ${currentYear}`),
+    ).not.toBeInTheDocument();
   });
 });
