@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Loader2, TrendingUp, TrendingDown, Calendar } from "lucide-react";
 import {
@@ -54,17 +54,15 @@ export default function Reports() {
 
   const years = useMemo(
     () =>
-      analytics?.availableYears?.length
-        ? analytics.availableYears
-        : [currentYear],
-    [analytics?.availableYears, currentYear],
+      Array.from(
+        new Set([
+          currentYear,
+          selectedYearNumber,
+          ...(analytics?.availableYears ?? []),
+        ]),
+      ).sort((left, right) => right - left),
+    [analytics?.availableYears, currentYear, selectedYearNumber],
   );
-
-  useEffect(() => {
-    if (!years.includes(selectedYearNumber)) {
-      setSelectedYear(years[0].toString());
-    }
-  }, [years, selectedYearNumber]);
 
   const monthlyData = useMemo(() => {
     const byMonth = new Map((analytics?.monthly ?? []).map((item) => [item.month, item]));
@@ -302,7 +300,11 @@ export default function Reports() {
             </CardHeader>
             <CardContent>
               {isReportsLoading ? (
-                <div className="flex items-center justify-center h-[300px]">
+                <div
+                  className="flex items-center justify-center h-[300px]"
+                  role="status"
+                  aria-label={t("common.loading")}
+                >
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 </div>
               ) : (
