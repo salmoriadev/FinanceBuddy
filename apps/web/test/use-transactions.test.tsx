@@ -101,4 +101,35 @@ describe("useTransactions pagination", () => {
     expect(result.current.refetch).toEqual(expect.any(Function));
     queryClient.clear();
   });
+
+  it("invalidates transaction history and report aggregates after mutations", async () => {
+    mockedApiRequest
+      .mockResolvedValueOnce({
+        items: [transaction("tx-1")],
+        pageInfo: { hasMore: false, nextCursor: null },
+      })
+      .mockResolvedValueOnce(transaction("tx-created"));
+    const { queryClient, wrapper } = createWrapper();
+    const { result } = renderHook(() => useTransactions(), { wrapper });
+    await waitFor(() => expect(result.current.transactions).toHaveLength(1));
+    const invalidateQueries = vi
+      .spyOn(queryClient, "invalidateQueries")
+      .mockResolvedValue();
+
+    await act(async () => {
+      await result.current.addTransaction.mutateAsync({
+        description: "New transaction",
+        amount: 25,
+        type: "expense",
+        category_id: null,
+        date: "2026-08-21",
+      });
+    });
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["transactions"],
+    });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["reports"] });
+    queryClient.clear();
+  });
 });

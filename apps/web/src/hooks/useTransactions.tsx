@@ -22,6 +22,12 @@ export function useTransactions() {
   const { user, accessToken } = useAuth();
   const queryClient = useQueryClient();
   const token = accessToken;
+  const invalidateFinancialQueries = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+      queryClient.invalidateQueries({ queryKey: ["reports"] }),
+    ]);
+  };
 
   const transactionsQuery = useInfiniteQuery({
     queryKey: ["transactions", user?.id],
@@ -76,9 +82,7 @@ export function useTransactions() {
         },
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-    },
+    onSuccess: invalidateFinancialQueries,
   });
 
   const updateTransaction = useMutation({
@@ -106,9 +110,7 @@ export function useTransactions() {
         body,
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-    },
+    onSuccess: invalidateFinancialQueries,
   });
 
   const deleteTransaction = useMutation({
@@ -119,9 +121,7 @@ export function useTransactions() {
         token,
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-    },
+    onSuccess: invalidateFinancialQueries,
   });
 
   return {
