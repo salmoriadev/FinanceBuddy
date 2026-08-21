@@ -4,79 +4,133 @@
 [![Security Checks](https://github.com/salmoriadev/FinanceBuddy/actions/workflows/security.yml/badge.svg)](https://github.com/salmoriadev/FinanceBuddy/actions/workflows/security.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-2ea44f.svg)](./LICENSE)
 
-FinanceBuddy is a security-conscious personal finance platform that brings cash flow, budgets, savings goals, reports, and investment tracking into one focused workspace. It is an open-source portfolio project built to demonstrate full-stack product engineering, explicit trust boundaries, and repeatable quality gates—not a banking product or financial adviser.
+FinanceBuddy is a full-stack personal finance app for recording day-to-day cash flow and following investments from the same account. It combines transactions, monthly budgets, savings goals, reports, and portfolio activity, with saved locale and display-currency preferences.
 
 <p align="center">
-  <img src="./apps/web/public/landing-ledger.svg" alt="FinanceBuddy editorial landing panel showing a personal finance ledger" width="100%" />
+  <img src="./apps/web/public/landing-ledger.png" alt="FinanceBuddy preview illustrating a personal finance summary and ledger" width="100%" />
 </p>
 
-## What it does
+FinanceBuddy does not connect to a bank or brokerage and does not execute financial operations. Users enter their own records; market lookup is the only optional external data source. The project is pre-1.0 and is not banking infrastructure or a source of financial, investment, tax, or legal advice.
 
-- Tracks income, expenses, categories, filters, and recurring transactions.
-- Monitors monthly budgets and savings goals with clear progress views.
-- Builds reports for balance, cash flow, category distribution, and period comparisons.
-- Records assets, portfolio transactions, position snapshots, dividends, and monthly portfolio summaries.
-- Supports manual quotes plus optional market-data lookup, with clearly identified estimated/mock fallback data for development.
-- Provides English and Brazilian Portuguese preferences with configurable display currency.
+## Contents
 
-## Why it is a strong engineering case study
+- [Product overview](#product-overview)
+- [Architecture](#architecture)
+- [Technology](#technology)
+- [Repository structure](#repository-structure)
+- [Run locally](#run-locally)
+- [Development commands](#development-commands)
+- [Market data](#market-data)
+- [Deployment](#deployment)
+- [Contributing](#contributing)
 
-### Product engineering
+## Product overview
 
-- React 18 SPA with route-level lazy loading, TanStack Query caching, typed API mapping, Tailwind CSS, shadcn/ui primitives, and Recharts.
-- Modular NestJS 11 API with DTO validation, Prisma repositories, explicit service boundaries, and development-only OpenAPI documentation.
-- PostgreSQL schema managed as ordered Supabase SQL migrations, while Prisma provides the application data model and generated client.
-- npm workspaces with one lockfile and a single quality command covering tests, lint, typechecking, and production builds.
+The application is organized around the records people use to understand their finances over time:
 
-### Security engineering
+- **Cash flow:** create income and expense transactions, organize them by category, filter the history, and mark monthly entries as recurring.
+- **Budgets:** set a monthly spending limit for a category and compare the limit with transactions recorded for that period.
+- **Savings goals:** track a target amount, the current amount, a deadline, and the progress toward the goal.
+- **Reports:** review yearly income, expenses, balance, savings rate, monthly trends, category distribution, and the change from the previous month.
+- **Investments:** register assets and portfolio transactions, refresh or enter quotes, inspect positions, record dividends, and view monthly portfolio summaries.
+- **Preferences:** save an English or Brazilian Portuguese locale and display monetary values in BRL or USD; supported dashboard copy, dates, and number formats follow that preference.
 
-- Argon2id password hashing with optional server-side peppering.
-- Short-lived JWT access tokens and hashed, rotating refresh tokens in HttpOnly cookies.
-- Refresh-token family tracking and reuse detection.
-- Double-submit CSRF protection for cookie-authenticated session operations.
-- Global and route-specific throttling, explicit request-size limits, strict DTO validation, and controlled CORS/proxy configuration.
-- User-scoped repository queries and anti-enumeration behavior for financial resources.
-- Security event persistence plus an administrative review endpoint allowlisted by immutable user UUID.
-- CI gates for tests, lint, typechecking, builds, dependency audit, secret scanning, SAST, and filesystem vulnerability scanning.
+Accounts are created inside FinanceBuddy. Registration also creates the user's default categories, so the dashboard is usable without seeding a shared database.
 
 ## Architecture
 
+FinanceBuddy is an npm-workspaces monorepo with a browser application, a REST API, and a PostgreSQL database.
+
 ```mermaid
 flowchart LR
-  Browser[Browser] --> Web[React + Vite SPA]
-  Web -->|HTTPS JSON /api/v1| API[NestJS API]
-  API --> Auth[Auth and security controls]
-  API --> Finance[Finance and portfolio modules]
-  Auth --> Prisma[Prisma client]
-  Finance --> Prisma
-  Prisma --> DB[(Supabase PostgreSQL)]
-  Finance -. optional quote lookup .-> Market[brapi.dev]
+  Browser[Browser]
+  Web[React + Vite SPA]
+  API[NestJS REST API]
+  Domain[Domain services and repositories]
+  Prisma[Prisma Client]
+  DB[(Supabase PostgreSQL)]
+  Brapi[brapi.dev]
+
+  Browser --> Web
+  Web -->|JSON over /api/v1| API
+  API --> Domain
+  Domain --> Prisma
+  Prisma --> DB
+  Domain -. optional quotes .-> Brapi
 ```
 
-The browser never connects directly to PostgreSQL. The NestJS API owns authentication, validation, authorization, business rules, and persistence. Supabase is used as managed PostgreSQL; FinanceBuddy does not use Supabase client-side authentication.
+The web app never talks directly to PostgreSQL. Supabase provides the managed PostgreSQL instance, while registration, login, authorization, business rules, reports, and persistence remain in the NestJS API; the project does not use Supabase Auth in the browser.
 
-## Repository map
+### Request flow
+
+1. A protected React route calls a domain hook such as `useTransactions`, `useReports`, or `usePortfolios`.
+2. The hook uses TanStack Query for server-state caching and sends the request through the shared API client.
+3. NestJS routes the request to a domain controller, then to a service that applies validation and business rules.
+4. A repository—or the domain service for aggregate reports—uses Prisma Client to read or write PostgreSQL records scoped to the authenticated user.
+5. The API response is mapped to the web app's finance types and rendered by the page or chart that requested it.
+
+Authentication follows the same boundary. The API returns a short-lived access token used as a bearer token and rotates the longer-lived refresh token through an HttpOnly cookie. Cookie-backed session operations also require a CSRF token.
+
+### Backend modules
+
+| Module | Responsibility |
+| --- | --- |
+| `auth` | Registration, login, profile settings, password changes, access tokens, and refresh sessions. |
+| `transactions` and `categories` | User-owned income/expense records, filtering, categories, and recurring monthly entries. |
+| `budgets` and `goals` | Monthly category limits and savings progress. |
+| `reports` | Database-aggregated yearly totals, monthly series, category spending, and period comparison. |
+| `assets` and `investments` | Asset catalog, manual holdings, quote lookup, and market-data refresh. |
+| `portfolios` | Portfolio transactions, positions, dividends, monthly reports, and calculation breakdowns. |
+| `security` | Sanitized authentication, session, throttling, and repeated authorization events. |
+| `health` | Process and database health endpoints. |
+
+The database schema covers both everyday finance records and portfolio accounting. Ordered SQL files under [`supabase/migrations`](./supabase/migrations) are the source of truth for schema changes; [`apps/api/prisma/schema.prisma`](./apps/api/prisma/schema.prisma) maps that schema into the generated application client.
+
+## Technology
+
+| Area | Technology | Role in this project |
+| --- | --- | --- |
+| Web application | React 18 + TypeScript | Builds the dashboard and feature pages with typed component and API boundaries. |
+| Routing | React Router | Separates the public landing/auth pages from lazy-loaded, authenticated application routes. |
+| Server state | TanStack Query | Caches API reads and invalidates related data after mutations. |
+| Forms | React Hook Form + Zod | Handles form state and immediate client-side validation. |
+| UI | Tailwind CSS + Radix UI primitives | Provides the layout system and reusable accessible interaction primitives. |
+| Charts | Recharts | Renders cash-flow, category, and portfolio visualizations. |
+| Web tooling | Vite + Vitest + Testing Library | Runs local development, production bundling, and browser-oriented component tests. |
+| API | NestJS 11 + TypeScript | Organizes the REST API into modules, controllers, services, guards, and repositories. |
+| Validation | class-validator + class-transformer | Validates and transforms request DTOs before they reach domain services. |
+| Data access | Prisma Client | Supplies typed PostgreSQL queries without making Prisma migrations the schema authority. |
+| Database | PostgreSQL on Supabase | Stores accounts, sessions, finance and portfolio records used to calculate reports. |
+| API tests | Jest + Supertest | Tests services and HTTP behavior, including authorization and session flows. |
+
+## Repository structure
 
 ```text
 .
 ├── apps/
-│   ├── api/                  # NestJS API, Prisma model, and Jest tests
-│   └── web/                  # React/Vite SPA and Vitest tests
-├── supabase/migrations/      # Ordered SQL migration history
-├── docs/security/            # Security requirements and deployment guidance
-├── .github/workflows/        # Quality and security CI
-├── SECURITY.md               # Reporting policy and implemented controls
-└── package.json              # npm workspace orchestration
+│   ├── api/
+│   │   ├── prisma/          # Prisma schema mapped to the PostgreSQL database
+│   │   └── src/modules/     # NestJS modules grouped by finance domain
+│   └── web/
+│       ├── src/hooks/       # Data hooks for the REST API
+│       ├── src/pages/       # Landing, auth, dashboard, and feature routes
+│       └── src/components/  # Shared layout, forms, charts, and UI primitives
+├── supabase/migrations/     # Ordered PostgreSQL migration history
+├── docs/security/           # Security requirements, review, and deployment guidance
+├── .github/workflows/       # CI and security checks
+├── CONTRIBUTING.md
+└── SECURITY.md
 ```
 
-## Prerequisites
+## Run locally
 
-- [Node.js](https://nodejs.org/) `>=22.12`
-- npm (included with Node.js)
-- A [Supabase](https://supabase.com/) project providing PostgreSQL
-- Git; OpenSSL is recommended for generating local secrets
+### Prerequisites
 
-## Local setup
+- Node.js `>=22.12` and npm
+- Git
+- A Supabase project with an empty PostgreSQL database
+
+A brapi token is optional. The development fallback behavior is described in [Market data](#market-data).
 
 ### 1. Clone and install
 
@@ -86,118 +140,79 @@ cd FinanceBuddy
 npm ci
 ```
 
-### 2. Create local environment files
+### 2. Configure the applications
 
 ```bash
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
 ```
 
-Set the API values for your own Supabase project. Never commit either `.env` file.
+Edit the copied files for your environment. At minimum, point `DATABASE_URL` at your Supabase PostgreSQL database and replace the example authentication secrets. The canonical variable lists and local defaults live in [`apps/api/.env.example`](./apps/api/.env.example) and [`apps/web/.env.example`](./apps/web/.env.example); do not commit either `.env` file.
 
-```dotenv
-# apps/api/.env
-DATABASE_URL="postgresql://postgres:<password>@<host>:5432/postgres"
-AUTH_JWT_SECRET="replace-with-output-from-openssl-rand-base64-48"
-AUTH_JWT_ISSUER="financebuddy"
-AUTH_JWT_AUD="financebuddy"
-PASSWORD_PEPPER="replace-with-an-independent-secret"
-ACCESS_TOKEN_TTL_MINUTES=15
-REFRESH_TOKEN_TTL_DAYS=30
-CORS_ORIGIN="http://localhost:8080"
-COOKIE_DOMAIN=""
-COOKIE_SAMESITE="lax"
-TRUST_PROXY="false"
-SECURITY_ADMIN_USER_IDS=""
-REQUEST_BODY_LIMIT=100kb
-PORT=4000
-ENABLE_SWAGGER=true
-BRAPI_TOKEN=""
-MARKET_DATA_ENABLE_MOCK_FALLBACK="true"
-```
+### 3. Create the database schema
 
-Generate independent development secrets, for example:
+In the Supabase SQL Editor, apply every file in [`supabase/migrations`](./supabase/migrations) in ascending filename order. These SQL migrations are the schema history for this repository. Do not substitute `prisma migrate dev`: there is no Prisma migration history to apply.
 
-```bash
-openssl rand -base64 48
-openssl rand -base64 32
-```
-
-Point the web app at the local API:
-
-```dotenv
-# apps/web/.env
-VITE_API_URL="http://localhost:4000/api/v1"
-```
-
-The complete templates are in [`apps/api/.env.example`](./apps/api/.env.example) and [`apps/web/.env.example`](./apps/web/.env.example).
-
-### 3. Apply the database migrations
-
-Create an empty Supabase project, open its SQL Editor, and apply every file in [`supabase/migrations`](./supabase/migrations) in ascending timestamp order. The filenames are the migration order, beginning with `20260130090000_base_schema.sql`.
-
-The SQL files in `supabase/migrations/` are the source of truth for schema changes. Do **not** replace this step with `prisma migrate dev`: this repository does not contain a Prisma migration history. Prisma is used for schema mapping and client generation after the SQL migrations have been applied.
-
-### 4. Generate the client and run both apps
+Generate Prisma Client after the database configuration is in place:
 
 ```bash
 npm run prisma:generate --workspace=apps/api
 ```
 
-In separate terminals:
+### 4. Start the API and web app
+
+Run the workspaces in separate terminals:
 
 ```bash
 npm run dev:api
+```
+
+```bash
 npm run dev:web
 ```
 
-- Web app: `http://localhost:8080`
-- API health check: `http://localhost:4000/api/v1/health`
-- Swagger in development: `http://localhost:4000/docs`
+Open `http://localhost:8080`. The API health endpoint is available at `http://localhost:4000/api/v1/health`, and development Swagger documentation is served at `http://localhost:4000/docs`. Swagger is disabled when `NODE_ENV=production`.
 
-Swagger is intentionally unavailable when `NODE_ENV=production`.
+## Development commands
 
-## Scripts and quality gates
+Run commands from the repository root.
 
-| Command | Purpose |
+| Command | What it runs |
 | --- | --- |
-| `npm run dev:web` | Start the Vite development server. |
-| `npm run dev:api` | Start NestJS in watch mode. |
-| `npm test` | Run API and web test suites. |
-| `npm run lint` | Lint the web workspace. |
-| `npm run typecheck` | Typecheck both workspaces. |
-| `npm run build` | Build both workspaces for production. |
-| `npm run check:fast` | Run tests, lint, and typechecking. |
-| `npm run check` | Run the complete local quality gate, including both builds. |
-| `npm audit --audit-level=high` | Fail on high or critical npm advisories. |
+| `npm run dev:web` | Vite development server on port 8080. |
+| `npm run dev:api` | NestJS API in watch mode on port 4000. |
+| `npm test` | Jest API tests followed by Vitest web tests. |
+| `npm run lint` | ESLint for the web workspace. |
+| `npm run typecheck` | TypeScript checks for both workspaces. |
+| `npm run build` | Production builds for the API and web app. |
+| `npm run check:fast` | Tests, lint, and typechecking. |
+| `npm run check` | Tests, lint, typechecking, and both production builds. |
+| `npm audit --audit-level=high` | Dependency audit that fails on high or critical advisories. |
 
-Pull requests run the same quality checks in GitHub Actions. The separate security workflow blocks on high/critical dependency findings and also runs Gitleaks, Semgrep, and Trivy filesystem scanning.
+The pull-request workflow runs the same test, lint, typecheck, and build gate. A separate security workflow runs the dependency audit, Gitleaks, Semgrep, and Trivy.
 
-## Deployment notes
+## Market data
 
-The repository includes SPA rewrite configuration for deploying `apps/web` to Vercel. Set the Vercel root directory to `apps/web` and configure `VITE_API_URL` with the public `/api/v1` URL of your API.
+Investment quotes and asset search use [brapi.dev](https://brapi.dev/) through the API. `BRAPI_TOKEN` is optional for endpoints supported without a token.
 
-The API can run on a Node.js host that supports Node `>=22.12`, a build command of `npm run build:api`, and a start command of `npm run start:api`. API infrastructure is intentionally not prescribed in this repository. Before deploying:
+When `MARKET_DATA_ENABLE_MOCK_FALLBACK=true`, an unavailable market-data request may return deterministic mock quotes. Fallback responses identify their provider as `mock`, and quote records created from them use the `estimated` status; they are suitable for local development, not real portfolio decisions. The fallback defaults to off in production unless it is explicitly enabled.
 
-1. Apply the Supabase SQL migrations to the target database.
-2. Store all API secrets in the hosting provider, never in the repository.
-3. Set an exact `CORS_ORIGIN`; do not use a wildcard with credentials.
-4. Select the correct cookie `SameSite` policy for the web/API topology.
-5. Enable `TRUST_PROXY` only behind a known proxy that overwrites forwarded headers.
-6. Disable development mock market data in production unless that behavior is explicitly desired.
+Manual asset quotes remain available independently of the external provider.
 
-Review the [`deployment security checklist`](./docs/security/DEPLOYMENT_SECURITY.md) before exposing the application publicly.
+## Deployment
 
-## Security and data disclaimer
+[`apps/web/vercel.json`](./apps/web/vercel.json) contains the SPA rewrite needed when `apps/web` is deployed to Vercel. Configure `VITE_API_URL` with the public `/api/v1` URL of the API.
 
-Please report vulnerabilities privately through the process in [`SECURITY.md`](./SECURITY.md). Do not place secrets, access tokens, database URLs, vulnerability details, or real financial data in issues, discussions, screenshots, fixtures, or pull requests.
+The API can run on a Node.js `>=22.12` host using `npm run build:api` and `npm run start:api`. Apply the SQL migrations before starting it and keep database credentials, JWT secrets, the password pepper, and provider tokens in the hosting platform's secret store.
 
-FinanceBuddy is a portfolio and educational project. It has not been independently audited, is not banking infrastructure, and does not provide financial, investment, tax, or legal advice. Use synthetic data in public or shared environments.
+Cookie, CORS, proxy, Swagger, and production market-data settings depend on where the two applications are hosted. Review the [`deployment security checklist`](./docs/security/DEPLOYMENT_SECURITY.md) before exposing an instance publicly.
 
 ## Contributing
 
-Contributions are welcome. Read [`CONTRIBUTING.md`](./CONTRIBUTING.md) for setup, branch, commit, test, pull-request, and data-safety expectations.
+Contributions are welcome. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the local workflow, branch and commit conventions, required checks, and pull-request expectations. Report vulnerabilities privately through the process in [`SECURITY.md`](./SECURITY.md).
+
+Use synthetic financial data in tests, screenshots, issues, and pull requests. Never publish credentials, tokens, database URLs, or real account records.
 
 ## License
 
-Copyright © 2026 Arthur de Farias Salmoria. Released under the [MIT License](./LICENSE).
+Copyright © 2026 Arthur de Farias Salmoria. FinanceBuddy is released under the [MIT License](./LICENSE).
