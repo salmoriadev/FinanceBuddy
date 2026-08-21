@@ -1,7 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { AssetsService } from "../src/modules/assets/assets.service";
 import { calculatePosition } from "../src/modules/portfolios/portfolio-calculations";
-import { PortfoliosRepository } from "../src/modules/portfolios/portfolios.repository";
+import {
+  InsufficientPortfolioPositionError,
+  PortfoliosRepository,
+} from "../src/modules/portfolios/portfolios.repository";
 import { PortfoliosService } from "../src/modules/portfolios/portfolios.service";
 
 const dec = (value: string | number) => new Prisma.Decimal(value);
@@ -91,6 +94,30 @@ describe("PortfoliosService", () => {
     expect(position.quantity.toString()).toBe("5");
     expect(position.costBasis.toString()).toBe("77.5");
     expect(position.realizedGain.toString()).toBe("69.5");
+  });
+
+  it("returns a conflict when a sale exceeds the available position", async () => {
+    repository.findById.mockResolvedValue({ id: "portfolio-1" } as never);
+    repository.findAsset.mockResolvedValue({
+      id: "asset-1",
+      currency: "BRL",
+    } as never);
+    repository.createTransaction.mockRejectedValue(
+      new InsufficientPortfolioPositionError(),
+    );
+
+    await expect(
+      service.addTransaction("user-1", "portfolio-1", {
+        assetId: "asset-1",
+        type: "sell",
+        quantity: "11",
+        unitPrice: "10",
+        occurredAt: "2026-01-02",
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      message: "Sell quantity exceeds the available position",
+    });
   });
 
   it("returns portfolios even when one legacy investment migration fails", async () => {

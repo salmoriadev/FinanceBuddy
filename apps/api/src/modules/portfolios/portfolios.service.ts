@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+} from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { assertResourceFound } from "../../common/services/resource-assertions";
 import { buildLegacyTicker } from "../assets/asset-normalization";
@@ -12,7 +17,10 @@ import {
   decimal,
   effectiveCashAmount,
 } from "./portfolio-calculations";
-import { PortfoliosRepository } from "./portfolios.repository";
+import {
+  InsufficientPortfolioPositionError,
+  PortfoliosRepository,
+} from "./portfolios.repository";
 
 const ZERO = new Prisma.Decimal(0);
 
@@ -160,19 +168,26 @@ export class PortfoliosService {
       throw new BadRequestException("Total amount or quantity/unitPrice is required");
     }
 
-    return this.repository.createTransaction(userId, portfolioId, {
-      assetId: dto.assetId,
-      type: dto.type,
-      quantity,
-      unitPrice,
-      grossAmount,
-      fees,
-      taxes,
-      totalAmount,
-      currency: normalizeCurrency(dto.currency ?? asset.currency),
-      occurredAt: new Date(dto.occurredAt),
-      notes: dto.notes?.trim() || null,
-    });
+    try {
+      return await this.repository.createTransaction(userId, portfolioId, {
+        assetId: dto.assetId,
+        type: dto.type,
+        quantity,
+        unitPrice,
+        grossAmount,
+        fees,
+        taxes,
+        totalAmount,
+        currency: normalizeCurrency(dto.currency ?? asset.currency),
+        occurredAt: new Date(dto.occurredAt),
+        notes: dto.notes?.trim() || null,
+      });
+    } catch (error) {
+      if (error instanceof InsufficientPortfolioPositionError) {
+        throw new ConflictException(error.message);
+      }
+      throw error;
+    }
   }
 
   async getPositions(userId: string, portfolioId: string) {

@@ -1,6 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../src/database/prisma.service";
-import { PortfoliosRepository } from "../src/modules/portfolios/portfolios.repository";
+import {
+  InsufficientPortfolioPositionError,
+  PortfoliosRepository,
+} from "../src/modules/portfolios/portfolios.repository";
 
 const dec = (value: string | number) => new Prisma.Decimal(value);
 
@@ -202,6 +205,120 @@ describe("PortfoliosRepository.receiveDividendAtomically", () => {
       transactionId: "tx-1",
       ledgerIds: ["tx-1"],
     });
+  });
+});
+
+describe("PortfoliosRepository.createTransaction position guard", () => {
+  const transactionData = (quantity: string, occurredAt: string) => ({
+    assetId: "asset-1",
+    type: "sell" as const,
+    quantity: dec(quantity),
+    unitPrice: dec(10),
+    grossAmount: dec(quantity).times(10),
+    fees: dec(0),
+    taxes: dec(0),
+    totalAmount: dec(quantity).times(10),
+    currency: "BRL",
+    occurredAt: new Date(occurredAt),
+  });
+
+  it("rejects a backdated sale that would make a later position negative", async () => {
+    const create = jest.fn();
+    const transactionClient = {
+      $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
+      portfolioTransaction: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            type: "buy",
+            quantity: dec(10),
+            occurredAt: new Date("2026-01-01T00:00:00.000Z"),
+            createdAt: new Date("2026-01-01T10:00:00.000Z"),
+          },
+          {
+            type: "sell",
+            quantity: dec(5),
+            occurredAt: new Date("2026-01-03T00:00:00.000Z"),
+            createdAt: new Date("2026-01-03T10:00:00.000Z"),
+          },
+        ]),
+        create,
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback) => callback(transactionClient)),
+    } as unknown as PrismaService;
+    const repository = new PortfoliosRepository(prisma);
+
+    await expect(
+      repository.createTransaction(
+        "user-1",
+        "portfolio-1",
+        transactionData("6", "2026-01-02T00:00:00.000Z"),
+      ),
+    ).rejects.toBeInstanceOf(InsufficientPortfolioPositionError);
+    expect(create).not.toHaveBeenCalled();
+    expect(transactionClient.$queryRaw).toHaveBeenCalledTimes(1);
+  });
+
+  it("serializes concurrent sales so only the quantity still available can be sold", async () => {
+    const persisted = [
+      {
+        type: "buy",
+        quantity: dec(10),
+        occurredAt: new Date("2026-01-01T00:00:00.000Z"),
+        createdAt: new Date("2026-01-01T10:00:00.000Z"),
+      },
+    ];
+    const transactionClient = {
+      $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
+      portfolioTransaction: {
+        findMany: jest.fn(async () => [...persisted]),
+        create: jest.fn(async ({ data }) => {
+          const created = {
+            ...data,
+            id: `transaction-${persisted.length}`,
+            createdAt: new Date(`2026-01-02T10:00:0${persisted.length}.000Z`),
+          };
+          persisted.push(created);
+          return created;
+        }),
+      },
+    };
+    let transactionQueue = Promise.resolve<unknown>(undefined);
+    const prisma = {
+      $transaction: jest.fn((callback) => {
+        const result = transactionQueue.then(() => callback(transactionClient));
+        transactionQueue = result.then(
+          () => undefined,
+          () => undefined,
+        );
+        return result;
+      }),
+    } as unknown as PrismaService;
+    const repository = new PortfoliosRepository(prisma);
+
+    const results = await Promise.allSettled([
+      repository.createTransaction(
+        "user-1",
+        "portfolio-1",
+        transactionData("6", "2026-01-02T00:00:00.000Z"),
+      ),
+      repository.createTransaction(
+        "user-1",
+        "portfolio-1",
+        transactionData("5", "2026-01-02T00:00:00.000Z"),
+      ),
+    ]);
+
+    expect(results[0].status).toBe("fulfilled");
+    expect(results[1]).toEqual(
+      expect.objectContaining({
+        status: "rejected",
+        reason: expect.any(InsufficientPortfolioPositionError),
+      }),
+    );
+    expect(transactionClient.portfolioTransaction.create).toHaveBeenCalledTimes(1);
+    expect(transactionClient.$queryRaw).toHaveBeenCalledTimes(2);
   });
 });
 

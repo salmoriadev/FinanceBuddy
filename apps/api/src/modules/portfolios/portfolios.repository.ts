@@ -43,6 +43,26 @@ type ReceiveDividendData = {
   };
 };
 
+export class InsufficientPortfolioPositionError extends Error {
+  constructor() {
+    super("Sell quantity exceeds the available position");
+    this.name = "InsufficientPortfolioPositionError";
+  }
+}
+
+const portfolioTransactionQuantityChange = (
+  type: PortfolioTransactionType,
+  quantity: Prisma.Decimal | null,
+) => {
+  const value = quantity ?? new Prisma.Decimal(0);
+
+  if (type === "buy" || type === "opening_balance" || type === "manual_adjustment") {
+    return value;
+  }
+
+  return type === "sell" ? value.negated() : new Prisma.Decimal(0);
+};
+
 @Injectable()
 export class PortfoliosRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -147,26 +167,65 @@ export class PortfoliosRepository {
     portfolioId: string,
     data: PortfolioTransactionData,
   ) {
-    return this.prisma.portfolioTransaction.create({
-      data: {
-        userId,
-        portfolioId,
-        assetId: data.assetId,
-        type: data.type,
-        quantity: data.quantity ?? null,
-        unitPrice: data.unitPrice ?? null,
-        grossAmount: data.grossAmount ?? null,
-        fees: data.fees,
-        taxes: data.taxes,
-        totalAmount: data.totalAmount,
-        currency: data.currency,
-        occurredAt: data.occurredAt,
-        notes: data.notes ?? null,
-        source: data.source ?? "manual",
-        sourceType: data.sourceType ?? "manual",
-        status: "manual",
-        legacyInvestmentId: data.legacyInvestmentId ?? null,
-      },
+    return this.prisma.$transaction(async (transactionClient) => {
+      if (data.type === "sell") {
+        const lockKey = `${userId}:${portfolioId}:${data.assetId}`;
+        await transactionClient.$queryRaw(
+          Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
+        );
+
+        const existing = await transactionClient.portfolioTransaction.findMany({
+          where: { userId, portfolioId, assetId: data.assetId },
+          select: { type: true, quantity: true, occurredAt: true, createdAt: true },
+          orderBy: [{ occurredAt: "asc" }, { createdAt: "asc" }],
+        });
+        const candidateCreatedAt = new Date(8_640_000_000_000_000);
+        const chronological = [
+          ...existing,
+          {
+            type: data.type,
+            quantity: data.quantity ?? null,
+            occurredAt: data.occurredAt,
+            createdAt: candidateCreatedAt,
+          },
+        ].sort(
+          (left, right) =>
+            left.occurredAt.getTime() - right.occurredAt.getTime() ||
+            left.createdAt.getTime() - right.createdAt.getTime(),
+        );
+
+        let available = new Prisma.Decimal(0);
+        for (const transaction of chronological) {
+          available = available.plus(
+            portfolioTransactionQuantityChange(transaction.type, transaction.quantity),
+          );
+          if (available.isNegative()) {
+            throw new InsufficientPortfolioPositionError();
+          }
+        }
+      }
+
+      return transactionClient.portfolioTransaction.create({
+        data: {
+          userId,
+          portfolioId,
+          assetId: data.assetId,
+          type: data.type,
+          quantity: data.quantity ?? null,
+          unitPrice: data.unitPrice ?? null,
+          grossAmount: data.grossAmount ?? null,
+          fees: data.fees,
+          taxes: data.taxes,
+          totalAmount: data.totalAmount,
+          currency: data.currency,
+          occurredAt: data.occurredAt,
+          notes: data.notes ?? null,
+          source: data.source ?? "manual",
+          sourceType: data.sourceType ?? "manual",
+          status: "manual",
+          legacyInvestmentId: data.legacyInvestmentId ?? null,
+        },
+      });
     });
   }
 
