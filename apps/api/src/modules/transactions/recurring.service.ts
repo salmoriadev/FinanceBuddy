@@ -5,7 +5,6 @@
 import { Injectable } from "@nestjs/common";
 import { TransactionsRepository } from "./transactions.repository";
 import { TtlCache } from "../../common/cache/ttl-cache";
-import { ReportsCacheInvalidationService } from "../../common/cache/reports-cache-invalidation.service";
 
 const RECENT_RUNS_MAX_USERS = 10_000;
 
@@ -62,10 +61,7 @@ export class RecurringTransactionsService {
   );
   private readonly inFlightByUser = new Map<string, Promise<{ generated: number }>>();
 
-  constructor(
-    private readonly repository: TransactionsRepository,
-    private readonly reportsCache: ReportsCacheInvalidationService,
-  ) {}
+  constructor(private readonly repository: TransactionsRepository) {}
 
   private runOrJoinGeneration(userId: string) {
     const inFlight = this.inFlightByUser.get(userId);
@@ -137,9 +133,6 @@ export class RecurringTransactionsService {
       ),
     );
     const generated = results.reduce((total, result) => total + result.count, 0);
-    if (generated > 0) {
-      this.reportsCache.invalidate(userId);
-    }
     this.recentRuns.set(userId, true);
     return { generated };
   }

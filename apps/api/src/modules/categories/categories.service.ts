@@ -1,19 +1,15 @@
 /**
- * Manages user categories with normalization-aware deduplication and short-lived
- * caching to keep category reads fast and consistent.
+ * Manages user categories with normalization-aware deduplication while reading
+ * directly from persistence so replicas return current category metadata.
  */
 import { Injectable } from "@nestjs/common";
 import { CategoriesRepository } from "./categories.repository";
-import { TtlCache } from "../../common/cache/ttl-cache";
 import { CreateCategoryDto } from "./dto/create-category.dto";
 import { UpdateCategoryDto } from "./dto/update-category.dto";
 import {
   assertResourceDeleted,
   assertResourceFound,
 } from "../../common/services/resource-assertions";
-import { ReportsCacheInvalidationService } from "../../common/cache/reports-cache-invalidation.service";
-
-const CATEGORY_CACHE_MAX_USERS = 10_000;
 
 const normalizeCategoryName = (value: string) =>
   value
@@ -25,21 +21,9 @@ const normalizeCategoryName = (value: string) =>
 
 @Injectable()
 export class CategoriesService {
-  private readonly cache = new TtlCache<
-    string,
-    Awaited<ReturnType<CategoriesRepository["findAllByUser"]>>
-  >(60_000, CATEGORY_CACHE_MAX_USERS);
-
-  constructor(
-    private readonly repository: CategoriesRepository,
-    private readonly reportsCache: ReportsCacheInvalidationService,
-  ) {}
+  constructor(private readonly repository: CategoriesRepository) {}
 
   async findAll(userId: string) {
-    const cached = this.cache.get(userId);
-    if (cached) {
-      return cached;
-    }
     const categories = await this.repository.findAllByUser(userId);
     const unique = new Map<string, (typeof categories)[number]>();
     categories.forEach((category) => {
@@ -48,9 +32,7 @@ export class CategoriesService {
         unique.set(key, category);
       }
     });
-    const result = Array.from(unique.values());
-    this.cache.set(userId, result);
-    return result;
+    return Array.from(unique.values());
   }
 
   async create(userId: string, dto: CreateCategoryDto) {
@@ -74,24 +56,16 @@ export class CategoriesService {
       ...dto,
       name,
     });
-    this.cache.delete(userId);
-    this.reportsCache.invalidate(userId);
     return created;
   }
 
   async update(userId: string, id: string, dto: UpdateCategoryDto) {
     const updated = await this.repository.update(userId, id, dto);
-    const category = assertResourceFound(updated, "Category not found");
-    this.cache.delete(userId);
-    this.reportsCache.invalidate(userId);
-    return category;
+    return assertResourceFound(updated, "Category not found");
   }
 
   async delete(userId: string, id: string) {
     const result = await this.repository.delete(userId, id);
-    const deleted = assertResourceDeleted(result, "Category not found");
-    this.cache.delete(userId);
-    this.reportsCache.invalidate(userId);
-    return deleted;
+    return assertResourceDeleted(result, "Category not found");
   }
 }

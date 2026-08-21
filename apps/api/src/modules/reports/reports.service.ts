@@ -6,11 +6,6 @@ import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../database/prisma.service";
 import { RecurringTransactionsService } from "../transactions/recurring.service";
-import { TtlCache } from "../../common/cache/ttl-cache";
-import { ReportsCacheInvalidationService } from "../../common/cache/reports-cache-invalidation.service";
-
-const REPORT_CACHE_TTL_MS = 30_000;
-const REPORT_CACHE_MAX_ENTRIES = 5_000;
 
 type ReportSummary = {
   year: number;
@@ -87,25 +82,15 @@ type CurrentMonthCategoryRow = {
 
 @Injectable()
 export class ReportsService {
-  private readonly summaryCache = new TtlCache<string, ReportSummary>(
-    REPORT_CACHE_TTL_MS,
-    REPORT_CACHE_MAX_ENTRIES,
-  );
-  private readonly analyticsCache = new TtlCache<string, ReportsAnalytics>(
-    REPORT_CACHE_TTL_MS,
-    REPORT_CACHE_MAX_ENTRIES,
-  );
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly recurring: RecurringTransactionsService,
-    private readonly cacheInvalidation: ReportsCacheInvalidationService,
   ) {}
 
   private toYearRange(year: number) {
     return {
-      start: new Date(year, 0, 1),
-      end: new Date(year + 1, 0, 1),
+      start: new Date(Date.UTC(year, 0, 1)),
+      end: new Date(Date.UTC(year + 1, 0, 1)),
     };
   }
 
@@ -219,9 +204,15 @@ export class ReportsService {
 
   private async getCurrentMonthComparison(userId: string): Promise<ReportCurrentMonthComparison> {
     const now = new Date();
-    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const currentMonthStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+    );
+    const previousMonthStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1),
+    );
+    const nextMonthStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
+    );
 
     const rows = await this.prisma.$queryRaw<MonthComparisonRow[]>(
       Prisma.sql`
@@ -259,8 +250,12 @@ export class ReportsService {
 
   private async getCurrentMonthCategories(userId: string) {
     const now = new Date();
-    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const currentMonthStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+    );
+    const nextMonthStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
+    );
     const rows = await this.prisma.$queryRaw<CurrentMonthCategoryRow[]>(
       Prisma.sql`
         SELECT
@@ -292,18 +287,11 @@ export class ReportsService {
 
   async getAnalytics(userId: string, year?: number): Promise<ReportsAnalytics> {
     const now = new Date();
-    const targetYear = year ?? now.getFullYear();
+    const targetYear = year ?? now.getUTCFullYear();
 
-    // Recurring generation can write transactions and advance the version.
-    // Run it before deriving the key so this read cannot return pre-generation data.
+    // Materialize recurring entries before every aggregate read. Results are not
+    // cached in-process because multiple API replicas cannot invalidate each other.
     await this.recurring.ensureRecurringTransactions(userId);
-
-    const cacheVersion = this.cacheInvalidation.getVersion(userId);
-    const cacheKey = `${userId}:${targetYear}:${cacheVersion}`;
-    const cached = this.analyticsCache.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
 
     const [
       monthlyRows,
@@ -335,12 +323,10 @@ export class ReportsService {
       availableYears: this.buildAvailableYears(
         minMax._min.date,
         minMax._max.date,
-        now.getFullYear(),
+        now.getUTCFullYear(),
       ),
     };
 
-    this.summaryCache.set(cacheKey, summary);
-    this.analyticsCache.set(cacheKey, analytics);
     return analytics;
   }
 
@@ -378,21 +364,9 @@ export class ReportsService {
 
   async getSummary(userId: string, year?: number) {
     const now = new Date();
-    const targetYear = year ?? now.getFullYear();
+    const targetYear = year ?? now.getUTCFullYear();
 
     await this.recurring.ensureRecurringTransactions(userId);
-
-    const cacheVersion = this.cacheInvalidation.getVersion(userId);
-    const cacheKey = `${userId}:${targetYear}:${cacheVersion}`;
-    const cached = this.summaryCache.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
-    const cachedAnalytics = this.analyticsCache.get(cacheKey);
-    if (cachedAnalytics) {
-      return cachedAnalytics.summary;
-    }
 
     const { income, expense } = await this.getYearlyTotals(userId, targetYear);
 
@@ -407,7 +381,6 @@ export class ReportsService {
       savingsRate,
     };
 
-    this.summaryCache.set(cacheKey, summary);
     return summary;
   }
 }

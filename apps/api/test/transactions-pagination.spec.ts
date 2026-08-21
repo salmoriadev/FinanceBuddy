@@ -11,7 +11,6 @@ import {
 } from "../src/modules/transactions/transactions-pagination";
 import { TransactionsRepository } from "../src/modules/transactions/transactions.repository";
 import { TransactionsService } from "../src/modules/transactions/transactions.service";
-import { ReportsCacheInvalidationService } from "../src/common/cache/reports-cache-invalidation.service";
 
 const transactionId = (index: number) =>
   `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
@@ -50,14 +49,7 @@ describe("transaction cursor pagination", () => {
     const recurring = {
       ensureRecurringTransactions: jest.fn().mockResolvedValue({ generated: 0 }),
     } as unknown as jest.Mocked<RecurringTransactionsService>;
-    const reportsCache = {
-      invalidate: jest.fn(),
-    } as unknown as jest.Mocked<ReportsCacheInvalidationService>;
-    const service = new TransactionsService(
-      repository,
-      recurring,
-      reportsCache,
-    );
+    const service = new TransactionsService(repository, recurring);
 
     const page = await service.findAll("user-1");
 

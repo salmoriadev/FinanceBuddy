@@ -1,7 +1,6 @@
 import { PrismaService } from "../src/database/prisma.service";
 import { RecurringTransactionsService } from "../src/modules/transactions/recurring.service";
 import { TransactionsRepository } from "../src/modules/transactions/transactions.repository";
-import { ReportsCacheInvalidationService } from "../src/common/cache/reports-cache-invalidation.service";
 
 describe("recurring transaction materialization", () => {
   const originalTimezone = process.env.TZ;
@@ -89,17 +88,8 @@ describe("recurring transaction materialization", () => {
         },
       ),
     } as unknown as jest.Mocked<TransactionsRepository>;
-    const reportsCache = {
-      invalidate: jest.fn(),
-    } as unknown as jest.Mocked<ReportsCacheInvalidationService>;
-    const firstInstance = new RecurringTransactionsService(
-      repository,
-      reportsCache,
-    );
-    const secondInstance = new RecurringTransactionsService(
-      repository,
-      reportsCache,
-    );
+    const firstInstance = new RecurringTransactionsService(repository);
+    const secondInstance = new RecurringTransactionsService(repository);
 
     const results = await Promise.all([
       firstInstance.ensureRecurringTransactions("user-1"),
@@ -123,7 +113,5 @@ describe("recurring transaction materialization", () => {
         "2026-08-01T00:00:00.000Z",
       ].map((date) => `${template.id}:${date}`),
     );
-    expect(reportsCache.invalidate).toHaveBeenCalledTimes(1);
-    expect(reportsCache.invalidate).toHaveBeenCalledWith("user-1");
   });
 });

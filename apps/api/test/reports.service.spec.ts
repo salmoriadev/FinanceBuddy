@@ -1,11 +1,10 @@
 /**
- * Covers report summary aggregation and cache behavior to ensure the reporting
- * service remains correct after query-level performance optimizations.
+ * Covers report aggregation and cross-replica freshness after query-level
+ * performance optimizations.
  */
 import { ReportsService } from "../src/modules/reports/reports.service";
 import { PrismaService } from "../src/database/prisma.service";
 import { RecurringTransactionsService } from "../src/modules/transactions/recurring.service";
-import { ReportsCacheInvalidationService } from "../src/common/cache/reports-cache-invalidation.service";
 import { TransactionsRepository } from "../src/modules/transactions/transactions.repository";
 import { TransactionsService } from "../src/modules/transactions/transactions.service";
 
@@ -28,12 +27,13 @@ describe("ReportsService", () => {
   } as unknown as RecurringTransactionsService;
 
   let service: ReportsService;
-  let cacheInvalidation: ReportsCacheInvalidationService;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    cacheInvalidation = new ReportsCacheInvalidationService();
-    service = new ReportsService(prisma, recurring, cacheInvalidation);
+    groupByMock.mockReset();
+    aggregateMock.mockReset();
+    queryRawMock.mockReset();
+    ensureRecurringTransactionsMock.mockReset();
+    service = new ReportsService(prisma, recurring);
   });
 
   afterEach(() => {
@@ -55,8 +55,8 @@ describe("ReportsService", () => {
       where: {
         userId: "user-1",
         date: {
-          gte: new Date(2026, 0, 1),
-          lt: new Date(2027, 0, 1),
+          gte: new Date("2026-01-01T00:00:00.000Z"),
+          lt: new Date("2027-01-01T00:00:00.000Z"),
         },
       },
       _sum: {
@@ -72,7 +72,7 @@ describe("ReportsService", () => {
     });
   });
 
-  it("returns cached summary on repeated calls", async () => {
+  it("recomputes summary on repeated calls", async () => {
     ensureRecurringTransactionsMock.mockResolvedValue({ generated: 0 } as never);
     groupByMock.mockResolvedValue([
       { type: "income", _sum: { amount: 2000 } },
@@ -83,7 +83,7 @@ describe("ReportsService", () => {
 
     expect(first).toEqual(second);
     expect(ensureRecurringTransactionsMock).toHaveBeenCalledTimes(2);
-    expect(groupByMock).toHaveBeenCalledTimes(1);
+    expect(groupByMock).toHaveBeenCalledTimes(2);
   });
 
   it("builds analytics payload from aggregated queries", async () => {
@@ -249,17 +249,52 @@ describe("ReportsService", () => {
     }
   });
 
-  it("returns cached analytics on repeated calls", async () => {
+  it("keeps report period boundaries in UTC under a positive timezone", async () => {
+    const originalTimezone = process.env.TZ;
+    process.env.TZ = "Asia/Tokyo";
+
+    try {
+      jest
+        .useFakeTimers()
+        .setSystemTime(new Date("2026-01-15T12:00:00.000Z"));
+      ensureRecurringTransactionsMock.mockResolvedValue({
+        generated: 0,
+      } as never);
+      queryRawMock.mockResolvedValue([] as never);
+      aggregateMock.mockResolvedValue({
+        _min: { date: new Date("2026-01-01T00:00:00.000Z") },
+        _max: { date: new Date("2026-01-01T00:00:00.000Z") },
+      } as never);
+
+      const analytics = await service.getAnalytics("user-period", undefined);
+      const sqlDates = queryRawMock.mock.calls.flatMap(([query]) =>
+        ((query as { values?: unknown[] }).values ?? []).filter(
+          (value): value is Date => value instanceof Date,
+        ),
+      );
+
+      expect(analytics.year).toBe(2026);
+      expect(analytics.availableYears).toEqual([2026]);
+      expect(
+        [...new Set(sqlDates.map((date) => date.toISOString()))].sort(),
+      ).toEqual([
+        "2025-12-01T00:00:00.000Z",
+        "2026-01-01T00:00:00.000Z",
+        "2026-02-01T00:00:00.000Z",
+        "2027-01-01T00:00:00.000Z",
+      ]);
+    } finally {
+      if (originalTimezone === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = originalTimezone;
+      }
+    }
+  });
+
+  it("recomputes analytics on repeated calls", async () => {
     ensureRecurringTransactionsMock.mockResolvedValue({ generated: 0 } as never);
-    queryRawMock
-      .mockResolvedValueOnce([
-        { month: 3, income: 1200, expense: 300 },
-      ] as never)
-      .mockResolvedValueOnce([] as never)
-      .mockResolvedValueOnce([
-        { current_expense: 300, last_expense: 0 },
-      ] as never)
-      .mockResolvedValueOnce([] as never);
+    queryRawMock.mockResolvedValue([] as never);
     aggregateMock.mockResolvedValue({
       _min: { date: new Date(2026, 2, 1) },
       _max: { date: new Date(2026, 2, 1) },
@@ -270,25 +305,25 @@ describe("ReportsService", () => {
 
     expect(first).toEqual(second);
     expect(ensureRecurringTransactionsMock).toHaveBeenCalledTimes(2);
-    expect(queryRawMock).toHaveBeenCalledTimes(4);
-    expect(aggregateMock).toHaveBeenCalledTimes(1);
+    expect(queryRawMock).toHaveBeenCalledTimes(8);
+    expect(aggregateMock).toHaveBeenCalledTimes(2);
   });
 
-  it("recomputes cached analytics after a transaction mutation", async () => {
+  it("keeps two report instances fresh after a transaction mutation", async () => {
     ensureRecurringTransactionsMock.mockResolvedValue({ generated: 0 } as never);
-    queryRawMock
-      .mockResolvedValueOnce([{ month: 8, income: 0, expense: 100 }] as never)
-      .mockResolvedValueOnce([] as never)
-      .mockResolvedValueOnce([
-        { current_expense: 100, last_expense: 0 },
-      ] as never)
-      .mockResolvedValueOnce([] as never)
-      .mockResolvedValueOnce([{ month: 8, income: 0, expense: 175 }] as never)
-      .mockResolvedValueOnce([] as never)
-      .mockResolvedValueOnce([
-        { current_expense: 175, last_expense: 0 },
-      ] as never)
-      .mockResolvedValueOnce([] as never);
+    const queueAnalytics = (expense: number) => {
+      queryRawMock
+        .mockResolvedValueOnce([{ month: 8, income: 0, expense }] as never)
+        .mockResolvedValueOnce([] as never)
+        .mockResolvedValueOnce([
+          { current_expense: expense, last_expense: 0 },
+        ] as never)
+        .mockResolvedValueOnce([] as never);
+    };
+    queueAnalytics(100);
+    queueAnalytics(100);
+    queueAnalytics(175);
+    queueAnalytics(175);
     aggregateMock.mockResolvedValue({
       _min: { date: new Date(2026, 7, 1) },
       _max: { date: new Date(2026, 7, 21) },
@@ -296,17 +331,17 @@ describe("ReportsService", () => {
     const repository = {
       create: jest.fn().mockResolvedValue({ id: "transaction-new" }),
     } as unknown as jest.Mocked<TransactionsRepository>;
-    const transactions = new TransactionsService(
-      repository,
-      recurring,
-      cacheInvalidation,
+    const transactions = new TransactionsService(repository, recurring);
+    const secondInstance = new ReportsService(prisma, recurring);
+
+    const firstRead = await service.getAnalytics("user-3", 2026);
+    const secondInstanceFirstRead = await secondInstance.getAnalytics(
+      "user-3",
+      2026,
     );
 
-    const first = await service.getAnalytics("user-3", 2026);
-    const cached = await service.getAnalytics("user-3", 2026);
-
-    expect(cached).toEqual(first);
-    expect(queryRawMock).toHaveBeenCalledTimes(4);
+    expect(firstRead.summary.expense).toBe(100);
+    expect(secondInstanceFirstRead.summary.expense).toBe(100);
 
     await transactions.create("user-3", {
       description: "Groceries",
@@ -315,10 +350,15 @@ describe("ReportsService", () => {
       date: "2026-08-21",
     });
 
-    const refreshed = await service.getAnalytics("user-3", 2026);
+    const refreshedFirstInstance = await service.getAnalytics("user-3", 2026);
+    const refreshedSecondInstance = await secondInstance.getAnalytics(
+      "user-3",
+      2026,
+    );
 
-    expect(refreshed.summary.expense).toBe(175);
-    expect(queryRawMock).toHaveBeenCalledTimes(8);
-    expect(aggregateMock).toHaveBeenCalledTimes(2);
+    expect(refreshedFirstInstance.summary.expense).toBe(175);
+    expect(refreshedSecondInstance.summary.expense).toBe(175);
+    expect(queryRawMock).toHaveBeenCalledTimes(16);
+    expect(aggregateMock).toHaveBeenCalledTimes(4);
   });
 });
