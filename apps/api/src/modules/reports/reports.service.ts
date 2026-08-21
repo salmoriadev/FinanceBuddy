@@ -251,7 +251,7 @@ export class ReportsService {
         SELECT
           c.id::text AS category_id,
           c.name AS name,
-          c.type AS type,
+          t.type AS type,
           c.color AS color,
           COALESCE(SUM(t.amount), 0) AS value
         FROM public.transactions t
@@ -261,7 +261,7 @@ export class ReportsService {
           AND t.type = 'expense'
           AND t.date >= ${currentMonthStart}::date
           AND t.date < ${nextMonthStart}::date
-        GROUP BY c.id, c.name, c.type, c.color
+        GROUP BY c.id, c.name, t.type, c.color
         ORDER BY value DESC, c.id ASC
       `,
     );
