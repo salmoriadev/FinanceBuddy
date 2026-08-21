@@ -80,7 +80,7 @@ describe("AuthService", () => {
     ).not.toContain("Missing.User");
   });
 
-  it("revokes active sessions when a revoked refresh token is reused", async () => {
+  it("revokes active sessions when a previously rotated token is reused", async () => {
     const rawToken = "stolen-old-refresh-token";
     repository.findRefreshTokenByHash.mockResolvedValue({
       id: "refresh-token-id",
@@ -117,6 +117,7 @@ describe("AuthService", () => {
       "user-id",
       "family-id",
     );
+    expect(repository.rotateRefreshToken).not.toHaveBeenCalled();
   });
 
   it("does not revoke user sessions for an unknown refresh token", async () => {
@@ -243,7 +244,7 @@ describe("AuthService", () => {
     );
   });
 
-  it("allows only one winner when the same refresh token is used in parallel", async () => {
+  it("keeps the winning replacement renewable after a parallel claim loses", async () => {
     const rawToken = "parallel-refresh-token";
     const stored = {
       id: "old-refresh-token-id",
@@ -287,7 +288,6 @@ describe("AuthService", () => {
         revokedAt: null,
       };
     });
-    repository.revokeTokenFamily.mockResolvedValue({ count: 1 });
     configService.get.mockImplementation((key: string) => {
       if (key === "AUTH_JWT_SECRET") return "test-secret";
       if (key === "ACCESS_TOKEN_TTL_MINUTES") return "15";
@@ -304,9 +304,56 @@ describe("AuthService", () => {
     expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
     expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
     expect(repository.rotateRefreshToken).toHaveBeenCalledTimes(2);
-    expect(repository.revokeTokenFamily).toHaveBeenCalledWith(
-      "user-id",
-      "family-id",
+    expect(repository.revokeTokenFamily).not.toHaveBeenCalled();
+    expect(securityEvents.record).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: "refresh_token_reuse" }),
     );
+
+    const winner = results.find((result) => result.status === "fulfilled");
+    if (!winner || winner.status !== "fulfilled") {
+      throw new Error("Expected one successful refresh rotation");
+    }
+    const winningRefreshToken = winner.value.refreshToken;
+    repository.findRefreshTokenByHash.mockResolvedValue({
+      id: "winning-refresh-token-id",
+      userId: "user-id",
+      tokenHash: hashRefreshToken(winningRefreshToken),
+      familyId: "family-id",
+      replacedByTokenId: null,
+      userAgent: "test-agent",
+      ipAddress: "127.0.0.1",
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+    });
+    repository.rotateRefreshToken.mockResolvedValue({
+      id: "renewed-refresh-token-id",
+      userId: "user-id",
+      tokenHash: "renewed-token-hash",
+      familyId: "family-id",
+      replacedByTokenId: null,
+      userAgent: "test-agent",
+      ipAddress: "127.0.0.1",
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+    });
+
+    await expect(
+      service.refresh(requestWithRefreshToken(winningRefreshToken)),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        accessToken: expect.any(String),
+        refreshToken: expect.any(String),
+        refreshTokenId: "renewed-refresh-token-id",
+      }),
+    );
+    expect(repository.rotateRefreshToken).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        currentTokenId: "winning-refresh-token-id",
+        familyId: "family-id",
+      }),
+    );
+    expect(repository.revokeTokenFamily).not.toHaveBeenCalled();
   });
 });

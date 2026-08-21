@@ -174,8 +174,7 @@ export class AuthService {
     });
 
     if (!replacement) {
-      const latest = await this.repository.findRefreshTokenByHash(tokenHash);
-      return this.rejectRefreshTokenReuse(latest ?? stored, req);
+      throw new UnauthorizedException("Refresh token invalid");
     }
 
     const accessToken = this.signAccessToken(stored.userId, user.email);
