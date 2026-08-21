@@ -9,10 +9,25 @@ updates:
       timezone: "America/Sao_Paulo"
     cooldown:
       default-days: 7
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     groups:
+      radix-ui:
+        patterns:
+          - "@radix-ui/*"
+        update-types:
+          - "minor"
+          - "patch"
       development-dependencies:
         dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    # Breaking upgrades are planned and reviewed separately. Dependabot
+    # security updates are not affected by version-update ignore rules.
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: "github-actions"
     directory: "/"
