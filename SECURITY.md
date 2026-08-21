@@ -4,7 +4,12 @@ FinanceBuddy handles user-owned financial records, so security reports are taken
 
 ## Reporting a vulnerability
 
-Please report suspected vulnerabilities privately through [GitHub Security Advisories](https://github.com/salmoriadev/FinanceBuddy/security/advisories/new).
+After private vulnerability reporting is enabled for the public repository, the
+preferred channel is [GitHub Security
+Advisories](https://github.com/salmoriadev/FinanceBuddy/security/advisories/new).
+If that form is unavailable, email the monitored maintainer address at
+[salmoria.dev@gmail.com](mailto:salmoria.dev@gmail.com) with
+`FinanceBuddy security report` in the subject line.
 
 Do **not** open a public issue, discussion, or pull request for an undisclosed vulnerability. Do not include secrets, active credentials, access or refresh tokens, database connection strings, real financial records, or other people's personal data in a report. Use the smallest synthetic proof of concept that demonstrates the issue.
 
