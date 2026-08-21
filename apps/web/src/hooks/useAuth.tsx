@@ -13,6 +13,7 @@ import {
   ApiError,
   configureAuthSession,
   invalidateAuthSession,
+  requestAuthSessionRefresh,
 } from "@/lib/api";
 
 interface AuthUser {
@@ -69,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   }, []);
 
-  const requestAccessToken = useCallback(async () => {
+  const performAccessTokenRefresh = useCallback(async () => {
     if (!refreshAllowed.current) return null;
     const requestVersion = sessionVersion.current;
     const data = await apiRequest<{ accessToken: string }>("/auth/refresh", {
@@ -84,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshSession = useCallback(async () => {
     try {
-      const token = await requestAccessToken();
+      const token = await requestAuthSessionRefresh();
       if (token) {
         await fetchMe(token);
         return true;
@@ -94,15 +95,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearSession();
       return false;
     }
-  }, [clearSession, fetchMe, requestAccessToken]);
+  }, [clearSession, fetchMe]);
 
   useEffect(
     () =>
       configureAuthSession({
-        refreshAccessToken: requestAccessToken,
+        refreshAccessToken: performAccessTokenRefresh,
         onSessionExpired: clearSession,
       }),
-    [clearSession, requestAccessToken],
+    [clearSession, performAccessTokenRefresh],
   );
 
   useEffect(() => {

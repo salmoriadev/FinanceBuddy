@@ -35,10 +35,10 @@ let lastRefreshedAccessToken: string | null = null;
 let lastRefreshCompletedAt = 0;
 let sessionExpiryNotified = false;
 const RECENT_REFRESH_WINDOW_MS = 30_000;
+const AUTH_REFRESH_LOCK_NAME = "financebuddy:refresh-session";
 
 export const configureAuthSession = (handlers: AuthSessionHandlers) => {
   authSessionHandlers = handlers;
-  refreshInFlight = null;
   lastRejectedAccessToken = null;
   lastRefreshedAccessToken = null;
   lastRefreshCompletedAt = 0;
@@ -47,7 +47,6 @@ export const configureAuthSession = (handlers: AuthSessionHandlers) => {
   return () => {
     if (authSessionHandlers !== handlers) return;
     authSessionHandlers = null;
-    refreshInFlight = null;
     lastRejectedAccessToken = null;
     lastRefreshedAccessToken = null;
     lastRefreshCompletedAt = 0;
@@ -68,10 +67,22 @@ const notifySessionExpired = () => {
   authSessionHandlers?.onSessionExpired();
 };
 
-const refreshAccessToken = async (rejectedToken: string) => {
+const withCrossTabRefreshLock = async <T>(operation: () => Promise<T>) => {
+  if (typeof navigator === "undefined" || !navigator.locks?.request) {
+    return operation();
+  }
+  return navigator.locks.request(
+    AUTH_REFRESH_LOCK_NAME,
+    { mode: "exclusive" },
+    operation,
+  );
+};
+
+const runAuthSessionRefresh = async (rejectedToken?: string) => {
   if (!authSessionHandlers) return null;
 
   if (
+    rejectedToken &&
     rejectedToken === lastRejectedAccessToken &&
     Date.now() - lastRefreshCompletedAt < RECENT_REFRESH_WINDOW_MS
   ) {
@@ -81,11 +92,12 @@ const refreshAccessToken = async (rejectedToken: string) => {
   if (!refreshInFlight) {
     const handlers = authSessionHandlers;
     sessionExpiryNotified = false;
-    lastRejectedAccessToken = rejectedToken;
+    lastRejectedAccessToken = rejectedToken ?? null;
     lastRefreshedAccessToken = null;
     lastRefreshCompletedAt = 0;
-    refreshInFlight = handlers
-      .refreshAccessToken()
+    const refreshPromise = withCrossTabRefreshLock(() =>
+      handlers.refreshAccessToken(),
+    )
       .then((token) => {
         if (!token) {
           lastRefreshCompletedAt = Date.now();
@@ -102,12 +114,17 @@ const refreshAccessToken = async (rejectedToken: string) => {
         return null;
       })
       .finally(() => {
-        refreshInFlight = null;
+        if (refreshInFlight === refreshPromise) {
+          refreshInFlight = null;
+        }
       });
+    refreshInFlight = refreshPromise;
   }
 
   return refreshInFlight;
 };
+
+export const requestAuthSessionRefresh = () => runAuthSessionRefresh();
 
 const requiresCsrfToken = (method: string, path: string) => {
   const normalizedMethod = method.toUpperCase();
@@ -215,7 +232,7 @@ async function requestWithAuthRetry<T>(
 
     if (response.status === 401 && canRefreshAfterUnauthorized(path, token)) {
       if (allowAuthRetry) {
-        const refreshedToken = await refreshAccessToken(token!);
+        const refreshedToken = await runAuthSessionRefresh(token!);
         if (refreshedToken) {
           return requestWithAuthRetry<T>(
             path,

@@ -70,6 +70,50 @@ describe("apiRequest", () => {
     expect(headers.Authorization).toBe("Bearer access-token");
   });
 
+  it("serializes session refresh with one module flight inside a Web Lock", async () => {
+    vi.stubEnv("VITE_API_URL", "http://localhost:4000/api/v1");
+
+    let finishRefresh: ((token: string) => void) | undefined;
+    const refreshResult = new Promise<string>((resolve) => {
+      finishRefresh = resolve;
+    });
+    const refreshAccessToken = vi.fn(() => refreshResult);
+    const lockRequest = vi.fn(
+      async (
+        _name: string,
+        _options: LockOptions,
+        operation: () => Promise<string | null>,
+      ) => operation(),
+    );
+    vi.stubGlobal("navigator", { locks: { request: lockRequest } });
+
+    const {
+      configureAuthSession,
+      requestAuthSessionRefresh,
+    } = await import("@/lib/api");
+    configureAuthSession({
+      refreshAccessToken,
+      onSessionExpired: vi.fn(),
+    });
+
+    const firstRefresh = requestAuthSessionRefresh();
+    const secondRefresh = requestAuthSessionRefresh();
+
+    await vi.waitFor(() => expect(refreshAccessToken).toHaveBeenCalledTimes(1));
+    expect(lockRequest).toHaveBeenCalledTimes(1);
+    expect(lockRequest).toHaveBeenCalledWith(
+      "financebuddy:refresh-session",
+      { mode: "exclusive" },
+      expect.any(Function),
+    );
+
+    finishRefresh?.("refreshed-token");
+    await expect(Promise.all([firstRefresh, secondRefresh])).resolves.toEqual([
+      "refreshed-token",
+      "refreshed-token",
+    ]);
+  });
+
   it("refreshes concurrent unauthorized requests once and retries each safely", async () => {
     vi.stubEnv("VITE_API_URL", "http://localhost:4000/api/v1");
 
