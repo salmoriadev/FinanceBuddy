@@ -30,7 +30,7 @@ Primary goals:
 | S-05 | Prevent Swagger/OpenAPI docs from being exposed in production. | Done | `apps/api/src/main.ts` |
 | S-06 | Set explicit request body limits. | Done | `apps/api/src/main.ts`, `apps/api/.env.example` |
 | S-07 | Add financial DTO bounds for amounts, pagination, names, notes, and tickers. | Done | `apps/api/src/common/validators/financial-values.ts` |
-| S-08 | Add resource controls for heavy user-scoped reads and quote refreshes. | Partial | Reports are cached and heavy endpoints have route throttles. |
+| S-08 | Add resource controls for heavy user-scoped reads and quote refreshes. | Partial | Reports use period-bounded SQL aggregation, and heavy endpoints have route throttles. |
 | S-09 | Persist security events for authentication, session, throttling, and repeated authorization activity. | Done | `apps/api/src/modules/security/`, `apps/api/test/security-events.controller.integration.spec.ts` |
 | S-10 | Define production refresh-cookie strategy by deployment topology. | Documented | `docs/security/DEPLOYMENT_SECURITY.md` |
 | S-11 | Constrain dynamic chart CSS injection. | Done | `apps/web/src/components/ui/chart.tsx`, `apps/web/test/chart-security.test.ts` |

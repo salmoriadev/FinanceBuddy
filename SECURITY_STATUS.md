@@ -202,7 +202,8 @@ Main files:
 Implemented:
 
 - Transaction pagination is capped at 200.
-- Reports service uses short-lived per-user/year cache entries.
+- Report totals use period-bounded SQL aggregation instead of loading an
+  unbounded transaction history into the API process.
 - Heavy report, portfolio audit/monthly report, quote lookup, and quote refresh
   endpoints have stricter route-level throttles than the global API limit.
 

@@ -41,7 +41,7 @@ Key boundaries:
 | Credential theft or weak password storage | Account takeover | Argon2id, optional server-side pepper, password policy validation, login throttling, and security events |
 | Access/refresh token theft or replay | Session compromise | Short-lived in-memory access tokens, HttpOnly refresh cookies, hashed refresh-token storage, rotation, family tracking, reuse detection, and revocation |
 | CSRF against cookie-authenticated routes | Unauthorized refresh or logout actions | Double-submit CSRF token, `X-Requested-With`, and production Origin/Referer checks |
-| Brute force or resource exhaustion | Availability loss and authentication abuse | Global throttling, stricter route limits, request-size limits, pagination bounds, and cached report work |
+| Brute force or resource exhaustion | Availability loss and authentication abuse | Global throttling, stricter route limits, request-size limits, pagination bounds, and database-aggregated reports |
 | Injection or malformed financial input | Corrupted calculations, persistence abuse, or client injection | DTO allowlisting, rejection of unknown fields, financial bounds, Prisma parameterization, and constrained dynamic chart styles |
 | Security misconfiguration | Exposed docs, permissive CORS, spoofed IPs, or unsafe cookies | Production Swagger guard, exact-origin CORS support, explicit proxy trust, cookie topology guidance, Helmet, and deployment checklist |
 | Supply-chain or secret exposure | Compromised builds or leaked credentials | Locked npm dependency graph, blocking audit, Dependabot, Gitleaks, Semgrep CE, and pinned Trivy action |
