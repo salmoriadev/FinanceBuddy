@@ -2,8 +2,13 @@ import type { AssetClass, PortfolioPosition } from "@/types/finance";
 import { ASSET_CLASSES } from "./constants";
 import type { PositionGroup } from "./types";
 
-export const today = () => new Date().toISOString().slice(0, 10);
-export const currentMonth = () => new Date().toISOString().slice(0, 7);
+const padDatePart = (value: number) => String(value).padStart(2, "0");
+
+export const today = (date = new Date()) =>
+  `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+
+export const currentMonth = (date = new Date()) =>
+  `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}`;
 
 export const parseDecimal = (value: string) => {
   const input = value.trim();
