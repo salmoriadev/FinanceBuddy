@@ -169,7 +169,9 @@ describe("Reports page", () => {
     expect(
       screen.getByText(`reports.income ${historicalYear}`),
     ).toBeInTheDocument();
-    expect(screen.getByText("currency:2400")).toBeInTheDocument();
+    const historicalIncome = screen.getByText("currency:2400");
+    expect(historicalIncome).toBeInTheDocument();
+    expect(historicalIncome.closest(".space-y-6")).toBeInTheDocument();
     expect(screen.queryByText("currency:5000")).not.toBeInTheDocument();
     expect(
       screen.queryByText(`reports.income ${currentYear}`),

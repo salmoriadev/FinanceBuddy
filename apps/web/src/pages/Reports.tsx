@@ -159,162 +159,218 @@ export default function Reports() {
             </div>
           </div>
         ) : (
-          <div className="contents">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                <TrendingUp className="h-4 w-4 text-[#19c37d]" />
-                {t("reports.income")} {selectedYear}
-              </div>
-              <p className="font-serif text-3xl font-normal tracking-normal text-[#19c37d]">
-                {formatCurrency(yearlyStats.income)}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                <TrendingDown className="h-4 w-4 text-[#ef6f7c]" />
-                {t("reports.expense")} {selectedYear}
-              </div>
-              <p className="font-serif text-3xl font-normal tracking-normal text-[#ef6f7c]">
-                {formatCurrency(yearlyStats.expense)}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground mb-1">
-                {t("reports.balance")} {selectedYear}
-              </p>
-              <p
-                className={`font-serif text-3xl font-normal tracking-normal ${
-                  yearlyStats.balance >= 0 ? "text-[#19c37d]" : "text-[#ef6f7c]"
-                }`}
-              >
-                {formatCurrency(yearlyStats.balance)}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground mb-1">
-                {t("reports.savingsRate")}
-              </p>
-              <p className="font-serif text-3xl font-normal tracking-normal">
-                {formatPercent(yearlyStats.savingsRate, 1)}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("reports.investments")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="rounded-md border border-border/70 bg-muted/35 p-4">
-                <p className="text-sm text-muted-foreground">
-                  {t("investments.totalInvested")}
-                </p>
-                <p className="font-serif text-2xl font-normal tracking-normal">
-                  {formatCurrency(investmentStats.invested)}
-                </p>
-              </div>
-              <div className="rounded-md border border-border/70 bg-muted/35 p-4">
-                <p className="text-sm text-muted-foreground">
-                  {t("investments.currentValue")}
-                </p>
-                <p className="font-serif text-2xl font-normal tracking-normal text-[#19c37d]">
-                  {formatCurrency(investmentStats.current)}
-                </p>
-              </div>
-              <div className="rounded-md border border-border/70 bg-muted/35 p-4">
-                <p className="text-sm text-muted-foreground">
-                  {t("investments.return")}
-                </p>
-                <p
-                  className={`font-serif text-2xl font-normal tracking-normal ${
-                    investmentStats.profit >= 0
-                      ? "text-[#19c37d]"
-                      : "text-[#ef6f7c]"
-                  }`}
-                >
-                  {investmentStats.profit >= 0 ? "+" : ""}
-                  {formatCurrency(investmentStats.profit)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatPercent(investmentStats.roi, 1)} {t("common.accumulated")}
-                </p>
-              </div>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                    <TrendingUp className="h-4 w-4 text-[#19c37d]" />
+                    {t("reports.income")} {selectedYear}
+                  </div>
+                  <p className="font-serif text-3xl font-normal tracking-normal text-[#19c37d]">
+                    {formatCurrency(yearlyStats.income)}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                    <TrendingDown className="h-4 w-4 text-[#ef6f7c]" />
+                    {t("reports.expense")} {selectedYear}
+                  </div>
+                  <p className="font-serif text-3xl font-normal tracking-normal text-[#ef6f7c]">
+                    {formatCurrency(yearlyStats.expense)}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <p className="text-sm text-muted-foreground mb-1">
+                    {t("reports.balance")} {selectedYear}
+                  </p>
+                  <p
+                    className={`font-serif text-3xl font-normal tracking-normal ${
+                      yearlyStats.balance >= 0 ? "text-[#19c37d]" : "text-[#ef6f7c]"
+                    }`}
+                  >
+                    {formatCurrency(yearlyStats.balance)}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-6">
+                  <p className="text-sm text-muted-foreground mb-1">
+                    {t("reports.savingsRate")}
+                  </p>
+                  <p className="font-serif text-3xl font-normal tracking-normal">
+                    {formatPercent(yearlyStats.savingsRate, 1)}
+                  </p>
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("reports.compareTitle")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div className="rounded-md border border-border/70 bg-muted/35 p-4">
-                <p className="text-sm text-muted-foreground">
-                  {t("reports.currentMonth")}
-                </p>
-                <p className="font-serif text-2xl font-normal tracking-normal">
-                  {formatCurrency(currentMonthStats.currentExpense)}
-                </p>
-              </div>
-              <div className="rounded-md border border-border/70 bg-muted/35 p-4">
-                <p className="text-sm text-muted-foreground">
-                  {t("reports.previousMonth")}
-                </p>
-                <p className="font-serif text-2xl font-normal tracking-normal">
-                  {formatCurrency(currentMonthStats.lastExpense)}
-                </p>
-              </div>
-              <div className="rounded-md border border-border/70 bg-muted/35 p-4">
-                <p className="text-sm text-muted-foreground">
-                  {t("reports.variation")}
-                </p>
-                <p
-                  className={`font-serif text-2xl font-normal tracking-normal ${
-                    !currentMonthStats.hasVariationBaseline
-                      ? "text-muted-foreground"
-                      : currentMonthStats.variation! < 0
-                      ? "text-[#ef6f7c]"
-                      : currentMonthStats.variation! > 0
-                        ? "text-[#19c37d]"
-                        : "text-muted-foreground"
-                  }`}
-                >
-                  {currentMonthStats.hasVariationBaseline ? (
-                    <>
-                      {currentMonthStats.variation! > 0 ? "+" : ""}
-                      {formatPercent(currentMonthStats.variation!, 1)}
-                    </>
-                  ) : (
-                    <span className="text-sm font-medium">
-                      {t("reports.noVariation")}
-                    </span>
-                  )}
-                </p>
-              </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("reports.investments")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="rounded-md border border-border/70 bg-muted/35 p-4">
+                    <p className="text-sm text-muted-foreground">
+                      {t("investments.totalInvested")}
+                    </p>
+                    <p className="font-serif text-2xl font-normal tracking-normal">
+                      {formatCurrency(investmentStats.invested)}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-border/70 bg-muted/35 p-4">
+                    <p className="text-sm text-muted-foreground">
+                      {t("investments.currentValue")}
+                    </p>
+                    <p className="font-serif text-2xl font-normal tracking-normal text-[#19c37d]">
+                      {formatCurrency(investmentStats.current)}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-border/70 bg-muted/35 p-4">
+                    <p className="text-sm text-muted-foreground">
+                      {t("investments.return")}
+                    </p>
+                    <p
+                      className={`font-serif text-2xl font-normal tracking-normal ${
+                        investmentStats.profit >= 0
+                          ? "text-[#19c37d]"
+                          : "text-[#ef6f7c]"
+                      }`}
+                    >
+                      {investmentStats.profit >= 0 ? "+" : ""}
+                      {formatCurrency(investmentStats.profit)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatPercent(investmentStats.roi, 1)} {t("common.accumulated")}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("reports.compareTitle")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div className="rounded-md border border-border/70 bg-muted/35 p-4">
+                    <p className="text-sm text-muted-foreground">
+                      {t("reports.currentMonth")}
+                    </p>
+                    <p className="font-serif text-2xl font-normal tracking-normal">
+                      {formatCurrency(currentMonthStats.currentExpense)}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-border/70 bg-muted/35 p-4">
+                    <p className="text-sm text-muted-foreground">
+                      {t("reports.previousMonth")}
+                    </p>
+                    <p className="font-serif text-2xl font-normal tracking-normal">
+                      {formatCurrency(currentMonthStats.lastExpense)}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-border/70 bg-muted/35 p-4">
+                    <p className="text-sm text-muted-foreground">
+                      {t("reports.variation")}
+                    </p>
+                    <p
+                      className={`font-serif text-2xl font-normal tracking-normal ${
+                        !currentMonthStats.hasVariationBaseline
+                          ? "text-muted-foreground"
+                          : currentMonthStats.variation! < 0
+                          ? "text-[#ef6f7c]"
+                          : currentMonthStats.variation! > 0
+                            ? "text-[#19c37d]"
+                            : "text-muted-foreground"
+                      }`}
+                    >
+                      {currentMonthStats.hasVariationBaseline ? (
+                        <>
+                          {currentMonthStats.variation! > 0 ? "+" : ""}
+                          {formatPercent(currentMonthStats.variation!, 1)}
+                        </>
+                      ) : (
+                        <span className="text-sm font-medium">
+                          {t("reports.noVariation")}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t("reports.incomeVsExpense")}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={monthlyData}>
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="hsl(var(--border))"
+                        />
+                        <XAxis
+                          dataKey="month"
+                          tick={{
+                            fill: "hsl(var(--muted-foreground))",
+                            fontSize: 12,
+                          }}
+                        />
+                        <YAxis
+                          tick={{
+                            fill: "hsl(var(--muted-foreground))",
+                            fontSize: 12,
+                          }}
+                          tickFormatter={(value) =>
+                            formatCompactCurrency(Number(value))
+                          }
+                        />
+                        <Tooltip
+                          formatter={(value: number) => [formatCurrency(value)]}
+                          contentStyle={tooltipStyle}
+                          labelStyle={{ color: "hsl(var(--foreground))" }}
+                          itemStyle={{ color: "hsl(var(--foreground))" }}
+                        />
+                        <Legend />
+                        <Bar
+                          dataKey="income"
+                          name={t("reports.income")}
+                          fill="#10b981"
+                          radius={[4, 4, 0, 0]}
+                        />
+                        <Bar
+                          dataKey="expense"
+                          name={t("reports.expense")}
+                          fill="#ef4444"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <ExpenseChart data={categorySpending} />
             </div>
-          </CardContent>
-        </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("reports.incomeVsExpense")}</CardTitle>
-            </CardHeader>
-            <CardContent>
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("reports.balanceEvolution")}</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={monthlyData}>
+                    <LineChart data={monthlyData}>
                       <CartesianGrid
                         strokeDasharray="3 3"
                         stroke="hsl(var(--border))"
@@ -336,83 +392,27 @@ export default function Reports() {
                         }
                       />
                       <Tooltip
-                        formatter={(value: number) => [formatCurrency(value)]}
+                        formatter={(value: number) => [
+                          formatCurrency(value),
+                          t("reports.balance"),
+                        ]}
                         contentStyle={tooltipStyle}
                         labelStyle={{ color: "hsl(var(--foreground))" }}
                         itemStyle={{ color: "hsl(var(--foreground))" }}
                       />
-                      <Legend />
-                      <Bar
-                        dataKey="income"
-                        name={t("reports.income")}
-                        fill="#10b981"
-                        radius={[4, 4, 0, 0]}
+                      <Line
+                        type="monotone"
+                        dataKey="balance"
+                        name={t("reports.balance")}
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        dot={{ fill: "hsl(var(--primary))" }}
                       />
-                      <Bar
-                        dataKey="expense"
-                        name={t("reports.expense")}
-                        fill="#ef4444"
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
+                    </LineChart>
                   </ResponsiveContainer>
                 </div>
-            </CardContent>
-          </Card>
-
-          <ExpenseChart data={categorySpending} />
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("reports.balanceEvolution")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyData}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="hsl(var(--border))"
-                  />
-                  <XAxis
-                    dataKey="month"
-                    tick={{
-                      fill: "hsl(var(--muted-foreground))",
-                      fontSize: 12,
-                    }}
-                  />
-                  <YAxis
-                    tick={{
-                      fill: "hsl(var(--muted-foreground))",
-                      fontSize: 12,
-                    }}
-                    tickFormatter={(value) =>
-                      formatCompactCurrency(Number(value))
-                    }
-                  />
-                  <Tooltip
-                    formatter={(value: number) => [
-                      formatCurrency(value),
-                      t("reports.balance"),
-                    ]}
-                    contentStyle={tooltipStyle}
-                    labelStyle={{ color: "hsl(var(--foreground))" }}
-                    itemStyle={{ color: "hsl(var(--foreground))" }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="balance"
-                    name={t("reports.balance")}
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    dot={{ fill: "hsl(var(--primary))" }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
