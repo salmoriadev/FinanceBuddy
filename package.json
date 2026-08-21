@@ -6,7 +6,7 @@
     "apps/api"
   ],
   "engines": {
-    "node": "22.x"
+    "node": ">=22.12"
   },
   "scripts": {
     "dev": "npm run dev --workspace=apps/web",
