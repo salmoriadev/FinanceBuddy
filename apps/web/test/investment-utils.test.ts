@@ -4,6 +4,7 @@ import {
   parseDecimal,
   today,
 } from "@/features/investments/utils";
+import { toPlainDecimalString } from "@/lib/number";
 
 describe("investment decimal parsing", () => {
   it.each([
@@ -12,27 +13,48 @@ describe("investment decimal parsing", () => {
     ["1.234,56", 1234.56],
     ["1,234.56", 1234.56],
     ["0.12345678", 0.12345678],
+    ["1e-8", 1e-8],
+    ["-2.5E+4", -2.5e4],
   ])("parses %s without changing its magnitude", (input, expected) => {
     expect(parseDecimal(input)).toBe(expected);
   });
 
-  it("keeps a canonical market quote intact through transaction calculation", () => {
-    const marketPrice = 38.42;
-    const quoteFieldValue = String(marketPrice);
-    const quantityFieldValue = "2,5";
-    const totalFieldValue = String(
-      Number(
-        (
-          parseDecimal(quantityFieldValue) * parseDecimal(quoteFieldValue)
-        ).toFixed(8),
-      ),
-    );
+  it.each([
+    [38.42, "2,5", 96.05, "38.42"],
+    [1e-8, "1", 1e-8, "0.00000001"],
+  ])(
+    "keeps canonical market quote %s intact through transaction submission",
+    (marketPrice, quantityFieldValue, expectedTotal, serializedPrice) => {
+      const quoteFieldValue = String(marketPrice);
+      const totalFieldValue = String(
+        Number(
+          (
+            parseDecimal(quantityFieldValue) * parseDecimal(quoteFieldValue)
+          ).toFixed(8),
+        ),
+      );
 
-    expect(parseDecimal(quoteFieldValue)).toBe(marketPrice);
-    expect(parseDecimal(totalFieldValue)).toBe(96.05);
-  });
+      const submittedPayload = {
+        quantity: parseDecimal(quantityFieldValue),
+        unitPrice: parseDecimal(quoteFieldValue),
+        totalAmount: parseDecimal(totalFieldValue),
+      };
 
-  it.each(["", "not-a-number", "1.2.3x", "NaN", "Infinity"])(
+      expect(submittedPayload).toEqual({
+        quantity: parseDecimal(quantityFieldValue),
+        unitPrice: marketPrice,
+        totalAmount: expectedTotal,
+      });
+      expect(toPlainDecimalString(submittedPayload.unitPrice)).toBe(
+        serializedPrice,
+      );
+      expect(toPlainDecimalString(submittedPayload.totalAmount)).not.toMatch(
+        /[eE]/,
+      );
+    },
+  );
+
+  it.each(["", "not-a-number", "1.2.3x", "1e", "1e999", "NaN", "Infinity"])(
     "rejects malformed value %j",
     (input) => {
       expect(parseDecimal(input)).toBe(0);

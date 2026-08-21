@@ -15,6 +15,7 @@ import {
   PortfolioTransactionType,
 } from "@/types/finance";
 import { useAuth } from "./useAuth";
+import { toPlainDecimalString } from "@/lib/number";
 
 type CreatePortfolioTransactionPayload = {
   assetId: string;
@@ -120,7 +121,7 @@ export function usePortfolioTransactions(portfolioId?: string | null) {
         body: Object.fromEntries(
           Object.entries(transaction).map(([key, value]) => [
             key,
-            typeof value === "number" ? String(value) : value,
+            typeof value === "number" ? toPlainDecimalString(value) : value,
           ]),
         ),
       });
@@ -194,7 +195,7 @@ export function usePortfolioDividends(portfolioId?: string | null) {
           body: Object.fromEntries(
             Object.entries(payload).map(([key, value]) => [
               key,
-              typeof value === "number" ? String(value) : value,
+              typeof value === "number" ? toPlainDecimalString(value) : value,
             ]),
           ),
         },
@@ -219,7 +220,7 @@ export function usePortfolioDividends(portfolioId?: string | null) {
           body: Object.fromEntries(
             Object.entries(payload).map(([key, value]) => [
               key,
-              typeof value === "number" ? String(value) : value,
+              typeof value === "number" ? toPlainDecimalString(value) : value,
             ]),
           ),
         },

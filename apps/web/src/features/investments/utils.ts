@@ -14,6 +14,11 @@ export const parseDecimal = (value: string) => {
   const input = value.trim();
   if (!input) return 0;
 
+  if (/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)[eE][+-]?\d+$/.test(input)) {
+    const canonical = Number(input);
+    return Number.isFinite(canonical) ? canonical : 0;
+  }
+
   const decimalSeparatorIndex = Math.max(
     input.lastIndexOf("."),
     input.lastIndexOf(","),
