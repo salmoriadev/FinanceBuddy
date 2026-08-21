@@ -4,49 +4,60 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   gitleaks:
     name: Secret scanning
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   semgrep:
     name: SAST
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
+    container:
+      image: semgrep/semgrep
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Run Semgrep
-        uses: semgrep/semgrep-action@v1
+        uses: actions/checkout@v6
         with:
-          config: p/owasp-top-ten
+          persist-credentials: false
+
+      - name: Run Semgrep CE
+        run: semgrep scan --config p/owasp-top-ten --error
 
   trivy-fs:
     name: Filesystem vulnerability scan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Run Trivy filesystem scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
-          scan-type: fs
-          scan-ref: .
-          severity: CRITICAL,HIGH
-          exit-code: 1
+          scan-type: "fs"
+          scan-ref: "."
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
           ignore-unfixed: true
 
   dependency-audit:
@@ -54,10 +65,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm

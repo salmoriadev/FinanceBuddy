@@ -19,8 +19,7 @@
     "test": "npm run prisma:generate && jest",
     "test:watch": "jest --watch",
     "typecheck": "npm run prisma:generate && tsc -p tsconfig.build.json --noEmit",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:generate": "prisma generate"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.1",
