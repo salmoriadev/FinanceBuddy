@@ -6,7 +6,20 @@ export const today = () => new Date().toISOString().slice(0, 10);
 export const currentMonth = () => new Date().toISOString().slice(0, 7);
 
 export const parseDecimal = (value: string) => {
-  const normalized = value.trim().replace(/\./g, "").replace(",", ".");
+  const input = value.trim();
+  if (!input) return 0;
+
+  const decimalSeparatorIndex = Math.max(
+    input.lastIndexOf("."),
+    input.lastIndexOf(","),
+  );
+  const normalized =
+    decimalSeparatorIndex === -1
+      ? input
+      : `${input.slice(0, decimalSeparatorIndex).replace(/[.,]/g, "")}.${input.slice(decimalSeparatorIndex + 1)}`;
+
+  if (!/^[+-]?\d+(?:\.\d+)?$/.test(normalized)) return 0;
+
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : 0;
 };
