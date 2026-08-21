@@ -37,12 +37,21 @@ type ReportCurrentMonthComparison = {
   hasVariationBaseline: boolean;
 };
 
+type ReportCurrentMonthCategory = {
+  categoryId: string;
+  name: string;
+  type: "income" | "expense";
+  color: string;
+  value: number;
+};
+
 type ReportsAnalytics = {
   year: number;
   summary: ReportSummary;
   monthly: ReportMonthlyItem[];
   categories: ReportCategorySpending[];
   currentMonthComparison: ReportCurrentMonthComparison;
+  currentMonthCategories: ReportCurrentMonthCategory[];
   availableYears: number[];
 };
 
@@ -62,6 +71,14 @@ type CategorySpendingRow = {
 type MonthComparisonRow = {
   current_expense: unknown;
   last_expense: unknown;
+};
+
+type CurrentMonthCategoryRow = {
+  category_id: string;
+  name: string;
+  type: "income" | "expense";
+  color: string;
+  value: unknown;
 };
 
 @Injectable()
@@ -225,6 +242,39 @@ export class ReportsService {
     return { currentExpense, lastExpense, variation, hasVariationBaseline };
   }
 
+  private async getCurrentMonthCategories(userId: string) {
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const rows = await this.prisma.$queryRaw<CurrentMonthCategoryRow[]>(
+      Prisma.sql`
+        SELECT
+          c.id::text AS category_id,
+          c.name AS name,
+          c.type AS type,
+          c.color AS color,
+          COALESCE(SUM(t.amount), 0) AS value
+        FROM public.transactions t
+        INNER JOIN public.categories c
+          ON c.id = t.category_id
+        WHERE t.user_id = ${userId}::uuid
+          AND t.type = 'expense'
+          AND t.date >= ${currentMonthStart}::date
+          AND t.date < ${nextMonthStart}::date
+        GROUP BY c.id, c.name, c.type, c.color
+        ORDER BY value DESC, c.id ASC
+      `,
+    );
+
+    return rows.map((row) => ({
+      categoryId: row.category_id,
+      name: row.name,
+      type: row.type,
+      color: row.color,
+      value: this.toNumber(row.value),
+    }));
+  }
+
   async getAnalytics(userId: string, year?: number): Promise<ReportsAnalytics> {
     const now = new Date();
     const targetYear = year ?? now.getFullYear();
@@ -236,10 +286,17 @@ export class ReportsService {
 
     await this.recurring.ensureRecurringTransactions(userId);
 
-    const [monthlyRows, categories, currentMonthComparison, minMax] = await Promise.all([
+    const [
+      monthlyRows,
+      categories,
+      currentMonthComparison,
+      currentMonthCategories,
+      minMax,
+    ] = await Promise.all([
       this.getMonthlyTotals(userId, targetYear),
       this.getCategorySpending(userId, targetYear),
       this.getCurrentMonthComparison(userId),
+      this.getCurrentMonthCategories(userId),
       this.prisma.transaction.aggregate({
         where: { userId },
         _min: { date: true },
@@ -255,6 +312,7 @@ export class ReportsService {
       monthly,
       categories,
       currentMonthComparison,
+      currentMonthCategories,
       availableYears: this.buildAvailableYears(
         minMax._min.date,
         minMax._max.date,

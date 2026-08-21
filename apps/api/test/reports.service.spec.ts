@@ -31,6 +31,10 @@ describe("ReportsService", () => {
     service = new ReportsService(prisma, recurring);
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("computes summary totals from grouped aggregates", async () => {
     ensureRecurringTransactionsMock.mockResolvedValue({ generated: 0 } as never);
     groupByMock.mockResolvedValue([
@@ -94,6 +98,15 @@ describe("ReportsService", () => {
       ] as never)
       .mockResolvedValueOnce([
         { current_expense: 400, last_expense: 200 },
+      ] as never)
+      .mockResolvedValueOnce([
+        {
+          category_id: "category-food",
+          name: "Food",
+          type: "expense",
+          color: "#f97316",
+          value: 400,
+        },
       ] as never);
     aggregateMock.mockResolvedValue({
       _min: { date: new Date(2024, 0, 10) },
@@ -103,7 +116,7 @@ describe("ReportsService", () => {
     const analytics = await service.getAnalytics("user-1", 2026);
 
     expect(ensureRecurringTransactionsMock).toHaveBeenCalledWith("user-1");
-    expect(queryRawMock).toHaveBeenCalledTimes(3);
+    expect(queryRawMock).toHaveBeenCalledTimes(4);
     expect(aggregateMock).toHaveBeenCalledWith({
       where: { userId: "user-1" },
       _min: { date: true },
@@ -143,7 +156,59 @@ describe("ReportsService", () => {
       variation: 100,
       hasVariationBaseline: true,
     });
+    expect(analytics.currentMonthCategories).toEqual([
+      {
+        categoryId: "category-food",
+        name: "Food",
+        type: "expense",
+        color: "#f97316",
+        value: 400,
+      },
+    ]);
     expect(analytics.availableYears).toEqual([2026, 2025, 2024]);
+  });
+
+  it("keeps current-period aggregates complete beyond one transaction page", async () => {
+    jest.useFakeTimers().setSystemTime(new Date(2026, 7, 21, 12));
+    const transactionCount = 150;
+    const amountPerTransaction = 10;
+    const completeExpense = transactionCount * amountPerTransaction;
+    ensureRecurringTransactionsMock.mockResolvedValue({ generated: 0 } as never);
+    queryRawMock
+      .mockResolvedValueOnce([
+        { month: 8, income: 0, expense: completeExpense },
+      ] as never)
+      .mockResolvedValueOnce([] as never)
+      .mockResolvedValueOnce([
+        { current_expense: completeExpense, last_expense: 0 },
+      ] as never)
+      .mockResolvedValueOnce([
+        {
+          category_id: "category-busy",
+          name: "Busy category",
+          type: "expense",
+          color: "#6366f1",
+          value: completeExpense,
+        },
+      ] as never);
+    aggregateMock.mockResolvedValue({
+      _min: { date: new Date(2026, 7, 1) },
+      _max: { date: new Date(2026, 7, 21) },
+    } as never);
+
+    const analytics = await service.getAnalytics("user-busy", 2026);
+
+    expect(transactionCount).toBeGreaterThan(100);
+    expect(analytics.monthly[7].expense).toBe(completeExpense);
+    expect(analytics.currentMonthComparison.currentExpense).toBe(
+      completeExpense,
+    );
+    expect(analytics.currentMonthCategories).toEqual([
+      expect.objectContaining({
+        categoryId: "category-busy",
+        value: completeExpense,
+      }),
+    ]);
   });
 
   it("returns cached analytics on repeated calls", async () => {
@@ -155,7 +220,8 @@ describe("ReportsService", () => {
       .mockResolvedValueOnce([] as never)
       .mockResolvedValueOnce([
         { current_expense: 300, last_expense: 0 },
-      ] as never);
+      ] as never)
+      .mockResolvedValueOnce([] as never);
     aggregateMock.mockResolvedValue({
       _min: { date: new Date(2026, 2, 1) },
       _max: { date: new Date(2026, 2, 1) },
@@ -166,7 +232,7 @@ describe("ReportsService", () => {
 
     expect(first).toEqual(second);
     expect(ensureRecurringTransactionsMock).toHaveBeenCalledTimes(1);
-    expect(queryRawMock).toHaveBeenCalledTimes(3);
+    expect(queryRawMock).toHaveBeenCalledTimes(4);
     expect(aggregateMock).toHaveBeenCalledTimes(1);
   });
 });

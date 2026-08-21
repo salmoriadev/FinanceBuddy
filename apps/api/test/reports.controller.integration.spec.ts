@@ -75,6 +75,7 @@ describe("ReportsController (integration)", () => {
         variation: null,
         hasVariationBaseline: false,
       },
+      currentMonthCategories: [],
       availableYears: [2026],
     });
     reportsServiceMock.getSummary.mockResolvedValue({
