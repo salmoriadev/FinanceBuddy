@@ -100,6 +100,53 @@ describe("AuthController (integration)", () => {
     expect(authServiceMock.refresh).not.toHaveBeenCalled();
   });
 
+  it("POST /auth/login blocks cross-origin form submissions", async () => {
+    const response = await request(app.getHttpServer())
+      .post("/api/v1/auth/login")
+      .type("form")
+      .set("Origin", "http://evil.example")
+      .send({ email: "attacker@example.com", password: "Password1!" });
+
+    expect(response.status).toBe(403);
+    expect(authServiceMock.login).not.toHaveBeenCalled();
+    expect(authServiceMock.setRefreshCookie).not.toHaveBeenCalled();
+  });
+
+  it("POST /auth/register blocks cross-origin form submissions", async () => {
+    const response = await request(app.getHttpServer())
+      .post("/api/v1/auth/register")
+      .type("form")
+      .set("Origin", "http://evil.example")
+      .send({ email: "victim@example.com", password: "Password1!" });
+
+    expect(response.status).toBe(403);
+    expect(authServiceMock.register).not.toHaveBeenCalled();
+    expect(authServiceMock.setRefreshCookie).not.toHaveBeenCalled();
+  });
+
+  it("POST /auth/login accepts a valid same-origin CSRF proof", async () => {
+    authServiceMock.login.mockResolvedValue({
+      user: { id: "user-1", email: "user@example.com" },
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+    });
+
+    const response = await request(app.getHttpServer())
+      .post("/api/v1/auth/login")
+      .set("X-Requested-With", "XMLHttpRequest")
+      .set("X-CSRF-Token", csrfToken)
+      .set("Cookie", [`csrf_token=${csrfToken}`])
+      .set("Origin", "http://localhost:8080")
+      .send({ email: "user@example.com", password: "Password1!" });
+
+    expect(response.status).toBe(201);
+    expect(authServiceMock.login).toHaveBeenCalledTimes(1);
+    expect(authServiceMock.setRefreshCookie).toHaveBeenCalledWith(
+      expect.anything(),
+      "refresh-token",
+    );
+  });
+
   it("POST /auth/refresh blocks requests from invalid origin", async () => {
     authServiceMock.refresh.mockResolvedValue({
       accessToken: "access-token",

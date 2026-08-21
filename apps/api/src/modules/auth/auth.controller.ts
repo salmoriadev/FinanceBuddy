@@ -32,6 +32,7 @@ export class AuthController {
 
   @Post("register")
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @UseGuards(CsrfProtectionGuard)
   async register(
     @Body() dto: RegisterDto,
     @Req() req: Request,
@@ -44,6 +45,7 @@ export class AuthController {
 
   @Post("login")
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(CsrfProtectionGuard)
   async login(
     @Body() dto: LoginDto,
     @Req() req: Request,
