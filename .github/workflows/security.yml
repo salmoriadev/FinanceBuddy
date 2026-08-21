@@ -32,7 +32,8 @@ jobs:
     name: SAST
     runs-on: ubuntu-latest
     container:
-      image: semgrep/semgrep
+      # Semgrep CE v1.173.0, pinned for a reproducible SAST runtime.
+      image: semgrep/semgrep@sha256:67319956da3dcb58baf5b322899c15458e3963e7018a86aeeb5cd224e69cb77a
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
