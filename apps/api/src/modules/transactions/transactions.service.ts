@@ -14,6 +14,10 @@ import {
   assertResourceFound,
 } from "../../common/services/resource-assertions";
 import { DEFAULT_TRANSACTIONS_LIMIT } from "./transactions.constants";
+import {
+  decodeTransactionCursor,
+  encodeTransactionCursor,
+} from "./transactions-pagination";
 
 type TransactionCreateData = {
   description: string;
@@ -62,10 +66,31 @@ export class TransactionsService {
 
   async findAll(userId: string, query?: TransactionsQueryDto) {
     await this.recurring.ensureRecurringTransactions(userId);
-    return this.repository.findAllByUser(userId, {
-      limit: query?.limit ?? DEFAULT_TRANSACTIONS_LIMIT,
-      offset: query?.offset ?? 0,
+    const limit = query?.limit ?? DEFAULT_TRANSACTIONS_LIMIT;
+    const rows = await this.repository.findPageByUser(userId, {
+      limit,
+      cursor: query?.cursor
+        ? decodeTransactionCursor(query.cursor)
+        : undefined,
     });
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    const lastItem = items.at(-1);
+
+    return {
+      items,
+      pageInfo: {
+        hasMore,
+        nextCursor:
+          hasMore && lastItem
+            ? encodeTransactionCursor({
+                date: lastItem.date,
+                createdAt: lastItem.createdAt,
+                id: lastItem.id,
+              })
+            : null,
+      },
+    };
   }
 
   async create(userId: string, dto: CreateTransactionDto) {

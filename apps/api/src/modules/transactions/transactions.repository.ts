@@ -3,21 +3,43 @@
  * joins, and recurring-template support operations.
  */
 import { Injectable } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../database/prisma.service";
 import { runUpdateAndFind } from "../../database/repository-helpers";
 import { DEFAULT_TRANSACTIONS_LIMIT } from "./transactions.constants";
+import { TransactionCursor } from "./transactions-pagination";
 
 @Injectable()
 export class TransactionsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAllByUser(userId: string, opts?: { limit?: number; offset?: number }) {
+  findPageByUser(
+    userId: string,
+    opts?: { limit?: number; cursor?: TransactionCursor },
+  ) {
+    const cursorFilter: Prisma.TransactionWhereInput = opts?.cursor
+      ? {
+          OR: [
+            { date: { lt: opts.cursor.date } },
+            {
+              date: opts.cursor.date,
+              createdAt: { lt: opts.cursor.createdAt },
+            },
+            {
+              date: opts.cursor.date,
+              createdAt: opts.cursor.createdAt,
+              id: { lt: opts.cursor.id },
+            },
+          ],
+        }
+      : {};
+    const limit = opts?.limit ?? DEFAULT_TRANSACTIONS_LIMIT;
+
     return this.prisma.transaction.findMany({
-      where: { userId },
+      where: { userId, ...cursorFilter },
       include: { category: true },
-      orderBy: { date: "desc" },
-      take: opts?.limit ?? DEFAULT_TRANSACTIONS_LIMIT,
-      skip: opts?.offset ?? 0,
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
     });
   }
 

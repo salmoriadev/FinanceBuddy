@@ -1,3 +1,2 @@
 export const DEFAULT_TRANSACTIONS_LIMIT = 100;
 export const MAX_TRANSACTIONS_LIMIT = 200;
-

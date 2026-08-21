@@ -1,5 +1,5 @@
 import { Transform } from "class-transformer";
-import { IsInt, IsOptional, Max, Min } from "class-validator";
+import { IsInt, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
 import {
   DEFAULT_TRANSACTIONS_LIMIT,
   MAX_TRANSACTIONS_LIMIT,
@@ -14,8 +14,7 @@ export class TransactionsQueryDto {
   limit: number = DEFAULT_TRANSACTIONS_LIMIT;
 
   @IsOptional()
-  @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(0)
-  offset: number = 0;
+  @IsString()
+  @MaxLength(512)
+  cursor?: string;
 }
