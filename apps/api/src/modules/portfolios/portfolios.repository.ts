@@ -9,6 +9,40 @@ import {
 } from "@prisma/client";
 import { PrismaService } from "../../database/prisma.service";
 
+type PortfolioTransactionData = {
+  assetId: string;
+  type: PortfolioTransactionType;
+  quantity?: Prisma.Decimal | null;
+  unitPrice?: Prisma.Decimal | null;
+  grossAmount?: Prisma.Decimal | null;
+  fees: Prisma.Decimal;
+  taxes: Prisma.Decimal;
+  totalAmount: Prisma.Decimal;
+  currency: string;
+  occurredAt: Date;
+  notes?: string | null;
+  source?: string;
+  sourceType?: DataSourceType;
+  legacyInvestmentId?: string | null;
+};
+
+type DividendReceiptWithRelations = Prisma.PortfolioDividendReceiptGetPayload<{
+  include: { asset: true; event: true };
+}>;
+
+type ReceiveDividendData = {
+  transaction: PortfolioTransactionData;
+  receipt: {
+    quantity?: Prisma.Decimal | null;
+    amountPerShare: Prisma.Decimal;
+    grossAmount: Prisma.Decimal;
+    taxes: Prisma.Decimal;
+    totalAmount: Prisma.Decimal;
+    receivedAt: Date;
+    notes?: string | null;
+  };
+};
+
 @Injectable()
 export class PortfoliosRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -111,22 +145,7 @@ export class PortfoliosRepository {
   createTransaction(
     userId: string,
     portfolioId: string,
-    data: {
-      assetId: string;
-      type: PortfolioTransactionType;
-      quantity?: Prisma.Decimal | null;
-      unitPrice?: Prisma.Decimal | null;
-      grossAmount?: Prisma.Decimal | null;
-      fees: Prisma.Decimal;
-      taxes: Prisma.Decimal;
-      totalAmount: Prisma.Decimal;
-      currency: string;
-      occurredAt: Date;
-      notes?: string | null;
-      source?: string;
-      sourceType?: DataSourceType;
-      legacyInvestmentId?: string | null;
-    },
+    data: PortfolioTransactionData,
   ) {
     return this.prisma.portfolioTransaction.create({
       data: {
@@ -330,48 +349,86 @@ export class PortfoliosRepository {
     });
   }
 
-  updateDividendReceiptAsReceived(
+  receiveDividendAtomically(
     userId: string,
+    portfolioId: string,
     receiptId: string,
-    data: {
-      quantity?: Prisma.Decimal | null;
-      amountPerShare: Prisma.Decimal;
-      grossAmount: Prisma.Decimal;
-      taxes: Prisma.Decimal;
-      totalAmount: Prisma.Decimal;
-      receivedAt: Date;
-      transactionId: string;
-      notes?: string | null;
-    },
+    prepare: (receipt: DividendReceiptWithRelations) => ReceiveDividendData,
   ) {
-    return this.prisma.portfolioDividendReceipt.update({
-      where: { id: receiptId, userId },
-      data: {
-        status: "received",
-        quantity: data.quantity ?? null,
-        amountPerShare: data.amountPerShare,
-        grossAmount: data.grossAmount,
-        taxes: data.taxes,
-        totalAmount: data.totalAmount,
-        receivedAt: data.receivedAt,
-        transactionId: data.transactionId,
-        notes: data.notes ?? undefined,
-      },
-      include: {
-        asset: true,
-        event: true,
-      },
-    });
-  }
+    return this.prisma.$transaction(async (transactionClient) => {
+      const receipt = await transactionClient.portfolioDividendReceipt.findFirst({
+        where: { userId, portfolioId, id: receiptId },
+        include: {
+          asset: true,
+          event: true,
+        },
+      });
 
-  updateDividendEventStatus(
-    userId: string,
-    eventId: string,
-    status: DividendEventStatus,
-  ) {
-    return this.prisma.dividendEvent.updateMany({
-      where: { userId, id: eventId },
-      data: { status },
+      if (!receipt || receipt.status !== "pending") return receipt;
+
+      const claim = await transactionClient.portfolioDividendReceipt.updateMany({
+        where: { userId, portfolioId, id: receiptId, status: "pending" },
+        data: { status: "received" },
+      });
+
+      if (claim.count !== 1) {
+        return transactionClient.portfolioDividendReceipt.findFirst({
+          where: { userId, portfolioId, id: receiptId },
+          include: {
+            asset: true,
+            event: true,
+          },
+        });
+      }
+
+      const data = prepare(receipt);
+      const ledgerTransaction = await transactionClient.portfolioTransaction.create({
+        data: {
+          userId,
+          portfolioId,
+          assetId: data.transaction.assetId,
+          type: data.transaction.type,
+          quantity: data.transaction.quantity ?? null,
+          unitPrice: data.transaction.unitPrice ?? null,
+          grossAmount: data.transaction.grossAmount ?? null,
+          fees: data.transaction.fees,
+          taxes: data.transaction.taxes,
+          totalAmount: data.transaction.totalAmount,
+          currency: data.transaction.currency,
+          occurredAt: data.transaction.occurredAt,
+          notes: data.transaction.notes ?? null,
+          source: data.transaction.source ?? "manual",
+          sourceType: data.transaction.sourceType ?? "manual",
+          status: "manual",
+          legacyInvestmentId: data.transaction.legacyInvestmentId ?? null,
+        },
+      });
+      const updated = await transactionClient.portfolioDividendReceipt.update({
+        where: { id: receiptId },
+        data: {
+          quantity: data.receipt.quantity ?? null,
+          amountPerShare: data.receipt.amountPerShare,
+          grossAmount: data.receipt.grossAmount,
+          taxes: data.receipt.taxes,
+          totalAmount: data.receipt.totalAmount,
+          receivedAt: data.receipt.receivedAt,
+          transactionId: ledgerTransaction.id,
+          notes: data.receipt.notes ?? undefined,
+        },
+        include: {
+          asset: true,
+          event: true,
+        },
+      });
+
+      if (receipt.dividendEventId) {
+        await transactionClient.dividendEvent.updateMany({
+          where: { userId, id: receipt.dividendEventId },
+          data: { status: "received" },
+        });
+      }
+
+      return updated;
     });
   }
 }

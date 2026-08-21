@@ -21,8 +21,7 @@ describe("PortfoliosService", () => {
     findDividendReceipt: jest.fn(),
     findDividendReceipts: jest.fn(),
     findDividendReceiptsBetween: jest.fn(),
-    updateDividendReceiptAsReceived: jest.fn(),
-    updateDividendEventStatus: jest.fn(),
+    receiveDividendAtomically: jest.fn(),
     ensureDefault: jest.fn(),
     findLegacyInvestments: jest.fn(),
     findLegacyMigration: jest.fn(),
@@ -121,7 +120,7 @@ describe("PortfoliosService", () => {
 
   it("marks a dividend as received by appending a dividend transaction", async () => {
     repository.findById.mockResolvedValue({ id: "portfolio-1" } as never);
-    repository.findDividendReceipt.mockResolvedValue({
+    const pendingReceipt = {
       id: "receipt-1",
       assetId: "asset-1",
       dividendEventId: "event-1",
@@ -134,31 +133,39 @@ describe("PortfoliosService", () => {
       currency: "BRL",
       paymentDate: new Date("2026-05-20"),
       notes: null,
-    } as never);
-    repository.createTransaction.mockResolvedValue({ id: "tx-1" } as never);
-    repository.updateDividendReceiptAsReceived.mockResolvedValue({
-      id: "receipt-1",
-      status: "received",
-      transactionId: "tx-1",
-    } as never);
+    };
+    let prepared: Record<string, Record<string, unknown>> | undefined;
+    (repository.receiveDividendAtomically as jest.Mock).mockImplementation(
+      async (_userId, _portfolioId, _receiptId, prepare) => {
+        prepared = prepare(pendingReceipt);
+        return {
+          ...pendingReceipt,
+          status: "received",
+          transactionId: "tx-1",
+        };
+      },
+    );
 
-    await service.receiveDividend("user-1", "portfolio-1", "receipt-1", {});
-
-    expect(repository.createTransaction).toHaveBeenCalledWith(
+    const result = await service.receiveDividend(
       "user-1",
       "portfolio-1",
-      expect.objectContaining({
+      "receipt-1",
+      {},
+    );
+
+    expect(prepared).toEqual({
+      transaction: expect.objectContaining({
         assetId: "asset-1",
         type: "dividend",
         totalAmount: dec("12.5"),
         occurredAt: new Date("2026-05-20"),
       }),
-    );
-    expect(repository.updateDividendEventStatus).toHaveBeenCalledWith(
-      "user-1",
-      "event-1",
-      "received",
-    );
+      receipt: expect.objectContaining({
+        totalAmount: dec("12.5"),
+        receivedAt: new Date("2026-05-20"),
+      }),
+    });
+    expect(result).toEqual(expect.objectContaining({ transactionId: "tx-1" }));
   });
 
   it("builds monthly report totals for buys, sales, dividends and pending data", async () => {

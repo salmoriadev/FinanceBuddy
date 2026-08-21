@@ -340,74 +340,69 @@ export class PortfoliosService {
     const portfolio = await this.repository.findById(userId, portfolioId);
     assertResourceFound(portfolio, "Portfolio not found");
 
-    const receipt = await this.repository.findDividendReceipt(
+    const receipt = await this.repository.receiveDividendAtomically(
       userId,
       portfolioId,
       receiptId,
+      (pendingReceipt) => {
+        const quantity = toDecimalOrNull(dto.quantity) ?? pendingReceipt.quantity;
+        const amountPerShare =
+          toDecimalOrNull(dto.amountPerShare) ?? decimal(pendingReceipt.amountPerShare);
+        const taxes = toDecimalOrNull(dto.taxes) ?? decimal(pendingReceipt.taxes);
+        const explicitTotal = toDecimalOrNull(dto.totalAmount);
+        const grossAmount =
+          explicitTotal ??
+          (quantity
+            ? quantity.times(amountPerShare)
+            : pendingReceipt.grossAmount);
+
+        if (!grossAmount) {
+          throw new BadRequestException(
+            "Quantity/amount per share or total amount is required",
+          );
+        }
+
+        const totalAmount = explicitTotal ?? decimal(grossAmount).minus(taxes);
+        const receivedAt = dto.receivedAt
+          ? parseDateOnly(dto.receivedAt)
+          : pendingReceipt.paymentDate;
+        const notes = dto.notes?.trim() || pendingReceipt.notes;
+
+        return {
+          transaction: {
+            assetId: pendingReceipt.assetId,
+            type: "dividend",
+            quantity: null,
+            unitPrice: amountPerShare,
+            grossAmount: decimal(grossAmount),
+            fees: ZERO,
+            taxes,
+            totalAmount,
+            currency: pendingReceipt.currency,
+            occurredAt: receivedAt,
+            notes,
+            source: "manual",
+            sourceType: "manual",
+          },
+          receipt: {
+            quantity,
+            amountPerShare,
+            grossAmount: decimal(grossAmount),
+            taxes,
+            totalAmount,
+            receivedAt,
+            notes,
+          },
+        };
+      },
     );
     assertResourceFound(receipt, "Dividend receipt not found");
 
-    if (receipt.status === "received" && receipt.transactionId) {
-      return receipt;
+    if (receipt.status !== "received") {
+      throw new BadRequestException("Dividend receipt is not pending");
     }
 
-    const quantity = toDecimalOrNull(dto.quantity) ?? receipt.quantity;
-    const amountPerShare =
-      toDecimalOrNull(dto.amountPerShare) ?? decimal(receipt.amountPerShare);
-    const taxes = toDecimalOrNull(dto.taxes) ?? decimal(receipt.taxes);
-    const explicitTotal = toDecimalOrNull(dto.totalAmount);
-    const grossAmount =
-      explicitTotal ?? (quantity ? quantity.times(amountPerShare) : receipt.grossAmount);
-
-    if (!grossAmount) {
-      throw new BadRequestException(
-        "Quantity/amount per share or total amount is required",
-      );
-    }
-
-    const totalAmount = explicitTotal ?? decimal(grossAmount).minus(taxes);
-    const receivedAt = dto.receivedAt
-      ? parseDateOnly(dto.receivedAt)
-      : receipt.paymentDate;
-    const transaction = await this.repository.createTransaction(userId, portfolioId, {
-      assetId: receipt.assetId,
-      type: "dividend",
-      quantity: null,
-      unitPrice: amountPerShare,
-      grossAmount: decimal(grossAmount),
-      fees: ZERO,
-      taxes,
-      totalAmount,
-      currency: receipt.currency,
-      occurredAt: receivedAt,
-      notes: dto.notes?.trim() || receipt.notes,
-      source: "manual",
-      sourceType: "manual",
-    });
-    const updated = await this.repository.updateDividendReceiptAsReceived(
-      userId,
-      receiptId,
-      {
-        quantity,
-        amountPerShare,
-        grossAmount: decimal(grossAmount),
-        taxes,
-        totalAmount,
-        receivedAt,
-        transactionId: transaction.id,
-        notes: dto.notes?.trim() || null,
-      },
-    );
-
-    if (receipt.dividendEventId) {
-      await this.repository.updateDividendEventStatus(
-        userId,
-        receipt.dividendEventId,
-        "received",
-      );
-    }
-
-    return updated;
+    return receipt;
   }
 
   async getMonthlyReport(userId: string, portfolioId: string, month: string) {
