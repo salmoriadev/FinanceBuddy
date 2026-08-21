@@ -18,6 +18,7 @@ import {
   decodeTransactionCursor,
   encodeTransactionCursor,
 } from "./transactions-pagination";
+import { ReportsCacheInvalidationService } from "../../common/cache/reports-cache-invalidation.service";
 
 type TransactionCreateData = {
   description: string;
@@ -62,6 +63,7 @@ export class TransactionsService {
   constructor(
     private readonly repository: TransactionsRepository,
     private readonly recurring: RecurringTransactionsService,
+    private readonly reportsCache: ReportsCacheInvalidationService,
   ) {}
 
   async findAll(userId: string, query?: TransactionsQueryDto) {
@@ -97,19 +99,32 @@ export class TransactionsService {
     if (dto.categoryId) {
       await assertCategoryAccess(this.repository, userId, dto.categoryId);
     }
-    return this.repository.create(userId, toCreateTransactionData(dto));
+    const created = await this.repository.create(
+      userId,
+      toCreateTransactionData(dto),
+    );
+    this.reportsCache.invalidate(userId);
+    return created;
   }
 
   async update(userId: string, id: string, dto: UpdateTransactionDto) {
     if (dto.categoryId !== undefined && dto.categoryId !== null) {
       await assertCategoryAccess(this.repository, userId, dto.categoryId);
     }
-    const updated = await this.repository.update(userId, id, toUpdateTransactionData(dto));
-    return assertResourceFound(updated, "Transaction not found");
+    const updated = await this.repository.update(
+      userId,
+      id,
+      toUpdateTransactionData(dto),
+    );
+    const transaction = assertResourceFound(updated, "Transaction not found");
+    this.reportsCache.invalidate(userId);
+    return transaction;
   }
 
   async delete(userId: string, id: string) {
     const result = await this.repository.delete(userId, id);
-    return assertResourceDeleted(result, "Transaction not found");
+    const deleted = assertResourceDeleted(result, "Transaction not found");
+    this.reportsCache.invalidate(userId);
+    return deleted;
   }
 }

@@ -1,6 +1,7 @@
 import { PrismaService } from "../src/database/prisma.service";
 import { RecurringTransactionsService } from "../src/modules/transactions/recurring.service";
 import { TransactionsRepository } from "../src/modules/transactions/transactions.repository";
+import { ReportsCacheInvalidationService } from "../src/common/cache/reports-cache-invalidation.service";
 
 describe("recurring transaction materialization", () => {
   afterEach(() => {
@@ -72,8 +73,17 @@ describe("recurring transaction materialization", () => {
         },
       ),
     } as unknown as jest.Mocked<TransactionsRepository>;
-    const firstInstance = new RecurringTransactionsService(repository);
-    const secondInstance = new RecurringTransactionsService(repository);
+    const reportsCache = {
+      invalidate: jest.fn(),
+    } as unknown as jest.Mocked<ReportsCacheInvalidationService>;
+    const firstInstance = new RecurringTransactionsService(
+      repository,
+      reportsCache,
+    );
+    const secondInstance = new RecurringTransactionsService(
+      repository,
+      reportsCache,
+    );
 
     const results = await Promise.all([
       firstInstance.ensureRecurringTransactions("user-1"),
@@ -82,7 +92,11 @@ describe("recurring transaction materialization", () => {
 
     expect(repository.findLastOccurrenceDate).toHaveBeenCalledTimes(2);
     expect(repository.createRecurringOccurrences).toHaveBeenCalledTimes(2);
-    expect(results.reduce((total, result) => total + result.generated, 0)).toBe(7);
+    expect(results.reduce((total, result) => total + result.generated, 0)).toBe(
+      7,
+    );
     expect(inserted.size).toBe(7);
+    expect(reportsCache.invalidate).toHaveBeenCalledTimes(1);
+    expect(reportsCache.invalidate).toHaveBeenCalledWith("user-1");
   });
 });

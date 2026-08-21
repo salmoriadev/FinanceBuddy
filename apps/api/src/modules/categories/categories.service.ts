@@ -11,6 +11,9 @@ import {
   assertResourceDeleted,
   assertResourceFound,
 } from "../../common/services/resource-assertions";
+import { ReportsCacheInvalidationService } from "../../common/cache/reports-cache-invalidation.service";
+
+const CATEGORY_CACHE_MAX_USERS = 10_000;
 
 const normalizeCategoryName = (value: string) =>
   value
@@ -25,9 +28,12 @@ export class CategoriesService {
   private readonly cache = new TtlCache<
     string,
     Awaited<ReturnType<CategoriesRepository["findAllByUser"]>>
-  >(60_000);
+  >(60_000, CATEGORY_CACHE_MAX_USERS);
 
-  constructor(private readonly repository: CategoriesRepository) {}
+  constructor(
+    private readonly repository: CategoriesRepository,
+    private readonly reportsCache: ReportsCacheInvalidationService,
+  ) {}
 
   async findAll(userId: string) {
     const cached = this.cache.get(userId);
@@ -69,6 +75,7 @@ export class CategoriesService {
       name,
     });
     this.cache.delete(userId);
+    this.reportsCache.invalidate(userId);
     return created;
   }
 
@@ -76,12 +83,15 @@ export class CategoriesService {
     const updated = await this.repository.update(userId, id, dto);
     const category = assertResourceFound(updated, "Category not found");
     this.cache.delete(userId);
+    this.reportsCache.invalidate(userId);
     return category;
   }
 
   async delete(userId: string, id: string) {
     const result = await this.repository.delete(userId, id);
+    const deleted = assertResourceDeleted(result, "Category not found");
     this.cache.delete(userId);
-    return assertResourceDeleted(result, "Category not found");
+    this.reportsCache.invalidate(userId);
+    return deleted;
   }
 }

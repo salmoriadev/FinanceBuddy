@@ -5,6 +5,9 @@
 import { ReportsService } from "../src/modules/reports/reports.service";
 import { PrismaService } from "../src/database/prisma.service";
 import { RecurringTransactionsService } from "../src/modules/transactions/recurring.service";
+import { ReportsCacheInvalidationService } from "../src/common/cache/reports-cache-invalidation.service";
+import { TransactionsRepository } from "../src/modules/transactions/transactions.repository";
+import { TransactionsService } from "../src/modules/transactions/transactions.service";
 
 describe("ReportsService", () => {
   const groupByMock = jest.fn();
@@ -25,10 +28,12 @@ describe("ReportsService", () => {
   } as unknown as RecurringTransactionsService;
 
   let service: ReportsService;
+  let cacheInvalidation: ReportsCacheInvalidationService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new ReportsService(prisma, recurring);
+    cacheInvalidation = new ReportsCacheInvalidationService();
+    service = new ReportsService(prisma, recurring, cacheInvalidation);
   });
 
   afterEach(() => {
@@ -77,7 +82,7 @@ describe("ReportsService", () => {
     const second = await service.getSummary("user-2", 2026);
 
     expect(first).toEqual(second);
-    expect(ensureRecurringTransactionsMock).toHaveBeenCalledTimes(1);
+    expect(ensureRecurringTransactionsMock).toHaveBeenCalledTimes(2);
     expect(groupByMock).toHaveBeenCalledTimes(1);
   });
 
@@ -231,8 +236,56 @@ describe("ReportsService", () => {
     const second = await service.getAnalytics("user-2", 2026);
 
     expect(first).toEqual(second);
-    expect(ensureRecurringTransactionsMock).toHaveBeenCalledTimes(1);
+    expect(ensureRecurringTransactionsMock).toHaveBeenCalledTimes(2);
     expect(queryRawMock).toHaveBeenCalledTimes(4);
     expect(aggregateMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("recomputes cached analytics after a transaction mutation", async () => {
+    ensureRecurringTransactionsMock.mockResolvedValue({ generated: 0 } as never);
+    queryRawMock
+      .mockResolvedValueOnce([{ month: 8, income: 0, expense: 100 }] as never)
+      .mockResolvedValueOnce([] as never)
+      .mockResolvedValueOnce([
+        { current_expense: 100, last_expense: 0 },
+      ] as never)
+      .mockResolvedValueOnce([] as never)
+      .mockResolvedValueOnce([{ month: 8, income: 0, expense: 175 }] as never)
+      .mockResolvedValueOnce([] as never)
+      .mockResolvedValueOnce([
+        { current_expense: 175, last_expense: 0 },
+      ] as never)
+      .mockResolvedValueOnce([] as never);
+    aggregateMock.mockResolvedValue({
+      _min: { date: new Date(2026, 7, 1) },
+      _max: { date: new Date(2026, 7, 21) },
+    } as never);
+    const repository = {
+      create: jest.fn().mockResolvedValue({ id: "transaction-new" }),
+    } as unknown as jest.Mocked<TransactionsRepository>;
+    const transactions = new TransactionsService(
+      repository,
+      recurring,
+      cacheInvalidation,
+    );
+
+    const first = await service.getAnalytics("user-3", 2026);
+    const cached = await service.getAnalytics("user-3", 2026);
+
+    expect(cached).toEqual(first);
+    expect(queryRawMock).toHaveBeenCalledTimes(4);
+
+    await transactions.create("user-3", {
+      description: "Groceries",
+      amount: 75,
+      type: "expense",
+      date: "2026-08-21",
+    });
+
+    const refreshed = await service.getAnalytics("user-3", 2026);
+
+    expect(refreshed.summary.expense).toBe(175);
+    expect(queryRawMock).toHaveBeenCalledTimes(8);
+    expect(aggregateMock).toHaveBeenCalledTimes(2);
   });
 });

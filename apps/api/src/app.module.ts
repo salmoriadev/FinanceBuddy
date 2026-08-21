@@ -17,6 +17,7 @@ import { ReportsModule } from "./modules/reports/reports.module";
 import { SecurityModule } from "./modules/security/security.module";
 import { AuditedThrottlerGuard } from "./modules/security/audited-throttler.guard";
 import { validateEnvironment } from "./config/environment.validation";
+import { ReportsCacheModule } from "./common/cache/reports-cache.module";
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { validateEnvironment } from "./config/environment.validation";
       },
     ]),
     PrismaModule,
+    ReportsCacheModule,
     SecurityModule,
     AuthModule,
     HealthModule,

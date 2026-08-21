@@ -11,6 +11,7 @@ import { PortfoliosService } from "../src/modules/portfolios/portfolios.service"
 import { TransactionsRepository } from "../src/modules/transactions/transactions.repository";
 import { TransactionsService } from "../src/modules/transactions/transactions.service";
 import { RecurringTransactionsService } from "../src/modules/transactions/recurring.service";
+import { ReportsCacheInvalidationService } from "../src/common/cache/reports-cache-invalidation.service";
 
 describe("financial resource authorization", () => {
   describe("transactions", () => {
@@ -22,7 +23,14 @@ describe("financial resource authorization", () => {
     const recurring = {
       ensureRecurringTransactions: jest.fn(),
     } as unknown as jest.Mocked<RecurringTransactionsService>;
-    const service = new TransactionsService(repository, recurring);
+    const reportsCache = {
+      invalidate: jest.fn(),
+    } as unknown as jest.Mocked<ReportsCacheInvalidationService>;
+    const service = new TransactionsService(
+      repository,
+      recurring,
+      reportsCache,
+    );
 
     beforeEach(() => jest.clearAllMocks());
 
@@ -42,6 +50,7 @@ describe("financial resource authorization", () => {
         "user-A",
         "user-B-category",
       );
+      expect(reportsCache.invalidate).not.toHaveBeenCalled();
     });
 
     it("does not update another user's transaction", async () => {
@@ -55,6 +64,7 @@ describe("financial resource authorization", () => {
         "user-B-transaction",
         { amount: 200 },
       );
+      expect(reportsCache.invalidate).not.toHaveBeenCalled();
     });
 
     it("does not delete another user's transaction", async () => {
@@ -67,6 +77,7 @@ describe("financial resource authorization", () => {
         "user-A",
         "user-B-transaction",
       );
+      expect(reportsCache.invalidate).not.toHaveBeenCalled();
     });
   });
 

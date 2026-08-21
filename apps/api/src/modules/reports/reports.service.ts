@@ -7,6 +7,10 @@ import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../database/prisma.service";
 import { RecurringTransactionsService } from "../transactions/recurring.service";
 import { TtlCache } from "../../common/cache/ttl-cache";
+import { ReportsCacheInvalidationService } from "../../common/cache/reports-cache-invalidation.service";
+
+const REPORT_CACHE_TTL_MS = 30_000;
+const REPORT_CACHE_MAX_ENTRIES = 5_000;
 
 type ReportSummary = {
   year: number;
@@ -83,12 +87,19 @@ type CurrentMonthCategoryRow = {
 
 @Injectable()
 export class ReportsService {
-  private readonly summaryCache = new TtlCache<string, ReportSummary>(30_000);
-  private readonly analyticsCache = new TtlCache<string, ReportsAnalytics>(30_000);
+  private readonly summaryCache = new TtlCache<string, ReportSummary>(
+    REPORT_CACHE_TTL_MS,
+    REPORT_CACHE_MAX_ENTRIES,
+  );
+  private readonly analyticsCache = new TtlCache<string, ReportsAnalytics>(
+    REPORT_CACHE_TTL_MS,
+    REPORT_CACHE_MAX_ENTRIES,
+  );
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly recurring: RecurringTransactionsService,
+    private readonly cacheInvalidation: ReportsCacheInvalidationService,
   ) {}
 
   private toYearRange(year: number) {
@@ -278,13 +289,17 @@ export class ReportsService {
   async getAnalytics(userId: string, year?: number): Promise<ReportsAnalytics> {
     const now = new Date();
     const targetYear = year ?? now.getFullYear();
-    const cacheKey = `${userId}:${targetYear}`;
+
+    // Recurring generation can write transactions and advance the version.
+    // Run it before deriving the key so this read cannot return pre-generation data.
+    await this.recurring.ensureRecurringTransactions(userId);
+
+    const cacheVersion = this.cacheInvalidation.getVersion(userId);
+    const cacheKey = `${userId}:${targetYear}:${cacheVersion}`;
     const cached = this.analyticsCache.get(cacheKey);
     if (cached) {
       return cached;
     }
-
-    await this.recurring.ensureRecurringTransactions(userId);
 
     const [
       monthlyRows,
@@ -360,7 +375,11 @@ export class ReportsService {
   async getSummary(userId: string, year?: number) {
     const now = new Date();
     const targetYear = year ?? now.getFullYear();
-    const cacheKey = `${userId}:${targetYear}`;
+
+    await this.recurring.ensureRecurringTransactions(userId);
+
+    const cacheVersion = this.cacheInvalidation.getVersion(userId);
+    const cacheKey = `${userId}:${targetYear}:${cacheVersion}`;
     const cached = this.summaryCache.get(cacheKey);
     if (cached) {
       return cached;
@@ -370,8 +389,6 @@ export class ReportsService {
     if (cachedAnalytics) {
       return cachedAnalytics.summary;
     }
-
-    await this.recurring.ensureRecurringTransactions(userId);
 
     const { income, expense } = await this.getYearlyTotals(userId, targetYear);
 
