@@ -4,6 +4,20 @@ import { TransactionsRepository } from "../src/modules/transactions/transactions
 import { ReportsCacheInvalidationService } from "../src/common/cache/reports-cache-invalidation.service";
 
 describe("recurring transaction materialization", () => {
+  const originalTimezone = process.env.TZ;
+
+  beforeAll(() => {
+    process.env.TZ = "America/Sao_Paulo";
+  });
+
+  afterAll(() => {
+    if (originalTimezone === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = originalTimezone;
+    }
+  });
+
   afterEach(() => {
     jest.useRealTimers();
   });
@@ -24,7 +38,7 @@ describe("recurring transaction materialization", () => {
         type: "expense",
         categoryId: null,
       },
-      [new Date(2026, 1, 1)],
+      [new Date("2026-02-01T00:00:00.000Z")],
     );
 
     expect(createMany).toHaveBeenCalledWith(
@@ -32,8 +46,10 @@ describe("recurring transaction materialization", () => {
     );
   });
 
-  it("deduplicates concurrent generation from two service instances", async () => {
-    jest.useFakeTimers().setSystemTime(new Date(2026, 7, 21, 12));
+  it("keeps UTC calendar dates at the day-one boundary across two instances", async () => {
+    jest
+      .useFakeTimers()
+      .setSystemTime(new Date("2026-08-01T15:00:00.000Z"));
     const template = {
       id: "template-1",
       userId: "user-1",
@@ -42,9 +58,9 @@ describe("recurring transaction materialization", () => {
       description: "Rent",
       amount: 1_500,
       type: "expense" as const,
-      date: new Date(2026, 0, 1),
+      date: new Date("2026-01-01T00:00:00.000Z"),
       isRecurring: true,
-      createdAt: new Date(2026, 0, 1),
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
     };
     const inserted = new Set<string>();
     let readers = 0;
@@ -96,6 +112,17 @@ describe("recurring transaction materialization", () => {
       7,
     );
     expect(inserted.size).toBe(7);
+    expect([...inserted].sort()).toEqual(
+      [
+        "2026-02-01T00:00:00.000Z",
+        "2026-03-01T00:00:00.000Z",
+        "2026-04-01T00:00:00.000Z",
+        "2026-05-01T00:00:00.000Z",
+        "2026-06-01T00:00:00.000Z",
+        "2026-07-01T00:00:00.000Z",
+        "2026-08-01T00:00:00.000Z",
+      ].map((date) => `${template.id}:${date}`),
+    );
     expect(reportsCache.invalidate).toHaveBeenCalledTimes(1);
     expect(reportsCache.invalidate).toHaveBeenCalledWith("user-1");
   });

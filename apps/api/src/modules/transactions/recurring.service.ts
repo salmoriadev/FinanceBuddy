@@ -10,12 +10,12 @@ import { ReportsCacheInvalidationService } from "../../common/cache/reports-cach
 const RECENT_RUNS_MAX_USERS = 10_000;
 
 const clampDay = (year: number, monthIndex: number, day: number) => {
-  const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+  const lastDay = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
   return Math.min(day, lastDay);
 };
 
 const buildDate = (year: number, monthIndex: number, day: number) =>
-  new Date(year, monthIndex, clampDay(year, monthIndex, day));
+  new Date(Date.UTC(year, monthIndex, clampDay(year, monthIndex, day)));
 
 type RecurringTemplate = Awaited<
   ReturnType<TransactionsRepository["findRecurringTemplates"]>
@@ -31,8 +31,8 @@ const getMissingMonthlyDates = (
   templateDay: number,
   limitDate: Date,
 ) => {
-  let nextYear = lastDate.getFullYear();
-  let nextMonth = lastDate.getMonth() + 1;
+  let nextYear = lastDate.getUTCFullYear();
+  let nextMonth = lastDate.getUTCMonth() + 1;
   if (nextMonth > 11) {
     nextMonth = 0;
     nextYear += 1;
@@ -90,7 +90,11 @@ export class RecurringTransactionsService {
       return null;
     }
 
-    const dates = getMissingMonthlyDates(lastDate, template.date.getDate(), todayStart);
+    const dates = getMissingMonthlyDates(
+      lastDate,
+      template.date.getUTCDate(),
+      todayStart,
+    );
     if (dates.length === 0) {
       return null;
     }
@@ -107,9 +111,11 @@ export class RecurringTransactionsService {
 
     const today = new Date();
     const todayStart = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate(),
+      Date.UTC(
+        today.getUTCFullYear(),
+        today.getUTCMonth(),
+        today.getUTCDate(),
+      ),
     );
 
     const plans = (
