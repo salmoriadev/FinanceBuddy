@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -74,7 +75,7 @@
     "@types/node": "^22.16.5",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
-    "@vitejs/plugin-react-swc": "^4.3.3",
+    "@vitejs/plugin-react": "^6.1.0",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.28.2",
     "eslint": "^9.32.0",

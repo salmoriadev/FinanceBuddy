@@ -14,14 +14,18 @@
     "dev:api": "npm run start:dev --workspace=apps/api",
     "start": "npm run start --workspace=apps/api",
     "start:api": "npm run start --workspace=apps/api",
-    "build": "npm run build --workspace=apps/web",
+    "build": "npm run build:api && npm run build:web",
     "build:web": "npm run build --workspace=apps/web",
     "build:api": "npm run build --workspace=apps/api",
-    "lint": "npm run lint --workspace=apps/web",
-    "test": "npm run test --workspace=apps/web",
+    "lint": "npm run lint:web",
+    "lint:web": "npm run lint --workspace=apps/web",
+    "test": "npm run test:api && npm run test:web",
     "test:web": "npm run test --workspace=apps/web",
     "test:api": "npm run test --workspace=apps/api",
-    "check": "npm run test:api && npm run test:web && npm run lint && npm run build:api && npm run build:web",
-    "check:fast": "npm run test:api && npm run test:web && npm run lint"
+    "typecheck": "npm run typecheck:api && npm run typecheck:web",
+    "typecheck:api": "npm run typecheck --workspace=apps/api",
+    "typecheck:web": "npm run typecheck --workspace=apps/web",
+    "check": "npm test && npm run lint && npm run typecheck && npm run build",
+    "check:fast": "npm test && npm run lint && npm run typecheck"
   }
 }
