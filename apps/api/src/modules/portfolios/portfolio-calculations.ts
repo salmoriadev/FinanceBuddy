@@ -7,9 +7,10 @@ export type PositionInputTransaction = {
   type: "buy" | "sell" | "dividend" | "fee" | "manual_adjustment" | "opening_balance";
   quantity?: DecimalInput;
   unitPrice?: DecimalInput;
+  grossAmount?: DecimalInput;
   /**
-   * Effective cash amount: acquisition costs include fees/taxes, while sale
-   * proceeds and dividends are already net of fees/taxes.
+   * Recorded total. Current rows store effective cash; compatibility logic
+   * derives it from gross audit fields for rows written under the old contract.
    */
   totalAmount: DecimalInput;
   fees?: DecimalInput;
@@ -34,6 +35,36 @@ export const decimal = (value: DecimalInput) =>
 
 const isPositive = (value: Prisma.Decimal) => value.gt(ZERO);
 
+/**
+ * Derives the effective cash value from immutable audit fields when available.
+ * This keeps rows written with the former gross `totalAmount` contract and rows
+ * written with the current net/effective contract financially equivalent.
+ * Custom events and rows without a gross amount keep their recorded total.
+ */
+export const effectiveCashAmount = (
+  transaction: Pick<
+    PositionInputTransaction,
+    "type" | "grossAmount" | "totalAmount" | "fees" | "taxes"
+  >,
+) => {
+  if (transaction.grossAmount === undefined || transaction.grossAmount === null) {
+    return decimal(transaction.totalAmount);
+  }
+
+  const grossAmount = decimal(transaction.grossAmount);
+  const costs = decimal(transaction.fees).plus(decimal(transaction.taxes));
+
+  if (transaction.type === "buy" || transaction.type === "opening_balance") {
+    return grossAmount.plus(costs);
+  }
+
+  if (transaction.type === "sell" || transaction.type === "dividend") {
+    return grossAmount.minus(costs);
+  }
+
+  return decimal(transaction.totalAmount);
+};
+
 export const calculatePosition = (
   transactions: PositionInputTransaction[],
 ): PositionCalculation => {
@@ -46,7 +77,7 @@ export const calculatePosition = (
     (a, b) => a.occurredAt.getTime() - b.occurredAt.getTime(),
   )) {
     const transactionQuantity = decimal(transaction.quantity);
-    const totalAmount = decimal(transaction.totalAmount);
+    const totalAmount = effectiveCashAmount(transaction);
     if (transaction.type === "buy" || transaction.type === "opening_balance") {
       quantity = quantity.plus(transactionQuantity);
       costBasis = costBasis.plus(totalAmount);
@@ -86,6 +117,6 @@ export const calculatePosition = (
     realizedGain,
     eventCount: transactions.length,
     formula:
-      "quantity=sum(buy/opening/adjustment quantities)-sum(sell quantities); costBasis=sum(cost events)-averageCostOfSoldQuantity; currentValue=quantity*latestQuote",
+      "quantity=sum(buy/opening/adjustment quantities)-sum(sell quantities); effectiveCash=grossAmount adjusted by fees/taxes when available; costBasis=sum(cost events)-averageCostOfSoldQuantity; currentValue=quantity*latestQuote",
   };
 };

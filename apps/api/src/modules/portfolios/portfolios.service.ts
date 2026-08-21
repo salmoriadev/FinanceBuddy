@@ -7,7 +7,11 @@ import { CreateDividendReceiptDto } from "./dto/create-dividend-receipt.dto";
 import { CreatePortfolioDto } from "./dto/create-portfolio.dto";
 import { CreatePortfolioTransactionDto } from "./dto/create-portfolio-transaction.dto";
 import { ReceiveDividendReceiptDto } from "./dto/receive-dividend-receipt.dto";
-import { calculatePosition, decimal } from "./portfolio-calculations";
+import {
+  calculatePosition,
+  decimal,
+  effectiveCashAmount,
+} from "./portfolio-calculations";
 import { PortfoliosRepository } from "./portfolios.repository";
 
 const ZERO = new Prisma.Decimal(0);
@@ -38,13 +42,19 @@ const parseMonth = (month: string) => {
 };
 
 const sumTransactions = (
-  transactions: Array<{ totalAmount: Prisma.Decimal | string | number; type: string }>,
+  transactions: Array<{
+    type: "buy" | "sell" | "dividend" | "fee" | "manual_adjustment" | "opening_balance";
+    grossAmount: Prisma.Decimal | null;
+    totalAmount: Prisma.Decimal;
+    fees: Prisma.Decimal;
+    taxes: Prisma.Decimal;
+  }>,
   types: string[],
 ) =>
   transactions
     .filter((transaction) => types.includes(transaction.type))
     .reduce(
-      (total, transaction) => total.plus(decimal(transaction.totalAmount)),
+      (total, transaction) => total.plus(effectiveCashAmount(transaction)),
       ZERO,
     );
 
@@ -55,6 +65,7 @@ const calculateRealizedGainByAsset = (
     type: "buy" | "sell" | "dividend" | "fee" | "manual_adjustment" | "opening_balance";
     quantity: Prisma.Decimal | null;
     unitPrice: Prisma.Decimal | null;
+    grossAmount: Prisma.Decimal | null;
     totalAmount: Prisma.Decimal;
     fees: Prisma.Decimal;
     taxes: Prisma.Decimal;
@@ -78,6 +89,7 @@ const calculateRealizedGainByAsset = (
             type: transaction.type,
             quantity: transaction.quantity,
             unitPrice: transaction.unitPrice,
+            grossAmount: transaction.grossAmount,
             totalAmount: transaction.totalAmount,
             fees: transaction.fees,
             taxes: transaction.taxes,
@@ -190,6 +202,7 @@ export class PortfoliosService {
             type: transaction.type,
             quantity: transaction.quantity,
             unitPrice: transaction.unitPrice,
+            grossAmount: transaction.grossAmount,
             totalAmount: transaction.totalAmount,
             fees: transaction.fees,
             taxes: transaction.taxes,
@@ -443,6 +456,7 @@ export class PortfoliosService {
           type: transaction.type,
           quantity: transaction.quantity,
           unitPrice: transaction.unitPrice,
+          grossAmount: transaction.grossAmount,
           totalAmount: transaction.totalAmount,
           fees: transaction.fees,
           taxes: transaction.taxes,

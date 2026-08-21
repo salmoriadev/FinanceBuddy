@@ -170,6 +170,67 @@ describe("PortfoliosService", () => {
     expect(result).toEqual(expect.objectContaining({ transactionId: "tx-1" }));
   });
 
+  it("keeps positions correct for rows written with the former gross total contract", async () => {
+    const asset = {
+      id: "asset-1",
+      ticker: "HGLG11",
+      quotes: [
+        {
+          price: dec(20),
+          sourceType: "manual",
+          status: "manual",
+          quotedAt: new Date("2026-05-31"),
+        },
+      ],
+    };
+    const legacyBuy = {
+      id: "legacy-buy",
+      assetId: "asset-1",
+      type: "buy",
+      quantity: dec(10),
+      unitPrice: dec(15),
+      grossAmount: dec(150),
+      totalAmount: dec(150),
+      fees: dec(2),
+      taxes: dec(3),
+      occurredAt: new Date("2026-05-01"),
+      createdAt: new Date("2026-05-01"),
+      asset,
+    };
+    const legacySell = {
+      id: "legacy-sell",
+      assetId: "asset-1",
+      type: "sell",
+      quantity: dec(5),
+      unitPrice: dec(30),
+      grossAmount: dec(150),
+      totalAmount: dec(150),
+      fees: dec(1),
+      taxes: dec(2),
+      occurredAt: new Date("2026-05-02"),
+      createdAt: new Date("2026-05-02"),
+      asset,
+    };
+
+    repository.findById.mockResolvedValue({ id: "portfolio-1" } as never);
+    repository.findPortfolioTransactions.mockResolvedValue([
+      legacyBuy,
+      legacySell,
+    ] as never);
+
+    const positions = await service.getPositions("user-1", "portfolio-1");
+
+    expect(positions).toEqual([
+      expect.objectContaining({
+        quantity: 5,
+        averagePrice: 15.5,
+        costBasis: 77.5,
+        currentValue: 100,
+        realizedGain: 69.5,
+      }),
+    ]);
+  });
+
   it("builds monthly report totals for buys, sales, dividends and pending data", async () => {
     const asset = {
       id: "asset-1",
@@ -250,6 +311,61 @@ describe("PortfoliosService", () => {
         pendingDividends: 1,
         hasPendingData: true,
       },
+    });
+  });
+
+  it("keeps monthly totals correct for rows written with the former gross total contract", async () => {
+    const asset = {
+      id: "asset-1",
+      ticker: "HGLG11",
+      quotes: [{ price: dec(20), sourceType: "manual", status: "manual" }],
+    };
+    const legacyBuy = {
+      id: "legacy-buy",
+      assetId: "asset-1",
+      type: "buy",
+      quantity: dec(10),
+      unitPrice: dec(15),
+      grossAmount: dec(150),
+      totalAmount: dec(150),
+      fees: dec(2),
+      taxes: dec(3),
+      occurredAt: new Date("2026-05-01"),
+      createdAt: new Date("2026-05-01"),
+      asset,
+    };
+    const legacySell = {
+      id: "legacy-sell",
+      assetId: "asset-1",
+      type: "sell",
+      quantity: dec(5),
+      unitPrice: dec(30),
+      grossAmount: dec(150),
+      totalAmount: dec(150),
+      fees: dec(1),
+      taxes: dec(2),
+      occurredAt: new Date("2026-05-02"),
+      createdAt: new Date("2026-05-02"),
+      asset,
+    };
+
+    repository.findById.mockResolvedValue({ id: "portfolio-1" } as never);
+    repository.findPortfolioTransactionsBetween.mockResolvedValue([
+      legacyBuy,
+      legacySell,
+    ] as never);
+    repository.findPortfolioTransactionsUntil
+      .mockResolvedValueOnce([legacyBuy, legacySell] as never)
+      .mockResolvedValueOnce([] as never);
+    repository.findDividendReceiptsBetween.mockResolvedValue([] as never);
+
+    const report = await service.getMonthlyReport("user-1", "portfolio-1", "2026-05");
+
+    expect(report).toMatchObject({
+      contributions: 155,
+      sales: 147,
+      estimatedCapitalGain: 69.5,
+      portfolioValue: 100,
     });
   });
 
