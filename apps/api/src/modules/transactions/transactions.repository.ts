@@ -96,6 +96,7 @@ export class TransactionsRepository {
         isRecurring: false,
         recurrenceParentId: template.id,
       })),
+      skipDuplicates: true,
     });
   }
 

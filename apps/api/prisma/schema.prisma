@@ -359,6 +359,7 @@ model Transaction {
   recurrenceParent  Transaction?  @relation("TransactionRecurrence", fields: [recurrenceParentId], references: [id])
   recurringChildren Transaction[] @relation("TransactionRecurrence")
 
+  @@unique([userId, recurrenceParentId, date], map: "transactions_user_recurrence_parent_date_key")
   @@index([userId, date], map: "idx_transactions_user_date")
   @@index([categoryId], map: "idx_transactions_category")
   @@index([recurrenceParentId], map: "idx_transactions_recurrence_parent")
