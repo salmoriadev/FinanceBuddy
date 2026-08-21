@@ -391,7 +391,7 @@ export class PortfoliosService {
           );
         }
 
-        const totalAmount = explicitTotal ?? decimal(grossAmount).minus(taxes);
+        const totalAmount = decimal(grossAmount).minus(taxes);
         const receivedAt = dto.receivedAt
           ? parseDateOnly(dto.receivedAt)
           : pendingReceipt.paymentDate;

@@ -197,6 +197,53 @@ describe("PortfoliosService", () => {
     expect(result).toEqual(expect.objectContaining({ transactionId: "tx-1" }));
   });
 
+  it("stores the same net dividend total in the receipt and portfolio ledger", async () => {
+    repository.findById.mockResolvedValue({ id: "portfolio-1" } as never);
+    const pendingReceipt = {
+      id: "receipt-1",
+      assetId: "asset-1",
+      dividendEventId: "event-1",
+      status: "pending",
+      quantity: dec(10),
+      amountPerShare: dec(10),
+      grossAmount: null,
+      taxes: dec(0),
+      totalAmount: null,
+      currency: "BRL",
+      paymentDate: new Date("2026-05-20"),
+      notes: null,
+    };
+    let prepared: Record<string, Record<string, unknown>> | undefined;
+    (repository.receiveDividendAtomically as jest.Mock).mockImplementation(
+      async (_userId, _portfolioId, _receiptId, prepare) => {
+        prepared = prepare(pendingReceipt);
+        return {
+          ...pendingReceipt,
+          status: "received",
+          transactionId: "tx-1",
+        };
+      },
+    );
+
+    await service.receiveDividend("user-1", "portfolio-1", "receipt-1", {
+      totalAmount: "100",
+      taxes: "10",
+    });
+
+    expect(prepared).toEqual({
+      transaction: expect.objectContaining({
+        grossAmount: dec(100),
+        taxes: dec(10),
+        totalAmount: dec(90),
+      }),
+      receipt: expect.objectContaining({
+        grossAmount: dec(100),
+        taxes: dec(10),
+        totalAmount: dec(90),
+      }),
+    });
+  });
+
   it("keeps positions correct for rows written with the former gross total contract", async () => {
     const asset = {
       id: "asset-1",
