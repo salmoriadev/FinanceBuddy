@@ -16,10 +16,11 @@ import { CategoriesModule } from "./modules/categories/categories.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { SecurityModule } from "./modules/security/security.module";
 import { AuditedThrottlerGuard } from "./modules/security/audited-throttler.guard";
+import { validateEnvironment } from "./config/environment.validation";
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
     ThrottlerModule.forRoot([
       {
         ttl: 60_000,
