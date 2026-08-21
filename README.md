@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/salmoriadev/FinanceBuddy/actions/workflows/ci.yml/badge.svg)](https://github.com/salmoriadev/FinanceBuddy/actions/workflows/ci.yml)
 [![Security Checks](https://github.com/salmoriadev/FinanceBuddy/actions/workflows/security.yml/badge.svg)](https://github.com/salmoriadev/FinanceBuddy/actions/workflows/security.yml)
-[![MIT License](https://img.shields.io/github/license/salmoriadev/FinanceBuddy)](./LICENSE)
+[![MIT License](https://img.shields.io/badge/license-MIT-2ea44f.svg)](./LICENSE)
 
 FinanceBuddy is a security-conscious personal finance platform that brings cash flow, budgets, savings goals, reports, and investment tracking into one focused workspace. It is an open-source portfolio project built to demonstrate full-stack product engineering, explicit trust boundaries, and repeatable quality gates—not a banking product or financial adviser.
 

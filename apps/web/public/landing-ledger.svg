@@ -5,29 +5,29 @@
     <path d="M80 0V760M160 0V760M240 0V760M320 0V760M400 0V760M480 0V760M560 0V760M640 0V760M720 0V760M800 0V760M880 0V760M960 0V760M1040 0V760M1120 0V760M1200 0V760" stroke="#F4F1EA"/>
   </g>
   <rect x="1" y="1" width="1278" height="758" rx="18" stroke="#F4F1EA" stroke-opacity="0.12" stroke-width="2"/>
-  <text x="76" y="112" fill="#8E8D96" font-family="DM Sans, Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="10">VOLUME 0 · PAINEL 01 · FINANÇAS PESSOAIS</text>
-  <text x="76" y="244" fill="#F4F1EA" font-family="Crimson Pro, Georgia, serif" font-size="108" font-weight="500">Controle financeiro</text>
-  <text x="76" y="352" fill="#8E8D96" font-family="Crimson Pro, Georgia, serif" font-size="108" font-style="italic" font-weight="400">sem planilha,</text>
-  <text x="514" y="352" fill="#F4F1EA" font-family="Crimson Pro, Georgia, serif" font-size="108" font-weight="500">sem ruído.</text>
-  <text x="78" y="422" fill="#A5A3AD" font-family="DM Sans, Arial, sans-serif" font-size="28" font-weight="500">Gastos, metas, orçamento e investimentos em uma visão única.</text>
+  <text x="76" y="112" fill="#8E8D96" font-family="Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="8">VOLUME 0 · PAINEL 01 · FINANÇAS PESSOAIS</text>
+  <text x="76" y="238" fill="#F4F1EA" font-family="Georgia, serif" font-size="84" font-weight="500">Controle financeiro</text>
+  <text x="76" y="330" fill="#8E8D96" font-family="Georgia, serif" font-size="72" font-style="italic" font-weight="400">sem planilha,</text>
+  <text x="500" y="330" fill="#F4F1EA" font-family="Georgia, serif" font-size="72" font-weight="500">sem ruído.</text>
+  <text x="78" y="410" fill="#A5A3AD" font-family="Arial, sans-serif" font-size="22" font-weight="500">Gastos, metas, orçamento e investimentos em uma visão única.</text>
   <rect x="78" y="506" width="260" height="72" rx="9" fill="#F4F1EA"/>
-  <text x="110" y="552" fill="#050506" font-family="DM Sans, Arial, sans-serif" font-size="24" font-weight="700">Abrir meu painel</text>
-  <path d="M290 542H315M315 542L304 531M315 542L304 553" stroke="#050506" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="400" y="552" fill="#8E8D96" font-family="DM Sans, Arial, sans-serif" font-size="24" font-weight="700">Ver como funciona ↗</text>
+  <text x="110" y="552" fill="#050506" font-family="Arial, sans-serif" font-size="24" font-weight="700">Abrir meu painel</text>
+  <path d="M300 542H320M320 542L310 532M320 542L310 552" stroke="#050506" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="400" y="552" fill="#8E8D96" font-family="Arial, sans-serif" font-size="24" font-weight="700">Ver como funciona ↗</text>
 
   <rect x="840" y="174" width="360" height="412" rx="12" fill="#070708" stroke="#F4F1EA" stroke-opacity="0.14" stroke-width="2"/>
-  <text x="884" y="234" fill="#8E8D96" font-family="DM Sans, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="8">THE LEDGER</text>
-  <text x="1112" y="234" fill="#8E8D96" font-family="DM Sans, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="4">N°001</text>
+  <text x="884" y="234" fill="#8E8D96" font-family="Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="6">THE LEDGER</text>
+  <text x="1112" y="234" fill="#8E8D96" font-family="Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="4">N°001</text>
   <path d="M884 272H1156" stroke="#F4F1EA" stroke-opacity="0.13" stroke-dasharray="4 6"/>
-  <text x="884" y="330" fill="#8E8D96" font-family="DM Sans, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="7">SALDO</text>
-  <text x="1020" y="330" fill="#F4F1EA" font-family="DM Sans, Arial, sans-serif" font-size="24" font-weight="600">R$ 3.840</text>
-  <text x="884" y="390" fill="#8E8D96" font-family="DM Sans, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="7">ENTRADAS</text>
-  <text x="1020" y="390" fill="#F4F1EA" font-family="DM Sans, Arial, sans-serif" font-size="24" font-weight="600">R$ 9.200</text>
-  <text x="884" y="450" fill="#8E8D96" font-family="DM Sans, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="7">SAÍDAS</text>
-  <text x="1020" y="450" fill="#F4F1EA" font-family="DM Sans, Arial, sans-serif" font-size="24" font-weight="600">R$ 5.360</text>
-  <text x="884" y="510" fill="#8E8D96" font-family="DM Sans, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="7">STATUS</text>
+  <text x="884" y="330" fill="#8E8D96" font-family="Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="5">SALDO</text>
+  <text x="1030" y="330" fill="#F4F1EA" font-family="Arial, sans-serif" font-size="24" font-weight="600">R$ 3.840</text>
+  <text x="884" y="390" fill="#8E8D96" font-family="Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="4">ENTRADAS</text>
+  <text x="1030" y="390" fill="#F4F1EA" font-family="Arial, sans-serif" font-size="24" font-weight="600">R$ 9.200</text>
+  <text x="884" y="450" fill="#8E8D96" font-family="Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="5">SAÍDAS</text>
+  <text x="1030" y="450" fill="#F4F1EA" font-family="Arial, sans-serif" font-size="24" font-weight="600">R$ 5.360</text>
+  <text x="884" y="510" fill="#8E8D96" font-family="Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="5">STATUS</text>
   <circle cx="1026" cy="503" r="6" fill="#19C37D"/>
-  <text x="1044" y="510" fill="#F4F1EA" font-family="DM Sans, Arial, sans-serif" font-size="23" font-weight="500">mês positivo</text>
+  <text x="1044" y="510" fill="#F4F1EA" font-family="Arial, sans-serif" font-size="23" font-weight="500">mês positivo</text>
   <path d="M884 546H1156" stroke="#F4F1EA" stroke-opacity="0.13"/>
-  <text x="884" y="596" fill="#A5A3AD" font-family="Crimson Pro, Georgia, serif" font-size="24" font-style="italic">“O dinheiro fica claro quando tudo entra no mesmo registro.”</text>
+  <text x="884" y="574" fill="#A5A3AD" font-family="Georgia, serif" font-size="22" font-style="italic">Clareza para decidir melhor.</text>
 </svg>
