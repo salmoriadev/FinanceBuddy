@@ -36,10 +36,11 @@ export const decimal = (value: DecimalInput) =>
 const isPositive = (value: Prisma.Decimal) => value.gt(ZERO);
 
 /**
- * Derives the effective cash value from immutable audit fields when available.
- * This keeps rows written with the former gross `totalAmount` contract and rows
- * written with the current net/effective contract financially equivalent.
- * Custom events and rows without a gross amount keep their recorded total.
+ * Current rows store an effective total equal to gross adjusted by costs. Older
+ * rows with an explicit amount kept quantity*price in `grossAmount` and the
+ * explicit gross base in `totalAmount`; a mismatch identifies that old shape,
+ * so costs are applied to the recorded base instead. Custom events and rows
+ * without gross audit data keep their recorded total.
  */
 export const effectiveCashAmount = (
   transaction: Pick<
@@ -52,17 +53,24 @@ export const effectiveCashAmount = (
   }
 
   const grossAmount = decimal(transaction.grossAmount);
+  const recordedTotal = decimal(transaction.totalAmount);
   const costs = decimal(transaction.fees).plus(decimal(transaction.taxes));
 
   if (transaction.type === "buy" || transaction.type === "opening_balance") {
-    return grossAmount.plus(costs);
+    const effectiveFromGross = grossAmount.plus(costs);
+    return recordedTotal.equals(effectiveFromGross)
+      ? recordedTotal
+      : recordedTotal.plus(costs);
   }
 
   if (transaction.type === "sell" || transaction.type === "dividend") {
-    return grossAmount.minus(costs);
+    const effectiveFromGross = grossAmount.minus(costs);
+    return recordedTotal.equals(effectiveFromGross)
+      ? recordedTotal
+      : recordedTotal.minus(costs);
   }
 
-  return decimal(transaction.totalAmount);
+  return recordedTotal;
 };
 
 export const calculatePosition = (

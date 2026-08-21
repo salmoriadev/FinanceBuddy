@@ -217,7 +217,7 @@ describe("PortfoliosService", () => {
       quantity: dec(10),
       unitPrice: dec(15),
       grossAmount: dec(150),
-      totalAmount: dec(150),
+      totalAmount: dec(151),
       fees: dec(2),
       taxes: dec(3),
       occurredAt: new Date("2026-05-01"),
@@ -231,7 +231,7 @@ describe("PortfoliosService", () => {
       quantity: dec(5),
       unitPrice: dec(30),
       grossAmount: dec(150),
-      totalAmount: dec(150),
+      totalAmount: dec(149),
       fees: dec(1),
       taxes: dec(2),
       occurredAt: new Date("2026-05-02"),
@@ -250,10 +250,10 @@ describe("PortfoliosService", () => {
     expect(positions).toEqual([
       expect.objectContaining({
         quantity: 5,
-        averagePrice: 15.5,
-        costBasis: 77.5,
+        averagePrice: 15.6,
+        costBasis: 78,
         currentValue: 100,
-        realizedGain: 69.5,
+        realizedGain: 68,
       }),
     ]);
   });
@@ -354,7 +354,7 @@ describe("PortfoliosService", () => {
       quantity: dec(10),
       unitPrice: dec(15),
       grossAmount: dec(150),
-      totalAmount: dec(150),
+      totalAmount: dec(151),
       fees: dec(2),
       taxes: dec(3),
       occurredAt: new Date("2026-05-01"),
@@ -368,7 +368,7 @@ describe("PortfoliosService", () => {
       quantity: dec(5),
       unitPrice: dec(30),
       grossAmount: dec(150),
-      totalAmount: dec(150),
+      totalAmount: dec(149),
       fees: dec(1),
       taxes: dec(2),
       occurredAt: new Date("2026-05-02"),
@@ -389,9 +389,9 @@ describe("PortfoliosService", () => {
     const report = await service.getMonthlyReport("user-1", "portfolio-1", "2026-05");
 
     expect(report).toMatchObject({
-      contributions: 155,
-      sales: 147,
-      estimatedCapitalGain: 69.5,
+      contributions: 156,
+      sales: 146,
+      estimatedCapitalGain: 68,
       portfolioValue: 100,
     });
   });

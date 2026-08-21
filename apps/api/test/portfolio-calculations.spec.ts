@@ -76,6 +76,38 @@ describe("portfolio calculations", () => {
     expect(result.realizedGain.toString()).toBe("69.5");
   });
 
+  it("preserves a legacy explicit total that differs from quantity times price", () => {
+    const result = calculatePosition([
+      {
+        id: "legacy-explicit-buy",
+        type: "buy",
+        quantity: "10",
+        unitPrice: "15",
+        grossAmount: "150",
+        totalAmount: "151",
+        fees: "2",
+        taxes: "3",
+        occurredAt: new Date("2026-01-01"),
+      },
+      {
+        id: "legacy-explicit-sell",
+        type: "sell",
+        quantity: "5",
+        unitPrice: "30",
+        grossAmount: "150",
+        totalAmount: "149",
+        fees: "1",
+        taxes: "2",
+        occurredAt: new Date("2026-01-02"),
+      },
+    ]);
+
+    expect(result.quantity.toString()).toBe("5");
+    expect(result.costBasis.toString()).toBe("78");
+    expect(result.averagePrice.toString()).toBe("15.6");
+    expect(result.realizedGain.toString()).toBe("68");
+  });
+
   it("keeps recorded totals authoritative when gross audit data is absent", () => {
     const result = calculatePosition([
       {
