@@ -1,5 +1,6 @@
 import type {
   AssetClass,
+  FixedIncomeIndexer,
   PortfolioPosition,
   PortfolioTransactionType,
 } from "@/types/finance";
@@ -24,6 +25,8 @@ export type AssetFormState = {
   sector: string;
   currency: string;
   notes: string;
+  fixedIncomeIndexer: FixedIncomeIndexer;
+  fixedIncomeRate: string;
 };
 
 export type TransactionFormState = {
@@ -36,6 +39,8 @@ export type TransactionFormState = {
   taxes: string;
   occurredAt: string;
   notes: string;
+  fixedIncomeIndexer: FixedIncomeIndexer;
+  fixedIncomeRate: string;
 };
 
 export type DividendFormState = {

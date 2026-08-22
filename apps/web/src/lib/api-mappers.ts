@@ -4,6 +4,7 @@ import {
   Budget,
   Category,
   DataSourceType,
+  FixedIncomeIndexer,
   Investment,
   Portfolio,
   PortfolioDividendReceipt,
@@ -103,6 +104,9 @@ export type ApiAsset = {
   sector: string | null;
   currency: string;
   notes: string | null;
+  fixedIncomeIndexer: FixedIncomeIndexer | null;
+  fixedIncomeRate: number | string | null;
+  fixedIncomeBaseDate: string | null;
   source: string;
   sourceType: DataSourceType;
   status: QuoteStatus;
@@ -249,6 +253,10 @@ export const mapAsset = (api: ApiAsset): Asset => ({
   sector: api.sector,
   currency: api.currency,
   notes: api.notes,
+  fixed_income_indexer: api.fixedIncomeIndexer,
+  fixed_income_rate:
+    api.fixedIncomeRate === null ? null : Number(api.fixedIncomeRate),
+  fixed_income_base_date: api.fixedIncomeBaseDate,
   source: api.source,
   source_type: api.sourceType,
   status: api.status,

@@ -74,7 +74,11 @@ export interface InvestmentAssetSearchResult {
   currency: string;
   provider: string;
   logoUrl?: string | null;
+  price?: number | null;
+  quotedAt?: string | null;
 }
+
+export type FixedIncomeIndexer = "fixed" | "cdi" | "ipca";
 
 export type AssetClass =
   | "stock"
@@ -132,6 +136,9 @@ export interface Asset {
   sector: string | null;
   currency: string;
   notes: string | null;
+  fixed_income_indexer: FixedIncomeIndexer | null;
+  fixed_income_rate: number | null;
+  fixed_income_base_date: string | null;
   source: string;
   source_type: DataSourceType;
   status: QuoteStatus;

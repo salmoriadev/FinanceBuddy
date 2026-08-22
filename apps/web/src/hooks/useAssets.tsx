@@ -2,7 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { apiRequest } from "@/lib/api";
 import { ApiAsset, ApiQuote, mapAsset, mapQuote } from "@/lib/api-mappers";
-import { AssetClass, InvestmentAssetSearchResult } from "@/types/finance";
+import {
+  AssetClass,
+  FixedIncomeIndexer,
+  InvestmentAssetSearchResult,
+} from "@/types/finance";
 import { useAuth } from "./useAuth";
 
 type CreateAssetPayload = {
@@ -12,6 +16,8 @@ type CreateAssetPayload = {
   sector?: string | null;
   currency?: string | null;
   notes?: string | null;
+  fixedIncomeIndexer?: FixedIncomeIndexer | null;
+  fixedIncomeRate?: string | null;
 };
 
 type AddManualQuotePayload = {

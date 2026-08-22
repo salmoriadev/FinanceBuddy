@@ -71,6 +71,15 @@ import {
   toPersistedAssetClass,
 } from "@/features/investments/utils";
 
+const fixedIncomeTicker = (name: string) =>
+  name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 24);
+
 export default function Investments() {
   const { user, loading } = useAuth();
   const { formatCurrency, formatNumber, formatPercent, formatDate } =
@@ -124,6 +133,8 @@ export default function Investments() {
     string | null
   >(null);
   const [transactionQuoteLoading, setTransactionQuoteLoading] = useState(false);
+  const [pendingTransactionAsset, setPendingTransactionAsset] =
+    useState<InvestmentAssetSearchResult | null>(null);
   const [assetForm, setAssetForm] = useState<AssetFormState>({
     ticker: "",
     name: "",
@@ -131,6 +142,8 @@ export default function Investments() {
     sector: "",
     currency: "BRL",
     notes: "",
+    fixedIncomeIndexer: "fixed",
+    fixedIncomeRate: "",
   });
   const [transactionForm, setTransactionForm] = useState<TransactionFormState>({
     assetId: "",
@@ -142,6 +155,8 @@ export default function Investments() {
     taxes: "0",
     occurredAt: today(),
     notes: "",
+    fixedIncomeIndexer: "fixed",
+    fixedIncomeRate: "",
   });
   const [dividendForm, setDividendForm] = useState<DividendFormState>({
     assetId: "",
@@ -374,46 +389,81 @@ export default function Investments() {
   };
 
   const handleSelectTransactionAsset = async (asset: Asset) => {
+    setPendingTransactionAsset(null);
     setTransactionAssetSearch(`${asset.ticker} - ${asset.name}`);
     setTransactionAssetSearchLocked(true);
     setTransactionAssetClass(classOptionForAsset(asset));
     setTransactionAssetResults([]);
     setTransactionAssetSearchError(null);
-    setTransactionForm((current) => ({ ...current, assetId: asset.id }));
+    setTransactionForm((current) => ({
+      ...current,
+      assetId: asset.id,
+      fixedIncomeIndexer: asset.fixed_income_indexer ?? "fixed",
+      fixedIncomeRate:
+        asset.fixed_income_rate === null ? "" : String(asset.fixed_income_rate),
+    }));
     if (pricedTransactionTypes.has(transactionForm.type)) {
       await applyQuoteToTransaction(asset.id, transactionForm.occurredAt);
     }
   };
 
-  const handleCreateTransactionAssetFromSearch = async (
+  const handleCreateTransactionAssetFromSearch = (
     result: InvestmentAssetSearchResult,
   ) => {
-    try {
-      const existing = assets.find(
-        (asset) => asset.ticker.toUpperCase() === result.symbol.toUpperCase(),
-      );
-      const asset =
-        existing ??
-        (await addAsset.mutateAsync({
-          ticker: result.symbol,
-          name: result.name,
-          class: toAssetClass(result.type),
-          currency: result.currency,
-        }));
-
-      setTransactionAssetSearch(`${asset.ticker} - ${asset.name}`);
-      setTransactionAssetSearchLocked(true);
-      setTransactionAssetClass(classOptionForAsset(asset));
-      setTransactionAssetResults([]);
-      setTransactionAssetSearchError(null);
-      setTransactionForm((current) => ({ ...current, assetId: asset.id }));
-      if (pricedTransactionTypes.has(transactionForm.type)) {
-        await applyQuoteToTransaction(asset.id, transactionForm.occurredAt);
-      }
-      toast.success(existing ? "Ativo selecionado" : "Ativo cadastrado");
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Não foi possível selecionar o ativo"));
+    const existing = assets.find(
+      (asset) => asset.ticker.toUpperCase() === result.symbol.toUpperCase(),
+    );
+    if (existing) {
+      void handleSelectTransactionAsset(existing);
+      return;
     }
+
+    setPendingTransactionAsset(result);
+    setTransactionAssetSearch(`${result.symbol} - ${result.name}`);
+    setTransactionAssetSearchLocked(true);
+    setTransactionAssetClass(classOptionForAsset({
+      class: toAssetClass(result.type),
+      currency: result.currency,
+    } as Asset));
+    setTransactionAssetResults([]);
+    setTransactionAssetSearchError(null);
+    setTransactionForm((current) => {
+      const quantity = current.quantity ? parseDecimal(current.quantity) : 0;
+      const price = result.price ?? 0;
+      return {
+        ...current,
+        assetId: "",
+        unitPrice: price > 0 ? String(price) : current.unitPrice,
+        totalAmount:
+          price > 0 && quantity > 0
+            ? String(Number((quantity * price).toFixed(8)))
+            : current.totalAmount,
+      };
+    });
+    toast.success("Ativo selecionado; ele será cadastrado ao registrar o evento");
+  };
+
+  const handleTransactionAssetClassChange = (assetClass: AssetClassOption) => {
+    setTransactionAssetClass(assetClass);
+    setPendingTransactionAsset(null);
+    setTransactionAssetSearch("");
+    setTransactionAssetSearchLocked(false);
+    setTransactionAssetResults([]);
+    setTransactionForm((current) => ({
+      ...current,
+      assetId: "",
+      unitPrice: "",
+      totalAmount: "",
+      fixedIncomeIndexer: "fixed",
+      fixedIncomeRate: "",
+    }));
+  };
+
+  const handleTransactionAssetSearchChange = (value: string) => {
+    setTransactionAssetSearch(value);
+    setPendingTransactionAsset(null);
+    setTransactionAssetSearchLocked(false);
+    setTransactionForm((current) => ({ ...current, assetId: "" }));
   };
 
   const handleTransactionDateChange = async (date: string) => {
@@ -444,6 +494,14 @@ export default function Investments() {
         sector: assetForm.sector || null,
         currency: assetForm.currency || "BRL",
         notes: assetForm.notes || null,
+        fixedIncomeIndexer:
+          toPersistedAssetClass(assetForm.class) === "fixed_income"
+            ? assetForm.fixedIncomeIndexer
+            : null,
+        fixedIncomeRate:
+          toPersistedAssetClass(assetForm.class) === "fixed_income"
+            ? String(parseDecimal(assetForm.fixedIncomeRate))
+            : null,
       });
       setAssetForm({
         ticker: "",
@@ -452,6 +510,8 @@ export default function Investments() {
         sector: "",
         currency: "BRL",
         notes: "",
+        fixedIncomeIndexer: "fixed",
+        fixedIncomeRate: "",
       });
       setTransactionForm((current) => ({ ...current, assetId: asset.id }));
       setAssetDialogOpen(false);
@@ -461,27 +521,18 @@ export default function Investments() {
     }
   };
 
-  const handleCreateAssetFromSearch = async (
+  const handleCreateAssetFromSearch = (
     result: InvestmentAssetSearchResult,
   ) => {
-    try {
-      const existing = assets.find(
-        (asset) => asset.ticker.toUpperCase() === result.symbol.toUpperCase(),
-      );
-      const asset =
-        existing ??
-        (await addAsset.mutateAsync({
-          ticker: result.symbol,
-          name: result.name,
-          class: toAssetClass(result.type),
-          currency: result.currency,
-        }));
-      setTransactionForm((current) => ({ ...current, assetId: asset.id }));
-      setAssetDialogOpen(false);
-      setTransactionDialogOpen(true);
-      toast.success(existing ? "Ativo selecionado" : "Ativo cadastrado");
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Não foi possível cadastrar o ativo"));
+    const existing = assets.find(
+      (asset) => asset.ticker.toUpperCase() === result.symbol.toUpperCase(),
+    );
+    setAssetDialogOpen(false);
+    setTransactionDialogOpen(true);
+    if (existing) {
+      void handleSelectTransactionAsset(existing);
+    } else {
+      handleCreateTransactionAssetFromSearch(result);
     }
   };
 
@@ -534,13 +585,40 @@ export default function Investments() {
   const handleCreateTransaction = async (event: FormEvent) => {
     event.preventDefault();
     try {
+      const persistedClass = toPersistedAssetClass(transactionAssetClass);
+      const isFixedIncome = persistedClass === "fixed_income";
+      const fixedIncomeName = transactionAssetSearch.trim();
+      const draftAsset = pendingTransactionAsset
+        ? {
+            ticker: pendingTransactionAsset.symbol,
+            name: pendingTransactionAsset.name,
+            class: toAssetClass(pendingTransactionAsset.type),
+            currency: pendingTransactionAsset.currency,
+          }
+        : isFixedIncome && !transactionForm.assetId && fixedIncomeName
+          ? {
+              ticker: fixedIncomeTicker(fixedIncomeName),
+              name: fixedIncomeName,
+              class: persistedClass,
+              currency:
+                transactionAssetClass === "fixed_income_usd" ? "USD" : "BRL",
+              fixedIncomeIndexer: transactionForm.fixedIncomeIndexer,
+              fixedIncomeRate: String(parseDecimal(transactionForm.fixedIncomeRate)),
+            }
+          : undefined;
+
+      if (!transactionForm.assetId && !draftAsset) {
+        throw new Error("Selecione ou identifique um ativo");
+      }
+
       await addTransaction.mutateAsync({
-        assetId: transactionForm.assetId,
+        assetId: transactionForm.assetId || undefined,
+        asset: draftAsset,
         type: transactionForm.type,
-        quantity: transactionForm.quantity
+        quantity: !isFixedIncome && transactionForm.quantity
           ? parseDecimal(transactionForm.quantity)
           : null,
-        unitPrice: transactionForm.unitPrice
+        unitPrice: !isFixedIncome && transactionForm.unitPrice
           ? parseDecimal(transactionForm.unitPrice)
           : null,
         totalAmount: transactionForm.totalAmount
@@ -559,7 +637,12 @@ export default function Investments() {
         fees: "0",
         taxes: "0",
         notes: "",
+        fixedIncomeIndexer: "fixed",
+        fixedIncomeRate: "",
       }));
+      setPendingTransactionAsset(null);
+      setTransactionAssetSearch("");
+      setTransactionAssetSearchLocked(false);
       setTransactionDialogOpen(false);
       toast.success("Evento registrado");
     } catch (error) {
@@ -621,26 +704,24 @@ export default function Investments() {
               onOpenChange={setTransactionDialogOpen}
               assets={assets}
               assetClass={transactionAssetClass}
-              setAssetClass={setTransactionAssetClass}
               assetSearch={transactionAssetSearch}
               assetSearchLocked={transactionAssetSearchLocked}
-              setAssetSearch={(value) => {
-                setTransactionAssetSearch(value);
-                setTransactionAssetSearchLocked(false);
-              }}
               assetResults={transactionAssetResults}
               assetSearchLoading={transactionAssetSearchLoading}
               assetSearchError={transactionAssetSearchError}
               quoteLoading={transactionQuoteLoading}
               transactionForm={transactionForm}
               setTransactionForm={setTransactionForm}
+              pendingAsset={pendingTransactionAsset}
               onAssetSearch={handleTransactionAssetSearch}
               onSelectAsset={handleSelectTransactionAsset}
               onCreateAssetFromSearch={handleCreateTransactionAssetFromSearch}
+              setAssetSearch={handleTransactionAssetSearchChange}
+              setAssetClass={handleTransactionAssetClassChange}
               onDateChange={handleTransactionDateChange}
               onTypeChange={handleTransactionTypeChange}
               onSubmit={handleCreateTransaction}
-              isSubmitting={addTransaction.isPending || addAsset.isPending}
+              isSubmitting={addTransaction.isPending}
               canSubmit={!!defaultPortfolio && !portfoliosLoading}
               portfolioStatusMessage={portfolioStatusMessage}
             />

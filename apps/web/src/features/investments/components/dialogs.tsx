@@ -46,6 +46,7 @@ import {
   currencyForAssetClass,
   parseDecimal,
   toAssetClass,
+  toPersistedAssetClass,
 } from "../utils";
 
 function SearchResultsPanel({
@@ -114,6 +115,11 @@ function SearchResultsPanel({
               <span className="block text-xs text-muted-foreground">
                 {result.name}
               </span>
+              {result.price ? (
+                <span className="block text-xs text-muted-foreground">
+                  Último fechamento: {result.currency} {result.price.toLocaleString("pt-BR")}
+                </span>
+              ) : null}
             </span>
             <Badge variant="outline">
               {assetClassMeta[toAssetClass(result.type)].label}
@@ -229,6 +235,10 @@ export function AssetDialog({
                     ...current,
                     class: assetClass,
                     currency: currencyForAssetClass(assetClass, current.currency),
+                    fixedIncomeIndexer:
+                      assetClass === "fixed_income_usd"
+                        ? "fixed"
+                        : current.fixedIncomeIndexer,
                   }));
                 }}
               >
@@ -265,6 +275,50 @@ export function AssetDialog({
                 }
               />
             </div>
+            {toPersistedAssetClass(assetForm.class) === "fixed_income" && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Select
+                  value={assetForm.fixedIncomeIndexer}
+                  onValueChange={(value) =>
+                    setAssetForm((current) => ({
+                      ...current,
+                      fixedIncomeIndexer: value as AssetFormState["fixedIncomeIndexer"],
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fixed">Prefixado</SelectItem>
+                    {assetForm.currency === "BRL" && (
+                      <>
+                        <SelectItem value="ipca">IPCA + taxa</SelectItem>
+                        <SelectItem value="cdi">Pós-fixado (% do CDI)</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+                <Input
+                  value={assetForm.fixedIncomeRate}
+                  onChange={(event) =>
+                    setAssetForm((current) => ({
+                      ...current,
+                      fixedIncomeRate: event.target.value,
+                    }))
+                  }
+                  inputMode="decimal"
+                  placeholder={
+                    assetForm.fixedIncomeIndexer === "cdi"
+                      ? "Percentual do CDI (ex.: 100)"
+                      : assetForm.fixedIncomeIndexer === "ipca"
+                        ? "Taxa adicional ao ano (ex.: 6,5)"
+                        : "Taxa ao ano (ex.: 15)"
+                  }
+                  required
+                />
+              </div>
+            )}
             <Textarea
               value={assetForm.notes}
               onChange={(event) =>
@@ -302,6 +356,7 @@ export function TransactionDialog({
   quoteLoading,
   transactionForm,
   setTransactionForm,
+  pendingAsset,
   onAssetSearch,
   onSelectAsset,
   onCreateAssetFromSearch,
@@ -326,6 +381,7 @@ export function TransactionDialog({
   quoteLoading: boolean;
   transactionForm: TransactionFormState;
   setTransactionForm: Dispatch<SetStateAction<TransactionFormState>>;
+  pendingAsset: InvestmentAssetSearchResult | null;
   onAssetSearch: () => void;
   onSelectAsset: (asset: Asset) => void;
   onCreateAssetFromSearch: (result: InvestmentAssetSearchResult) => void;
@@ -339,6 +395,19 @@ export function TransactionDialog({
   const filteredAssets = assets.filter((asset) =>
     assetMatchesClassOption(asset, assetClass),
   );
+  const isFixedIncome = toPersistedAssetClass(assetClass) === "fixed_income";
+  const hasAsset = Boolean(
+    transactionForm.assetId ||
+      pendingAsset ||
+      (isFixedIncome &&
+        assetSearch.trim() &&
+        transactionForm.fixedIncomeRate.trim() &&
+        (transactionForm.fixedIncomeIndexer === "ipca"
+          ? parseDecimal(transactionForm.fixedIncomeRate) >= 0
+          : parseDecimal(transactionForm.fixedIncomeRate) > 0)),
+  );
+  const selectedAssetValue =
+    transactionForm.assetId || (pendingAsset ? "__pending_asset__" : "");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -358,7 +427,6 @@ export function TransactionDialog({
               value={assetClass}
               onValueChange={(value) => {
                 setAssetClass(value as AssetClassOption);
-                setTransactionForm((current) => ({ ...current, assetId: "" }));
               }}
             >
               <SelectTrigger>
@@ -374,24 +442,32 @@ export function TransactionDialog({
             </Select>
             <Input
               value={assetSearch}
-              onChange={(event) => setAssetSearch(event.target.value.slice(0, 32))}
-              placeholder="Buscar PETR4, HGLG11, IVVB11, BTC..."
+              onChange={(event) =>
+                setAssetSearch(event.target.value.slice(0, isFixedIncome ? 80 : 32))
+              }
+              placeholder={
+                isFixedIncome
+                  ? "Identificação (ex.: CDB Banco X 2028)"
+                  : "Buscar PETR4, HGLG11, IVVB11, BTC..."
+              }
             />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={onAssetSearch}
-              disabled={assetSearchLoading}
-            >
-              {assetSearchLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Search className="h-4 w-4" />
-              )}
-            </Button>
+            {!isFixedIncome && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={onAssetSearch}
+                disabled={assetSearchLoading}
+              >
+                {assetSearchLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+              </Button>
+            )}
           </div>
-          {!assetSearchLocked && (
+          {!isFixedIncome && !assetSearchLocked && (
             <SearchResultsPanel
               query={assetSearch}
               results={assetResults}
@@ -402,8 +478,9 @@ export function TransactionDialog({
           )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Select
-              value={transactionForm.assetId}
+              value={selectedAssetValue}
               onValueChange={(value) => {
+                if (value === "__pending_asset__") return;
                 const asset = assets.find((item) => item.id === value);
                 if (asset) {
                   onSelectAsset(asset);
@@ -414,6 +491,11 @@ export function TransactionDialog({
                 <SelectValue placeholder="Ativo" />
               </SelectTrigger>
               <SelectContent>
+                {pendingAsset && (
+                  <SelectItem value="__pending_asset__">
+                    {pendingAsset.symbol} - {pendingAsset.name} (novo)
+                  </SelectItem>
+                )}
                 {filteredAssets.map((asset) => (
                   <SelectItem key={asset.id} value={asset.id}>
                     {asset.ticker} - {asset.name}
@@ -439,7 +521,54 @@ export function TransactionDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {isFixedIncome && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Select
+                value={transactionForm.fixedIncomeIndexer}
+                disabled={Boolean(transactionForm.assetId)}
+                onValueChange={(value) =>
+                  setTransactionForm((current) => ({
+                    ...current,
+                    fixedIncomeIndexer: value as TransactionFormState["fixedIncomeIndexer"],
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fixed">Prefixado</SelectItem>
+                  {assetClass !== "fixed_income_usd" && (
+                    <>
+                      <SelectItem value="ipca">IPCA + taxa</SelectItem>
+                      <SelectItem value="cdi">Pós-fixado (% do CDI)</SelectItem>
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+              <Input
+                value={transactionForm.fixedIncomeRate}
+                disabled={Boolean(transactionForm.assetId)}
+                onChange={(event) =>
+                  setTransactionForm((current) => ({
+                    ...current,
+                    fixedIncomeRate: event.target.value,
+                  }))
+                }
+                inputMode="decimal"
+                placeholder={
+                  transactionForm.fixedIncomeIndexer === "cdi"
+                    ? "% do CDI (ex.: 100)"
+                    : transactionForm.fixedIncomeIndexer === "ipca"
+                      ? "Taxa adicional a.a. (ex.: 6,5)"
+                      : "Taxa a.a. (ex.: 15)"
+                }
+                required={!transactionForm.assetId}
+              />
+            </div>
+          )}
+          {!isFixedIncome ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Input
               value={transactionForm.quantity}
               onChange={(event) =>
@@ -493,7 +622,25 @@ export function TransactionDialog({
               inputMode="decimal"
               placeholder="Valor total"
             />
-          </div>
+            </div>
+          ) : (
+            <Input
+              value={transactionForm.totalAmount}
+              onChange={(event) =>
+                setTransactionForm((current) => ({
+                  ...current,
+                  totalAmount: event.target.value,
+                }))
+              }
+              inputMode="decimal"
+              placeholder={
+                transactionForm.type === "sell"
+                  ? "Valor bruto resgatado"
+                  : "Valor aplicado"
+              }
+              required
+            />
+          )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Input
               value={transactionForm.fees}
@@ -535,7 +682,7 @@ export function TransactionDialog({
           <div className="flex flex-wrap items-center gap-3">
             <Button
               type="submit"
-              disabled={isSubmitting || !transactionForm.assetId || !canSubmit}
+              disabled={isSubmitting || !hasAsset || !canSubmit}
             >
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Registrar evento

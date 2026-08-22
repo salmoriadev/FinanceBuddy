@@ -10,7 +10,9 @@ import {
   mapPortfolioPosition,
 } from "@/lib/api-mappers";
 import {
+  AssetClass,
   DividendEventStatus,
+  FixedIncomeIndexer,
   PortfolioMonthlyReport,
   PortfolioTransactionType,
 } from "@/types/finance";
@@ -18,7 +20,15 @@ import { useAuth } from "./useAuth";
 import { toPlainDecimalString } from "@/lib/number";
 
 type CreatePortfolioTransactionPayload = {
-  assetId: string;
+  assetId?: string;
+  asset?: {
+    ticker: string;
+    name: string;
+    class: AssetClass;
+    currency?: string | null;
+    fixedIncomeIndexer?: FixedIncomeIndexer | null;
+    fixedIncomeRate?: string | null;
+  };
   type: PortfolioTransactionType;
   quantity?: number | null;
   unitPrice?: number | null;
@@ -129,6 +139,7 @@ export function usePortfolioTransactions(portfolioId?: string | null) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portfolio-positions"] });
       queryClient.invalidateQueries({ queryKey: ["portfolios"] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
     },
   });
 
