@@ -5,6 +5,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  Logger,
 } from "@nestjs/common";
 import { Request } from "express";
 import { TtlCache } from "../cache/ttl-cache";
@@ -27,6 +28,7 @@ const AUTHORIZATION_FAILURE_CACHE_LIMIT = 10_000;
 @Catch()
 @Injectable()
 export class HttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpExceptionFilter.name);
   private readonly authorizationFailures = new TtlCache<string, number>(
     10 * 60 * 1000,
     AUTHORIZATION_FAILURE_CACHE_LIMIT,
@@ -51,6 +53,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const isProd = process.env.NODE_ENV === "production";
     const includeDetails = !isProd || status < HttpStatus.INTERNAL_SERVER_ERROR;
 
+    if (!isHttpException) {
+      this.logUnexpectedException(exception, request);
+    }
+
     await this.auditRepeatedAuthorizationFailure(request, status);
 
     response.status(status).json({
@@ -60,6 +66,25 @@ export class HttpExceptionFilter implements ExceptionFilter {
       details: includeDetails ? rawResponse : undefined,
       timestamp: new Date().toISOString(),
     });
+  }
+
+  private logUnexpectedException(exception: unknown, request: Request) {
+    const error =
+      exception instanceof Error
+        ? exception
+        : new Error("Non-Error value thrown by request handler");
+    const code =
+      exception &&
+      typeof exception === "object" &&
+      "code" in exception &&
+      typeof exception.code === "string"
+        ? ` [${exception.code}]`
+        : "";
+
+    this.logger.error(
+      `${request.method} ${request.url}${code}: ${error.message}`,
+      error.stack,
+    );
   }
 
   private async auditRepeatedAuthorizationFailure(

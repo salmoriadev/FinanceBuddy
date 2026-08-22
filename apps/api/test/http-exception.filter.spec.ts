@@ -30,11 +30,22 @@ describe("HttpExceptionFilter", () => {
   } as unknown as jest.Mocked<SecurityEventService>;
 
   let filter: HttpExceptionFilter;
+  let logError: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
     securityEvents.record.mockResolvedValue({} as never);
     filter = new HttpExceptionFilter(securityEvents);
+    logError = jest
+      .spyOn(
+        (
+          filter as unknown as {
+            logger: { error: (...args: unknown[]) => void };
+          }
+        ).logger,
+        "error",
+      )
+      .mockImplementation();
   });
 
   it("records repeated authorization failures on the fifth failure in ten minutes", async () => {
@@ -113,6 +124,48 @@ describe("HttpExceptionFilter", () => {
     }
 
     expect(securityEvents.record).not.toHaveBeenCalled();
+  });
+
+  it("logs unexpected failures without exposing request data in the response", async () => {
+    const request = {
+      method: "POST",
+      path: "/api/v1/portfolios/portfolio-1/transactions",
+      url: "/api/v1/portfolios/portfolio-1/transactions",
+      originalUrl: "/api/v1/portfolios/portfolio-1/transactions",
+      ip: "127.0.0.1",
+      get: jest.fn(),
+      body: { notes: "private financial note" },
+    };
+    const exception = Object.assign(new Error("database column is missing"), {
+      code: "P2022",
+    });
+    const { host, response } = createHost(request);
+    const previousNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+
+    try {
+      await filter.catch(exception, host);
+    } finally {
+      process.env.NODE_ENV = previousNodeEnv;
+    }
+
+    expect(logError).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "POST /api/v1/portfolios/portfolio-1/transactions [P2022]",
+      ),
+      expect.any(String),
+    );
+    expect(logError).not.toHaveBeenCalledWith(
+      expect.stringContaining("private financial note"),
+      expect.anything(),
+    );
+    expect(response.status).toHaveBeenCalledWith(500);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Internal server error",
+        details: undefined,
+      }),
+    );
   });
 
   it("preserves the HTTP response when the audit write fails", async () => {
