@@ -51,6 +51,7 @@ flowchart LR
   DB[(Supabase PostgreSQL)]
   Brapi[brapi.dev]
   CoinGecko[CoinGecko]
+  BCB[Banco Central SGS]
 
   Browser --> Web
   Web -->|JSON over /api/v1| API
@@ -59,6 +60,7 @@ flowchart LR
   Prisma --> DB
   Domain -. B3 quotes .-> Brapi
   Domain -. crypto quotes .-> CoinGecko
+  Domain -. CDI and IPCA series .-> BCB
 ```
 
 The web app never talks directly to PostgreSQL. Supabase provides the managed PostgreSQL instance, while registration, login, authorization, business rules, reports, and persistence remain in the NestJS API; the project does not use Supabase Auth in the browser.
@@ -81,7 +83,7 @@ Authentication follows the same boundary. The API returns a short-lived access t
 | `transactions` and `categories` | User-owned income/expense records, filtering, categories, and recurring monthly entries. |
 | `budgets` and `goals` | Monthly category limits and savings progress. |
 | `reports` | Database-aggregated yearly totals, monthly series, category spending, and period comparison. |
-| `assets` and `investments` | Asset catalog, manual holdings, quote lookup, and market-data refresh. |
+| `assets` and `investments` | Asset catalog, B3/crypto lookup, quote refresh, and fixed-income indexation. |
 | `portfolios` | Portfolio transactions, positions, dividends, monthly reports, and calculation breakdowns. |
 | `security` | Sanitized authentication, session, throttling, and repeated authorization events. |
 | `health` | Process and database health endpoints. |
@@ -195,9 +197,9 @@ The pull-request workflow runs the same test, lint, typecheck, and build gate. A
 
 ## Market data
 
-Brazilian stocks, FIIs, ETFs, and BDRs use [brapi.dev](https://brapi.dev/) for search and quotes. Cryptocurrency search and prices use the public [CoinGecko API](https://docs.coingecko.com/reference/introduction). `BRAPI_TOKEN` is optional for Brapi endpoints supported without a token.
+Brazilian stocks, FIIs, ETFs, and BDRs use [brapi.dev](https://brapi.dev/) for search and quotes. When a detailed Brapi quote requires authentication, the API falls back to the exact ticker's latest closing price from the public asset list and marks historical lookups as a latest-price fallback. Cryptocurrency search and prices use the public [CoinGecko API](https://docs.coingecko.com/reference/introduction). `BRAPI_TOKEN` remains optional, but enables the provider's authenticated quote and history endpoints.
 
-The interface distinguishes generic, BRL-denominated, and USD-denominated fixed income while storing currency separately from asset class. Their prices remain manual because the value depends on product-specific terms that a ticker quote cannot represent reliably.
+The interface distinguishes generic, BRL-denominated, and USD-denominated fixed income while storing currency separately from asset class. Prefixado products compound the configured annual rate. Brazilian pós-fixado products can follow either the Banco Central's daily CDI series (SGS 12) at a configured percentage or monthly IPCA (SGS 433) plus an annual spread. These values are labeled as estimates because taxes, product calendars, issuer rules, maturity conditions, and indexation lags vary by contract; users should compare them with the issuer statement.
 
 When `MARKET_DATA_ENABLE_MOCK_FALLBACK=true`, an unavailable market-data request may return deterministic mock quotes. Fallback responses identify their provider as `mock`, and quote records created from them use the `estimated` status; they are suitable for local development, not real portfolio decisions. Production startup requires this setting to be explicitly `false`.
 
