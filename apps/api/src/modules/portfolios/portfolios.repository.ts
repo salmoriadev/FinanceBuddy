@@ -4,13 +4,34 @@ import {
   DataSourceType,
   DividendEventStatus,
   DividendReceiptStatus,
+  FixedIncomeIndexer,
   PortfolioTransactionType,
   Prisma,
 } from "@prisma/client";
 import { PrismaService } from "../../database/prisma.service";
 
 type PortfolioTransactionData = {
-  assetId: string;
+  assetId?: string;
+  asset?: {
+    ticker: string;
+    name: string;
+    class: AssetClass;
+    sector?: string | null;
+    currency: string;
+    notes?: string | null;
+    fixedIncomeIndexer?: FixedIncomeIndexer | null;
+    fixedIncomeRate?: Prisma.Decimal | null;
+    fixedIncomeBaseDate?: Date | null;
+  };
+  initialQuote?: {
+    price: Prisma.Decimal;
+    currency: string;
+    source: string;
+    sourceType: DataSourceType;
+    status: "current" | "estimated";
+    quotedAt: Date;
+  } | null;
+  fixedIncomeBaseDate?: Date | null;
   type: PortfolioTransactionType;
   quantity?: Prisma.Decimal | null;
   unitPrice?: Prisma.Decimal | null;
@@ -47,6 +68,20 @@ export class InsufficientPortfolioPositionError extends Error {
   constructor() {
     super("Sell quantity exceeds the available position");
     this.name = "InsufficientPortfolioPositionError";
+  }
+}
+
+export class FixedIncomeBasisChangedError extends Error {
+  constructor() {
+    super("Fixed-income base date changed concurrently");
+    this.name = "FixedIncomeBasisChangedError";
+  }
+}
+
+export class PortfolioAssetDefinitionConflictError extends Error {
+  constructor() {
+    super("An asset with this ticker has incompatible terms");
+    this.name = "PortfolioAssetDefinitionConflictError";
   }
 }
 
@@ -99,6 +134,10 @@ export class PortfoliosRepository {
 
   findAsset(userId: string, assetId: string) {
     return this.prisma.asset.findFirst({ where: { userId, id: assetId } });
+  }
+
+  findAssetByTicker(userId: string, ticker: string) {
+    return this.prisma.asset.findFirst({ where: { userId, ticker } });
   }
 
   async ensureDefault(userId: string) {
@@ -218,14 +257,102 @@ export class PortfoliosRepository {
     data: PortfolioTransactionData,
   ) {
     return this.prisma.$transaction(async (transactionClient) => {
+      let assetId = data.assetId;
+      if (data.asset) {
+        const asset = await transactionClient.asset.upsert({
+          where: {
+            userId_ticker: { userId, ticker: data.asset.ticker },
+          },
+          create: {
+            userId,
+            ticker: data.asset.ticker,
+            name: data.asset.name,
+            class: data.asset.class,
+            sector: data.asset.sector ?? null,
+            currency: data.asset.currency,
+            notes: data.asset.notes ?? null,
+            fixedIncomeIndexer: data.asset.fixedIncomeIndexer ?? null,
+            fixedIncomeRate: data.asset.fixedIncomeRate ?? null,
+            fixedIncomeBaseDate: data.asset.fixedIncomeBaseDate ?? null,
+            source: "manual",
+            sourceType: "manual",
+            status: "manual",
+            observedAt: new Date(),
+          },
+          update: {},
+        });
+        assetId = asset.id;
+
+        const rateMatches =
+          asset.fixedIncomeRate === null && !data.asset.fixedIncomeRate
+            ? true
+            : asset.fixedIncomeRate !== null && data.asset.fixedIncomeRate
+              ? asset.fixedIncomeRate.equals(data.asset.fixedIncomeRate)
+              : false;
+        if (
+          asset.class !== data.asset.class ||
+          asset.currency !== data.asset.currency ||
+          asset.fixedIncomeIndexer !== (data.asset.fixedIncomeIndexer ?? null) ||
+          !rateMatches
+        ) {
+          throw new PortfolioAssetDefinitionConflictError();
+        }
+
+        if (
+          data.asset.fixedIncomeBaseDate &&
+          asset.fixedIncomeBaseDate &&
+          asset.fixedIncomeBaseDate.getTime() !==
+            data.asset.fixedIncomeBaseDate.getTime()
+        ) {
+          throw new FixedIncomeBasisChangedError();
+        }
+
+        if (data.initialQuote) {
+          await transactionClient.quote.create({
+            data: {
+              userId,
+              assetId,
+              price: data.initialQuote.price,
+              currency: data.initialQuote.currency,
+              source: data.initialQuote.source,
+              sourceType: data.initialQuote.sourceType,
+              status: data.initialQuote.status,
+              quotedAt: data.initialQuote.quotedAt,
+            },
+          });
+        }
+      }
+
+      if (!assetId) throw new Error("Portfolio transaction requires an asset");
+
+      if (data.fixedIncomeBaseDate && !data.asset) {
+        const claimed = await transactionClient.asset.updateMany({
+          where: { id: assetId, userId, fixedIncomeBaseDate: null },
+          data: { fixedIncomeBaseDate: data.fixedIncomeBaseDate },
+        });
+        if (claimed.count === 0) {
+          const persisted = await transactionClient.asset.findFirst({
+            where: { id: assetId, userId },
+            select: { fixedIncomeBaseDate: true },
+          });
+          if (
+            persisted?.fixedIncomeBaseDate &&
+            persisted.fixedIncomeBaseDate.getTime() !==
+              data.fixedIncomeBaseDate.getTime()
+          ) {
+            throw new FixedIncomeBasisChangedError();
+          }
+        }
+      }
+
       if (data.type === "sell") {
-        const lockKey = `${userId}:${portfolioId}:${data.assetId}`;
+        const lockKey = `${userId}:${portfolioId}:${assetId}`;
         await transactionClient.$queryRaw(
           Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
         );
 
         const existing = await transactionClient.portfolioTransaction.findMany({
-          where: { userId, portfolioId, assetId: data.assetId },
+          where: { userId, portfolioId, assetId },
           select: { type: true, quantity: true, occurredAt: true, createdAt: true },
           orderBy: [{ occurredAt: "asc" }, { createdAt: "asc" }],
         });
@@ -265,7 +392,7 @@ export class PortfoliosRepository {
         data: {
           userId,
           portfolioId,
-          assetId: data.assetId,
+          assetId,
           type: data.type,
           quantity: data.quantity ?? null,
           unitPrice: data.unitPrice ?? null,

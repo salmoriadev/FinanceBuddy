@@ -1,6 +1,7 @@
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { AssetsRepository } from "../src/modules/assets/assets.repository";
 import { AssetsService } from "../src/modules/assets/assets.service";
+import { FixedIncomeValuationService } from "../src/modules/assets/fixed-income-valuation.service";
 import { InvestmentMarketDataService } from "../src/modules/investments/investment-market-data.service";
 import { BudgetsRepository } from "../src/modules/budgets/budgets.repository";
 import { BudgetsService } from "../src/modules/budgets/budgets.service";
@@ -156,7 +157,12 @@ describe("financial resource authorization", () => {
       findById: jest.fn(),
     } as unknown as jest.Mocked<AssetsRepository>;
     const marketData = {} as unknown as jest.Mocked<InvestmentMarketDataService>;
-    const service = new AssetsService(repository, marketData);
+    const fixedIncomeValuation = {} as jest.Mocked<FixedIncomeValuationService>;
+    const service = new AssetsService(
+      repository,
+      marketData,
+      fixedIncomeValuation,
+    );
 
     beforeEach(() => jest.clearAllMocks());
 
@@ -186,7 +192,14 @@ describe("financial resource authorization", () => {
       findDividendReceipt: jest.fn(),
     } as unknown as jest.Mocked<PortfoliosRepository>;
     const assetsService = {} as jest.Mocked<AssetsService>;
-    const service = new PortfoliosService(repository, assetsService);
+    const marketData = {} as jest.Mocked<InvestmentMarketDataService>;
+    const fixedIncomeValuation = {} as jest.Mocked<FixedIncomeValuationService>;
+    const service = new PortfoliosService(
+      repository,
+      assetsService,
+      marketData,
+      fixedIncomeValuation,
+    );
 
     beforeEach(() => jest.clearAllMocks());
 

@@ -1,4 +1,4 @@
-import { Transform } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsDateString,
   IsIn,
@@ -7,12 +7,14 @@ import {
   IsString,
   IsUUID,
   MaxLength,
+  ValidateNested,
 } from "class-validator";
 import {
   IsFinancialDecimal,
   MAX_MONEY_VALUE,
   MAX_QUANTITY_VALUE,
 } from "../../../common/validators/financial-values";
+import { CreateAssetDto } from "../../assets/dto/create-asset.dto";
 
 export const PORTFOLIO_TRANSACTION_TYPES = [
   "buy",
@@ -30,8 +32,14 @@ const toOptionalStringValue = ({ value }: { value: unknown }) =>
   value === undefined || value === null || value === "" ? undefined : String(value);
 
 export class CreatePortfolioTransactionDto {
+  @IsOptional()
   @IsUUID()
-  assetId!: string;
+  assetId?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateAssetDto)
+  asset?: CreateAssetDto;
 
   @IsIn(PORTFOLIO_TRANSACTION_TYPES)
   type!: PortfolioTransactionTypeValue;

@@ -26,6 +26,14 @@ enum AssetClass {
   @@map("asset_class")
 }
 
+enum FixedIncomeIndexer {
+  fixed
+  cdi
+  ipca
+
+  @@map("fixed_income_indexer")
+}
+
 enum QuoteStatus {
   current
   stale
@@ -100,7 +108,7 @@ model User {
   updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(6)
 
-  refreshTokens RefreshToken[]
+  refreshTokens  RefreshToken[]
   securityEvents SecurityEvent[]
 
   @@unique([email])
@@ -160,25 +168,28 @@ model DataProvider {
 }
 
 model Asset {
-  id         String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId     String         @map("user_id") @db.Uuid
-  ticker     String
-  name       String
-  class      AssetClass     @default(custom)
-  sector     String?
-  currency   String         @default("BRL")
-  notes      String?
-  source     String         @default("manual")
-  sourceType DataSourceType @default(manual) @map("source_type")
-  status     QuoteStatus    @default(manual)
-  observedAt DateTime?      @map("observed_at") @db.Timestamptz(6)
-  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                  String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String              @map("user_id") @db.Uuid
+  ticker              String
+  name                String
+  class               AssetClass          @default(custom)
+  sector              String?
+  currency            String              @default("BRL")
+  notes               String?
+  fixedIncomeIndexer  FixedIncomeIndexer? @map("fixed_income_indexer")
+  fixedIncomeRate     Decimal?            @map("fixed_income_rate") @db.Decimal(9, 4)
+  fixedIncomeBaseDate DateTime?           @map("fixed_income_base_date") @db.Date
+  source              String              @default("manual")
+  sourceType          DataSourceType      @default(manual) @map("source_type")
+  status              QuoteStatus         @default(manual)
+  observedAt          DateTime?           @map("observed_at") @db.Timestamptz(6)
+  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  quotes       Quote[]
-  transactions PortfolioTransaction[]
-  snapshots    PositionSnapshot[]
-  dividendEvents DividendEvent[]
+  quotes           Quote[]
+  transactions     PortfolioTransaction[]
+  snapshots        PositionSnapshot[]
+  dividendEvents   DividendEvent[]
   dividendReceipts PortfolioDividendReceipt[]
 
   @@unique([userId, ticker], map: "assets_user_ticker_key")
@@ -214,9 +225,9 @@ model Portfolio {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  transactions PortfolioTransaction[]
-  snapshots    PositionSnapshot[]
-  audits       CalculationAudit[]
+  transactions     PortfolioTransaction[]
+  snapshots        PositionSnapshot[]
+  audits           CalculationAudit[]
   dividendReceipts PortfolioDividendReceipt[]
 
   @@index([userId], map: "idx_portfolios_user")

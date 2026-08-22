@@ -1,5 +1,11 @@
 import { Injectable } from "@nestjs/common";
-import { AssetClass, DataSourceType, Prisma, QuoteStatus } from "@prisma/client";
+import {
+  AssetClass,
+  DataSourceType,
+  FixedIncomeIndexer,
+  Prisma,
+  QuoteStatus,
+} from "@prisma/client";
 import { PrismaService } from "../../database/prisma.service";
 
 @Injectable()
@@ -52,6 +58,8 @@ export class AssetsRepository {
       sector?: string | null;
       currency: string;
       notes?: string | null;
+      fixedIncomeIndexer?: FixedIncomeIndexer | null;
+      fixedIncomeRate?: Prisma.Decimal | null;
     },
   ) {
     return this.prisma.asset.create({
@@ -63,6 +71,8 @@ export class AssetsRepository {
         sector: data.sector ?? null,
         currency: data.currency,
         notes: data.notes ?? null,
+        fixedIncomeIndexer: data.fixedIncomeIndexer ?? null,
+        fixedIncomeRate: data.fixedIncomeRate ?? null,
         source: "manual",
         sourceType: "manual",
         status: "manual",

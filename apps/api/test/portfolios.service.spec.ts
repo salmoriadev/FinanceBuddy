@@ -1,7 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { AssetsService } from "../src/modules/assets/assets.service";
+import { FixedIncomeValuationService } from "../src/modules/assets/fixed-income-valuation.service";
+import { InvestmentMarketDataService } from "../src/modules/investments/investment-market-data.service";
 import { calculatePosition } from "../src/modules/portfolios/portfolio-calculations";
 import {
+  FixedIncomeBasisChangedError,
   InsufficientPortfolioPositionError,
   PortfoliosRepository,
 } from "../src/modules/portfolios/portfolios.repository";
@@ -14,6 +17,7 @@ describe("PortfoliosService", () => {
     findAllByUser: jest.fn(),
     findById: jest.fn(),
     findAsset: jest.fn(),
+    findAssetByTicker: jest.fn(),
     create: jest.fn(),
     findPortfolioTransactions: jest.fn(),
     findPortfolioTransactionsBetween: jest.fn(),
@@ -35,11 +39,118 @@ describe("PortfoliosService", () => {
   const assetsService = {
     refreshQuote: jest.fn(),
   } as unknown as jest.Mocked<AssetsService>;
+  const marketData = {
+    getQuote: jest.fn(),
+  } as unknown as jest.Mocked<InvestmentMarketDataService>;
+  const fixedIncomeValuation = {
+    factorAt: jest.fn(),
+    providerFor: jest.fn(),
+  } as unknown as jest.Mocked<FixedIncomeValuationService>;
 
-  const service = new PortfoliosService(repository, assetsService);
+  const service = new PortfoliosService(
+    repository,
+    assetsService,
+    marketData,
+    fixedIncomeValuation,
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it("creates a searched asset only inside the portfolio event transaction", async () => {
+    repository.findById.mockResolvedValue({ id: "portfolio-1" } as never);
+    repository.findAssetByTicker.mockResolvedValue(null as never);
+    fixedIncomeValuation.factorAt.mockResolvedValue(dec(1));
+    fixedIncomeValuation.providerFor.mockReturnValue("financebuddy-fixed-rate");
+    repository.createTransaction.mockResolvedValue({ id: "tx-1" } as never);
+
+    await service.addTransaction("user-1", "portfolio-1", {
+      asset: {
+        ticker: "CDB-2028",
+        name: "CDB 2028",
+        class: "fixed_income",
+        currency: "BRL",
+        fixedIncomeIndexer: "fixed",
+        fixedIncomeRate: "15",
+      },
+      type: "buy",
+      totalAmount: "1000",
+      occurredAt: "2026-08-22",
+    });
+
+    expect(repository.createTransaction).toHaveBeenCalledWith(
+      "user-1",
+      "portfolio-1",
+      expect.objectContaining({
+        assetId: undefined,
+        asset: expect.objectContaining({
+          ticker: "CDB-2028",
+          fixedIncomeIndexer: "fixed",
+          fixedIncomeRate: dec(15),
+          fixedIncomeBaseDate: new Date("2026-08-22T00:00:00.000Z"),
+        }),
+        quantity: dec(1000),
+        unitPrice: dec(1),
+        grossAmount: dec(1000),
+        totalAmount: dec(1000),
+        initialQuote: expect.objectContaining({
+          source: "financebuddy-fixed-rate",
+          status: "estimated",
+        }),
+      }),
+    );
+  });
+
+  it("recalculates a fixed-income event after a concurrent base-date claim", async () => {
+    repository.findById.mockResolvedValue({ id: "portfolio-1" } as never);
+    repository.findAssetByTicker
+      .mockResolvedValueOnce(null as never)
+      .mockResolvedValueOnce({
+        id: "asset-1",
+        class: "fixed_income",
+        currency: "BRL",
+        fixedIncomeIndexer: "fixed",
+        fixedIncomeRate: dec(15),
+        fixedIncomeBaseDate: new Date("2026-01-01T00:00:00.000Z"),
+      } as never);
+    fixedIncomeValuation.factorAt
+      .mockResolvedValueOnce(dec(1))
+      .mockResolvedValueOnce(dec("1.2"))
+      .mockResolvedValueOnce(dec("1.1"));
+    fixedIncomeValuation.providerFor.mockReturnValue("financebuddy-fixed-rate");
+    repository.createTransaction
+      .mockRejectedValueOnce(new FixedIncomeBasisChangedError())
+      .mockResolvedValueOnce({ id: "tx-1" } as never);
+
+    await expect(
+      service.addTransaction("user-1", "portfolio-1", {
+        asset: {
+          ticker: "CDB-2028",
+          name: "CDB 2028",
+          class: "fixed_income",
+          currency: "BRL",
+          fixedIncomeIndexer: "fixed",
+          fixedIncomeRate: "15",
+        },
+        type: "buy",
+        totalAmount: "1100",
+        occurredAt: "2026-02-01",
+      }),
+    ).resolves.toEqual({ id: "tx-1" });
+
+    expect(repository.createTransaction).toHaveBeenCalledTimes(2);
+    expect(repository.createTransaction).toHaveBeenLastCalledWith(
+      "user-1",
+      "portfolio-1",
+      expect.objectContaining({
+        assetId: "asset-1",
+        asset: undefined,
+        quantity: dec(1000),
+        unitPrice: dec("1.1"),
+        fixedIncomeBaseDate: new Date("2026-01-01T00:00:00.000Z"),
+      }),
+    );
   });
 
   it("keeps net sale proceeds consistent from the service through position calculations", async () => {

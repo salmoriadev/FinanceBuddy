@@ -7,7 +7,13 @@ import {
 import { Prisma } from "@prisma/client";
 import { assertResourceFound } from "../../common/services/resource-assertions";
 import { buildLegacyTicker } from "../assets/asset-normalization";
+import {
+  normalizeAssetCreateData,
+  normalizeAssetCurrency,
+} from "../assets/asset-terms";
 import { AssetsService, getEffectiveQuoteStatus } from "../assets/assets.service";
+import { FixedIncomeValuationService } from "../assets/fixed-income-valuation.service";
+import { InvestmentMarketDataService } from "../investments/investment-market-data.service";
 import { CreateDividendReceiptDto } from "./dto/create-dividend-receipt.dto";
 import { CreatePortfolioDto } from "./dto/create-portfolio.dto";
 import { CreatePortfolioTransactionDto } from "./dto/create-portfolio-transaction.dto";
@@ -18,14 +24,13 @@ import {
   effectiveCashAmount,
 } from "./portfolio-calculations";
 import {
+  FixedIncomeBasisChangedError,
   InsufficientPortfolioPositionError,
+  PortfolioAssetDefinitionConflictError,
   PortfoliosRepository,
 } from "./portfolios.repository";
 
 const ZERO = new Prisma.Decimal(0);
-
-const normalizeCurrency = (currency?: string | null) =>
-  (currency?.trim().toUpperCase() || "BRL").slice(0, 8);
 
 const toDecimalOrNull = (value?: string | null) =>
   value === undefined || value === null ? null : new Prisma.Decimal(value);
@@ -116,6 +121,8 @@ export class PortfoliosService {
   constructor(
     private readonly repository: PortfoliosRepository,
     private readonly assetsService: AssetsService,
+    private readonly marketData: InvestmentMarketDataService,
+    private readonly fixedIncomeValuation: FixedIncomeValuationService,
   ) {}
 
   async findAll(userId: string) {
@@ -134,20 +141,70 @@ export class PortfoliosService {
     userId: string,
     portfolioId: string,
     dto: CreatePortfolioTransactionDto,
+    retryOnBasisChange = true,
   ) {
     const portfolio = await this.repository.findById(userId, portfolioId);
     assertResourceFound(portfolio, "Portfolio not found");
 
-    const asset = await this.repository.findAsset(userId, dto.assetId);
-    assertResourceFound(asset, "Asset not found");
+    if (Boolean(dto.assetId) === Boolean(dto.asset)) {
+      throw new BadRequestException("Provide either assetId or asset");
+    }
 
-    const quantity = toDecimalOrNull(dto.quantity);
-    const unitPrice = toDecimalOrNull(dto.unitPrice);
+    const normalizedDraft = dto.asset ? normalizeAssetCreateData(dto.asset) : null;
+    const existingFromDraft = normalizedDraft
+      ? await this.repository.findAssetByTicker(userId, normalizedDraft.ticker)
+      : null;
+    const asset = dto.assetId
+      ? await this.repository.findAsset(userId, dto.assetId)
+      : existingFromDraft;
+    if (dto.assetId) assertResourceFound(asset, "Asset not found");
+
+    const effectiveAsset = asset ?? normalizedDraft;
+    if (!effectiveAsset) throw new BadRequestException("Asset is required");
+
+    const occurredAt = parseDateOnly(dto.occurredAt);
+
+    let quantity = toDecimalOrNull(dto.quantity);
+    let unitPrice = toDecimalOrNull(dto.unitPrice);
     const fees = toDecimalOrNull(dto.fees) ?? ZERO;
     const taxes = toDecimalOrNull(dto.taxes) ?? ZERO;
     const explicitGrossAmount = toDecimalOrNull(dto.totalAmount);
-    const grossAmount =
+    let grossAmount =
       explicitGrossAmount ?? (quantity && unitPrice ? quantity.times(unitPrice) : null);
+
+    let fixedIncomeBaseDate: Date | null = null;
+    if (
+      effectiveAsset.class === "fixed_income" &&
+      ["buy", "sell", "opening_balance"].includes(dto.type)
+    ) {
+      const fixedIncomeIndexer = effectiveAsset.fixedIncomeIndexer;
+      const fixedIncomeRate = effectiveAsset.fixedIncomeRate;
+      if (!fixedIncomeIndexer || fixedIncomeRate === null) {
+        throw new BadRequestException("Fixed-income terms are incomplete");
+      }
+      if (!explicitGrossAmount || explicitGrossAmount.lte(ZERO)) {
+        throw new BadRequestException(
+          "Total amount is required for a fixed-income transaction",
+        );
+      }
+      fixedIncomeBaseDate = asset?.fixedIncomeBaseDate ?? occurredAt;
+      if (occurredAt < fixedIncomeBaseDate) {
+        throw new BadRequestException(
+          "Fixed-income events cannot precede the first recorded event",
+        );
+      }
+      const factor = await this.fixedIncomeValuation.factorAt(
+        {
+          indexer: fixedIncomeIndexer,
+          rate: fixedIncomeRate,
+          baseDate: fixedIncomeBaseDate,
+        },
+        occurredAt,
+      );
+      grossAmount = explicitGrossAmount;
+      unitPrice = factor;
+      quantity = explicitGrossAmount.dividedBy(factor);
+    }
 
     if (
       ["buy", "sell", "opening_balance"].includes(dto.type) &&
@@ -170,7 +227,21 @@ export class PortfoliosService {
 
     try {
       return await this.repository.createTransaction(userId, portfolioId, {
-        assetId: dto.assetId,
+        assetId: asset?.id,
+        asset: asset
+          ? undefined
+          : {
+              ...normalizedDraft!,
+              fixedIncomeBaseDate,
+            },
+        initialQuote: asset
+          ? null
+          : await this.resolveInitialQuote(
+              normalizedDraft!,
+              fixedIncomeBaseDate,
+              occurredAt,
+            ),
+        fixedIncomeBaseDate,
         type: dto.type,
         quantity,
         unitPrice,
@@ -178,15 +249,72 @@ export class PortfoliosService {
         fees,
         taxes,
         totalAmount,
-        currency: normalizeCurrency(dto.currency ?? asset.currency),
-        occurredAt: new Date(dto.occurredAt),
+        currency: normalizeAssetCurrency(dto.currency ?? effectiveAsset.currency),
+        occurredAt,
         notes: dto.notes?.trim() || null,
       });
     } catch (error) {
+      if (error instanceof FixedIncomeBasisChangedError) {
+        if (retryOnBasisChange) {
+          return this.addTransaction(userId, portfolioId, dto, false);
+        }
+        throw new ConflictException(
+          "Fixed-income terms changed concurrently; try again",
+        );
+      }
+      if (error instanceof PortfolioAssetDefinitionConflictError) {
+        throw new ConflictException(error.message);
+      }
       if (error instanceof InsufficientPortfolioPositionError) {
         throw new ConflictException(error.message);
       }
       throw error;
+    }
+  }
+
+  private async resolveInitialQuote(
+    asset: ReturnType<typeof normalizeAssetCreateData>,
+    fixedIncomeBaseDate: Date | null,
+    eventDate: Date,
+  ) {
+    try {
+      if (
+        asset.class === "fixed_income" &&
+        asset.fixedIncomeIndexer &&
+        asset.fixedIncomeRate !== null &&
+        fixedIncomeBaseDate
+      ) {
+        const valuationDate = eventDate > new Date() ? eventDate : new Date();
+        return {
+          price: await this.fixedIncomeValuation.factorAt(
+            {
+              indexer: asset.fixedIncomeIndexer,
+              rate: asset.fixedIncomeRate,
+              baseDate: fixedIncomeBaseDate,
+            },
+            valuationDate,
+          ),
+          currency: asset.currency,
+          source: this.fixedIncomeValuation.providerFor(asset.fixedIncomeIndexer),
+          sourceType: asset.fixedIncomeIndexer === "fixed" ? "manual" as const : "external" as const,
+          status: "estimated" as const,
+          quotedAt: valuationDate,
+        };
+      }
+
+      const quote = await this.marketData.getQuote(asset.ticker, asset.class);
+      if (!quote) return null;
+      return {
+        price: new Prisma.Decimal(quote.price),
+        currency: normalizeAssetCurrency(quote.currency),
+        source: quote.provider,
+        sourceType: quote.provider === "mock" ? "mock" as const : "external" as const,
+        status: quote.provider === "mock" ? "estimated" as const : "current" as const,
+        quotedAt: quote.updatedAt,
+      };
+    } catch (error) {
+      this.logger.warn(`Initial quote unavailable for ${asset.ticker}: ${String(error)}`);
+      return null;
     }
   }
 
@@ -207,10 +335,20 @@ export class PortfoliosService {
       ]);
     }
 
-    return [...byAsset.values()]
-      .map((assetTransactions) => {
+    const positions = await Promise.all(
+      [...byAsset.values()].map(async (assetTransactions) => {
         const asset = assetTransactions[0].asset;
-        const latestQuote = asset.quotes[0] ?? null;
+        let latestQuote = asset.quotes[0] ?? null;
+        if (asset.class === "fixed_income") {
+          try {
+            const refreshed = await this.assetsService.refreshQuote(userId, asset.id);
+            latestQuote = refreshed.quote ?? latestQuote;
+          } catch (error) {
+            this.logger.warn(
+              `Fixed-income quote unavailable for ${asset.ticker}: ${String(error)}`,
+            );
+          }
+        }
         const calculation = calculatePosition(
           assetTransactions.map((transaction) => ({
             id: transaction.id,
@@ -251,8 +389,12 @@ export class PortfoliosService {
             quotedAt: latestQuote?.quotedAt ?? null,
           },
         };
-      })
-      .filter((position) => position.quantity !== 0 || position.costBasis !== 0);
+      }),
+    );
+
+    return positions.filter(
+      (position) => position.quantity !== 0 || position.costBasis !== 0,
+    );
   }
 
   async getAudit(userId: string, portfolioId: string) {
@@ -340,7 +482,7 @@ export class PortfoliosService {
       exDate: dto.exDate ? parseDateOnly(dto.exDate) : null,
       paymentDate: parseDateOnly(dto.paymentDate),
       amountPerShare,
-      currency: normalizeCurrency(dto.currency ?? asset.currency),
+      currency: normalizeAssetCurrency(dto.currency ?? asset.currency),
       notes: dto.notes?.trim() || null,
     });
 
@@ -352,7 +494,7 @@ export class PortfoliosService {
       grossAmount,
       taxes,
       totalAmount,
-      currency: normalizeCurrency(dto.currency ?? asset.currency),
+      currency: normalizeAssetCurrency(dto.currency ?? asset.currency),
       exDate: dto.exDate ? parseDateOnly(dto.exDate) : null,
       paymentDate: parseDateOnly(dto.paymentDate),
       notes: dto.notes?.trim() || null,
@@ -478,13 +620,38 @@ export class PortfoliosService {
           occurredAt: transaction.occurredAt,
         })),
       );
-      const latestQuote = assetTransactions[0].asset.quotes[0] ?? null;
-      const status = getEffectiveQuoteStatus(latestQuote, end);
-      if (status === "incomplete") missingQuotes += 1;
-      if (status === "stale") staleQuotes += 1;
-      portfolioValue = portfolioValue.plus(
-        calculation.quantity.times(latestQuote ? decimal(latestQuote.price) : ZERO),
-      );
+      const asset = assetTransactions[0].asset;
+      if (
+        asset.class === "fixed_income" &&
+        asset.fixedIncomeIndexer &&
+        asset.fixedIncomeRate !== null &&
+        asset.fixedIncomeBaseDate
+      ) {
+        try {
+          const factor = await this.fixedIncomeValuation.factorAt(
+            {
+              indexer: asset.fixedIncomeIndexer,
+              rate: asset.fixedIncomeRate,
+              baseDate: asset.fixedIncomeBaseDate,
+            },
+            end,
+          );
+          portfolioValue = portfolioValue.plus(calculation.quantity.times(factor));
+        } catch (error) {
+          missingQuotes += 1;
+          this.logger.warn(
+            `Historical fixed-income value unavailable for ${asset.ticker}: ${String(error)}`,
+          );
+        }
+      } else {
+        const latestQuote = asset.quotes[0] ?? null;
+        const status = getEffectiveQuoteStatus(latestQuote, end);
+        if (status === "incomplete") missingQuotes += 1;
+        if (status === "stale") staleQuotes += 1;
+        portfolioValue = portfolioValue.plus(
+          calculation.quantity.times(latestQuote ? decimal(latestQuote.price) : ZERO),
+        );
+      }
     }
 
     const gainUntilEnd = calculateRealizedGainByAsset(transactionsUntilEnd);

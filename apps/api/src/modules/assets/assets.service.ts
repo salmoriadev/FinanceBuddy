@@ -3,33 +3,36 @@ import { DataSourceType, Prisma, Quote, QuoteStatus } from "@prisma/client";
 import { assertResourceFound } from "../../common/services/resource-assertions";
 import { InvestmentMarketDataService } from "../investments/investment-market-data.service";
 import { normalizeTicker } from "./asset-normalization";
+import { normalizeAssetCreateData, normalizeAssetCurrency } from "./asset-terms";
 import { AssetsRepository } from "./assets.repository";
 import { CreateAssetDto } from "./dto/create-asset.dto";
 import { CreateManualQuoteDto } from "./dto/create-manual-quote.dto";
 import { LookupQuoteQueryDto } from "./dto/lookup-quote-query.dto";
 import { SearchAssetsQueryDto } from "./dto/search-assets-query.dto";
 import { ManualQuoteProvider } from "./quote-providers";
+import { FixedIncomeValuationService } from "./fixed-income-valuation.service";
 
 export const QUOTE_CACHE_TTL_MS = 15 * 60 * 1000;
-
-const normalizeCurrency = (currency?: string | null) =>
-  (currency?.trim().toUpperCase() || "BRL").slice(0, 8);
 
 export const getEffectiveQuoteStatus = (
   quote: Pick<Quote, "sourceType" | "status" | "quotedAt"> | null | undefined,
   now = new Date(),
 ): QuoteStatus => {
   if (!quote) return "incomplete";
+  if (quote.status === "estimated") {
+    return now.getTime() - quote.quotedAt.getTime() <= QUOTE_CACHE_TTL_MS
+      ? "estimated"
+      : "stale";
+  }
   if (quote.sourceType !== "external") return quote.status;
   return now.getTime() - quote.quotedAt.getTime() <= QUOTE_CACHE_TTL_MS
     ? "current"
     : "stale";
 };
 
-const isFreshExternalQuote = (quote: Quote | null | undefined) =>
+const isFreshReusableQuote = (quote: Quote | null | undefined) =>
   quote &&
-  quote.sourceType === "external" &&
-  getEffectiveQuoteStatus(quote) === "current";
+  ["current", "estimated"].includes(getEffectiveQuoteStatus(quote));
 
 @Injectable()
 export class AssetsService {
@@ -38,6 +41,7 @@ export class AssetsService {
   constructor(
     private readonly repository: AssetsRepository,
     private readonly marketData: InvestmentMarketDataService,
+    private readonly fixedIncomeValuation: FixedIncomeValuationService,
   ) {}
 
   findAll(userId: string) {
@@ -54,27 +58,22 @@ export class AssetsService {
   }
 
   async create(userId: string, dto: CreateAssetDto) {
-    const ticker = normalizeTicker(dto.ticker);
-    const existing = await this.repository.findByTicker(userId, ticker);
+    const data = normalizeAssetCreateData(dto);
+    const existing = await this.repository.findByTicker(userId, data.ticker);
     if (existing) {
       return existing;
     }
 
     try {
       return await this.repository.create(userId, {
-        ticker,
-        name: dto.name.trim(),
-        class: dto.class,
-        sector: dto.sector?.trim() || null,
-        currency: normalizeCurrency(dto.currency),
-        notes: dto.notes?.trim() || null,
+        ...data,
       });
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === "P2002"
       ) {
-        const asset = await this.repository.findByTicker(userId, ticker);
+        const asset = await this.repository.findByTicker(userId, data.ticker);
         if (asset) return asset;
       }
       throw error;
@@ -87,7 +86,7 @@ export class AssetsService {
 
     const quote = this.manualQuoteProvider.quote({
       price: dto.price,
-      currency: normalizeCurrency(dto.currency ?? asset.currency),
+      currency: normalizeAssetCurrency(dto.currency ?? asset.currency),
       source: dto.source,
       quotedAt: dto.quotedAt,
     });
@@ -104,13 +103,36 @@ export class AssetsService {
     assertResourceFound(asset, "Asset not found");
 
     const latestQuote = asset.quotes?.[0] ?? await this.repository.findLatestQuote(userId, assetId);
-    if (isFreshExternalQuote(latestQuote)) {
+    if (isFreshReusableQuote(latestQuote)) {
       return {
         assetId,
-        status: "current" as QuoteStatus,
+        status: getEffectiveQuoteStatus(latestQuote),
         cacheHit: true,
         quote: latestQuote,
       };
+    }
+
+    if (asset.class === "fixed_income") {
+      try {
+        const quote = await this.createFixedIncomeQuote(userId, asset, new Date());
+        return {
+          assetId,
+          status: quote ? "estimated" as QuoteStatus : "incomplete" as QuoteStatus,
+          cacheHit: false,
+          quote,
+        };
+      } catch (error) {
+        return {
+          assetId,
+          status: latestQuote ? "stale" as QuoteStatus : "incomplete" as QuoteStatus,
+          cacheHit: false,
+          quote: latestQuote ?? null,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Fixed-income valuation failed",
+        };
+      }
     }
 
     try {
@@ -136,7 +158,7 @@ export class AssetsService {
       const created = await this.repository.createQuote(userId, assetId, {
         providerId: provider.id,
         price: new Prisma.Decimal(quote.price),
-        currency: normalizeCurrency(quote.currency),
+        currency: normalizeAssetCurrency(quote.currency),
         source: quote.provider,
         sourceType,
         status,
@@ -165,6 +187,32 @@ export class AssetsService {
     assertResourceFound(asset, "Asset not found");
 
     const quoteDate = query.date ? new Date(query.date) : new Date();
+    if (asset.class === "fixed_income") {
+      try {
+        const quote = await this.createFixedIncomeQuote(userId, asset, quoteDate);
+        return {
+          assetId,
+          status: quote ? "estimated" as QuoteStatus : "incomplete" as QuoteStatus,
+          cacheHit: false,
+          quote,
+          fallback: null,
+        };
+      } catch (error) {
+        const latestQuote =
+          asset.quotes?.[0] ?? (await this.repository.findLatestQuote(userId, assetId));
+        return {
+          assetId,
+          status: latestQuote ? "stale" as QuoteStatus : "incomplete" as QuoteStatus,
+          cacheHit: false,
+          quote: latestQuote ?? null,
+          fallback: latestQuote ? "cached" as const : null,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Fixed-income valuation failed",
+        };
+      }
+    }
     try {
       const historicalQuote = await this.marketData.getQuoteAt(
         asset.ticker,
@@ -188,8 +236,10 @@ export class AssetsService {
 
       const sourceType: DataSourceType =
         quote.provider === "mock" ? "mock" : "external";
+      const usedLatestFallback =
+        historicalQuote === null || quote.fallback === "latest";
       const status: QuoteStatus =
-        historicalQuote === null ? "stale" : sourceType === "mock" ? "estimated" : "current";
+        usedLatestFallback ? "stale" : sourceType === "mock" ? "estimated" : "current";
       const provider = await this.repository.upsertProvider(
         userId,
         quote.provider,
@@ -199,7 +249,7 @@ export class AssetsService {
       const created = await this.repository.createQuote(userId, assetId, {
         providerId: provider.id,
         price: new Prisma.Decimal(quote.price),
-        currency: normalizeCurrency(quote.currency),
+        currency: normalizeAssetCurrency(quote.currency),
         source: quote.provider,
         sourceType,
         status,
@@ -211,7 +261,7 @@ export class AssetsService {
         status,
         cacheHit: false,
         quote: created,
-        fallback: historicalQuote === null ? "latest" : null,
+        fallback: usedLatestFallback ? "latest" : null,
       };
     } catch (error) {
       const latestQuote =
@@ -225,5 +275,54 @@ export class AssetsService {
         error: error instanceof Error ? error.message : "Quote lookup failed",
       };
     }
+  }
+
+  private async createFixedIncomeQuote(
+    userId: string,
+    asset: {
+      id: string;
+      currency: string;
+      fixedIncomeIndexer: "fixed" | "cdi" | "ipca" | null;
+      fixedIncomeRate: Prisma.Decimal | null;
+      fixedIncomeBaseDate: Date | null;
+    },
+    valuationDate: Date,
+  ) {
+    if (
+      !asset.fixedIncomeIndexer ||
+      asset.fixedIncomeRate === null ||
+      !asset.fixedIncomeBaseDate ||
+      valuationDate < asset.fixedIncomeBaseDate
+    ) {
+      return null;
+    }
+
+    const factor = await this.fixedIncomeValuation.factorAt(
+      {
+        indexer: asset.fixedIncomeIndexer,
+        rate: asset.fixedIncomeRate,
+        baseDate: asset.fixedIncomeBaseDate,
+      },
+      valuationDate,
+    );
+    const source = this.fixedIncomeValuation.providerFor(asset.fixedIncomeIndexer);
+    const sourceType: DataSourceType =
+      asset.fixedIncomeIndexer === "fixed" ? "manual" : "external";
+    const provider = await this.repository.upsertProvider(
+      userId,
+      source,
+      sourceType,
+      "estimated",
+    );
+
+    return this.repository.createQuote(userId, asset.id, {
+      providerId: provider.id,
+      price: factor,
+      currency: asset.currency,
+      source,
+      sourceType,
+      status: "estimated",
+      quotedAt: valuationDate,
+    });
   }
 }

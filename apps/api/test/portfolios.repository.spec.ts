@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../src/database/prisma.service";
 import {
+  FixedIncomeBasisChangedError,
   InsufficientPortfolioPositionError,
   PortfoliosRepository,
 } from "../src/modules/portfolios/portfolios.repository";
@@ -285,6 +286,120 @@ describe("PortfoliosRepository.receiveDividendAtomically", () => {
       transactionId: "tx-1",
       ledgerIds: ["tx-1"],
     });
+  });
+});
+
+describe("PortfoliosRepository.createTransaction asset atomicity", () => {
+  it("creates a searched asset, its initial quote, and the event in one transaction", async () => {
+    const assetCreate = jest.fn().mockResolvedValue({
+      id: "asset-1",
+      class: "fii",
+      currency: "BRL",
+      fixedIncomeIndexer: null,
+      fixedIncomeRate: null,
+      fixedIncomeBaseDate: null,
+    });
+    const quoteCreate = jest.fn().mockResolvedValue({ id: "quote-1" });
+    const portfolioTransactionCreate = jest
+      .fn()
+      .mockResolvedValue({ id: "transaction-1" });
+    const transactionClient = {
+      asset: { upsert: assetCreate },
+      quote: { create: quoteCreate },
+      portfolioTransaction: { create: portfolioTransactionCreate },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback) => callback(transactionClient)),
+    } as unknown as PrismaService;
+    const repository = new PortfoliosRepository(prisma);
+
+    await repository.createTransaction("user-1", "portfolio-1", {
+      asset: {
+        ticker: "HGLG11",
+        name: "Pátria Log FII",
+        class: "fii",
+        currency: "BRL",
+      },
+      initialQuote: {
+        price: dec("147.21"),
+        currency: "BRL",
+        source: "brapi",
+        sourceType: "external",
+        status: "current",
+        quotedAt: new Date("2026-08-22T12:00:00.000Z"),
+      },
+      type: "buy",
+      quantity: dec(10),
+      unitPrice: dec("147.21"),
+      grossAmount: dec("1472.10"),
+      fees: dec(0),
+      taxes: dec(0),
+      totalAmount: dec("1472.10"),
+      currency: "BRL",
+      occurredAt: new Date("2026-08-22T00:00:00.000Z"),
+    });
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(assetCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ ticker: "HGLG11", userId: "user-1" }),
+      }),
+    );
+    expect(quoteCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ assetId: "asset-1", price: dec("147.21") }),
+      }),
+    );
+    expect(portfolioTransactionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          assetId: "asset-1",
+          portfolioId: "portfolio-1",
+        }),
+      }),
+    );
+  });
+
+  it("rejects a concurrently changed fixed-income base so the service can recalculate", async () => {
+    const transactionClient = {
+      asset: {
+        upsert: jest.fn().mockResolvedValue({
+          id: "asset-1",
+          class: "fixed_income",
+          currency: "BRL",
+          fixedIncomeIndexer: "fixed",
+          fixedIncomeRate: dec(15),
+          fixedIncomeBaseDate: new Date("2026-01-01T00:00:00.000Z"),
+        }),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback) => callback(transactionClient)),
+    } as unknown as PrismaService;
+    const repository = new PortfoliosRepository(prisma);
+
+    await expect(
+      repository.createTransaction("user-1", "portfolio-1", {
+        asset: {
+          ticker: "CDB-2028",
+          name: "CDB 2028",
+          class: "fixed_income",
+          currency: "BRL",
+          fixedIncomeIndexer: "fixed",
+          fixedIncomeRate: dec(15),
+          fixedIncomeBaseDate: new Date("2026-02-01T00:00:00.000Z"),
+        },
+        type: "buy",
+        quantity: dec(1000),
+        unitPrice: dec(1),
+        grossAmount: dec(1000),
+        fees: dec(0),
+        taxes: dec(0),
+        totalAmount: dec(1000),
+        currency: "BRL",
+        occurredAt: new Date("2026-02-01T00:00:00.000Z"),
+      }),
+    ).rejects.toBeInstanceOf(FixedIncomeBasisChangedError);
   });
 });
 

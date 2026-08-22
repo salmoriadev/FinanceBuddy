@@ -2,6 +2,7 @@ import { NotFoundException } from "@nestjs/common";
 import { normalizeTicker } from "../src/modules/assets/asset-normalization";
 import { AssetsRepository } from "../src/modules/assets/assets.repository";
 import { AssetsService } from "../src/modules/assets/assets.service";
+import { FixedIncomeValuationService } from "../src/modules/assets/fixed-income-valuation.service";
 import { InvestmentMarketDataService } from "../src/modules/investments/investment-market-data.service";
 
 describe("asset normalization", () => {
@@ -29,7 +30,12 @@ describe("AssetsService", () => {
     getQuoteAt: jest.fn(),
   } as unknown as jest.Mocked<InvestmentMarketDataService>;
 
-  const service = new AssetsService(repository, marketData);
+  const fixedIncomeValuation = {
+    factorAt: jest.fn(),
+    providerFor: jest.fn(),
+  } as unknown as jest.Mocked<FixedIncomeValuationService>;
+
+  const service = new AssetsService(repository, marketData, fixedIncomeValuation);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -53,6 +59,8 @@ describe("AssetsService", () => {
       sector: null,
       currency: "BRL",
       notes: null,
+      fixedIncomeIndexer: null,
+      fixedIncomeRate: null,
     });
   });
 

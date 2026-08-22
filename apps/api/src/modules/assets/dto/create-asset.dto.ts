@@ -1,4 +1,13 @@
-import { IsIn, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
+import { Transform } from "class-transformer";
+import {
+  IsIn,
+  IsNumberString,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from "class-validator";
+import { IsFinancialDecimal } from "../../../common/validators/financial-values";
 
 export const ASSET_CLASSES = [
   "stock",
@@ -11,6 +20,12 @@ export const ASSET_CLASSES = [
 ] as const;
 
 export type AssetClassValue = (typeof ASSET_CLASSES)[number];
+
+export const FIXED_INCOME_INDEXERS = ["fixed", "cdi", "ipca"] as const;
+export type FixedIncomeIndexerValue = (typeof FIXED_INCOME_INDEXERS)[number];
+
+const toOptionalStringValue = ({ value }: { value: unknown }) =>
+  value === undefined || value === null || value === "" ? undefined : String(value);
 
 export class CreateAssetDto {
   @IsString()
@@ -40,4 +55,14 @@ export class CreateAssetDto {
   @IsString()
   @MaxLength(1000)
   notes?: string | null;
+
+  @IsOptional()
+  @IsIn(FIXED_INCOME_INDEXERS)
+  fixedIncomeIndexer?: FixedIncomeIndexerValue | null;
+
+  @Transform(toOptionalStringValue)
+  @IsOptional()
+  @IsNumberString()
+  @IsFinancialDecimal({ allowZero: true, max: 1000 })
+  fixedIncomeRate?: string | null;
 }
