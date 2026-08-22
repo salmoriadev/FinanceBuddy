@@ -34,6 +34,7 @@ import type {
 } from "@/types/finance";
 import {
   ASSET_CLASS_OPTIONS,
+  FIXED_INCOME_CURRENCIES,
   assetClassMeta,
   assetClassOptionMeta,
   quoteStatusLabels,
@@ -43,7 +44,6 @@ import type { AssetClassOption } from "../constants";
 import type { AssetFormState, DividendFormState, TransactionFormState } from "../types";
 import {
   assetMatchesClassOption,
-  currencyForAssetClass,
   parseDecimal,
   toAssetClass,
   toPersistedAssetClass,
@@ -234,9 +234,15 @@ export function AssetDialog({
                   setAssetForm((current) => ({
                     ...current,
                     class: assetClass,
-                    currency: currencyForAssetClass(assetClass, current.currency),
+                    currency:
+                      assetClass === "fixed_income" &&
+                      !FIXED_INCOME_CURRENCIES.some(
+                        ({ value: currency }) => currency === current.currency,
+                      )
+                        ? "BRL"
+                        : current.currency,
                     fixedIncomeIndexer:
-                      assetClass === "fixed_income_usd"
+                      assetClass === "fixed_income" && current.currency !== "BRL"
                         ? "fixed"
                         : current.fixedIncomeIndexer,
                   }));
@@ -260,20 +266,41 @@ export function AssetDialog({
                 }
                 placeholder="Setor"
               />
-              <Input
-                value={assetForm.currency}
-                onChange={(event) =>
-                  setAssetForm((current) => ({
-                    ...current,
-                    currency: event.target.value,
-                  }))
-                }
-                placeholder="Moeda"
-                readOnly={
-                  assetForm.class === "fixed_income_brl" ||
-                  assetForm.class === "fixed_income_usd"
-                }
-              />
+              {assetForm.class === "fixed_income" ? (
+                <Select
+                  value={assetForm.currency}
+                  onValueChange={(currency) =>
+                    setAssetForm((current) => ({
+                      ...current,
+                      currency,
+                      fixedIncomeIndexer:
+                        currency === "BRL" ? current.fixedIncomeIndexer : "fixed",
+                    }))
+                  }
+                >
+                  <SelectTrigger aria-label="Moeda da renda fixa">
+                    <SelectValue placeholder="Moeda" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FIXED_INCOME_CURRENCIES.map(({ value, label }) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  value={assetForm.currency}
+                  onChange={(event) =>
+                    setAssetForm((current) => ({
+                      ...current,
+                      currency: event.target.value,
+                    }))
+                  }
+                  placeholder="Moeda"
+                />
+              )}
             </div>
             {toPersistedAssetClass(assetForm.class) === "fixed_income" && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -522,7 +549,30 @@ export function TransactionDialog({
             </Select>
           </div>
           {isFixedIncome && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <Select
+                value={transactionForm.currency}
+                disabled={Boolean(transactionForm.assetId)}
+                onValueChange={(currency) =>
+                  setTransactionForm((current) => ({
+                    ...current,
+                    currency,
+                    fixedIncomeIndexer:
+                      currency === "BRL" ? current.fixedIncomeIndexer : "fixed",
+                  }))
+                }
+              >
+                <SelectTrigger aria-label="Moeda da renda fixa">
+                  <SelectValue placeholder="Moeda" />
+                </SelectTrigger>
+                <SelectContent>
+                  {FIXED_INCOME_CURRENCIES.map(({ value, label }) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select
                 value={transactionForm.fixedIncomeIndexer}
                 disabled={Boolean(transactionForm.assetId)}
@@ -538,7 +588,7 @@ export function TransactionDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="fixed">Prefixado</SelectItem>
-                  {assetClass !== "fixed_income_usd" && (
+                  {transactionForm.currency === "BRL" && (
                     <>
                       <SelectItem value="ipca">IPCA + taxa</SelectItem>
                       <SelectItem value="cdi">Pós-fixado (% do CDI)</SelectItem>

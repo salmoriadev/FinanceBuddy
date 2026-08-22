@@ -147,6 +147,7 @@ export default function Investments() {
   });
   const [transactionForm, setTransactionForm] = useState<TransactionFormState>({
     assetId: "",
+    currency: "BRL",
     type: "buy" as PortfolioTransactionType,
     quantity: "",
     unitPrice: "",
@@ -398,6 +399,7 @@ export default function Investments() {
     setTransactionForm((current) => ({
       ...current,
       assetId: asset.id,
+      currency: asset.currency.toUpperCase(),
       fixedIncomeIndexer: asset.fixed_income_indexer ?? "fixed",
       fixedIncomeRate:
         asset.fixed_income_rate === null ? "" : String(asset.fixed_income_rate),
@@ -433,6 +435,7 @@ export default function Investments() {
       return {
         ...current,
         assetId: "",
+        currency: result.currency.toUpperCase(),
         unitPrice: price > 0 ? String(price) : current.unitPrice,
         totalAmount:
           price > 0 && quantity > 0
@@ -452,6 +455,7 @@ export default function Investments() {
     setTransactionForm((current) => ({
       ...current,
       assetId: "",
+      currency: assetClass === "fixed_income" ? "BRL" : current.currency,
       unitPrice: "",
       totalAmount: "",
       fixedIncomeIndexer: "fixed",
@@ -600,8 +604,7 @@ export default function Investments() {
               ticker: fixedIncomeTicker(fixedIncomeName),
               name: fixedIncomeName,
               class: persistedClass,
-              currency:
-                transactionAssetClass === "fixed_income_usd" ? "USD" : "BRL",
+              currency: transactionForm.currency,
               fixedIncomeIndexer: transactionForm.fixedIncomeIndexer,
               fixedIncomeRate: String(parseDecimal(transactionForm.fixedIncomeRate)),
             }
@@ -637,6 +640,7 @@ export default function Investments() {
         fees: "0",
         taxes: "0",
         notes: "",
+        currency: "BRL",
         fixedIncomeIndexer: "fixed",
         fixedIncomeRate: "",
       }));

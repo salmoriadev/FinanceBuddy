@@ -25,10 +25,7 @@ export const ASSET_CLASSES: AssetClass[] = [
   "custom",
 ];
 
-export type AssetClassOption =
-  | AssetClass
-  | "fixed_income_brl"
-  | "fixed_income_usd";
+export type AssetClassOption = AssetClass;
 
 export const ASSET_CLASS_OPTIONS: AssetClassOption[] = [
   "stock",
@@ -37,10 +34,14 @@ export const ASSET_CLASS_OPTIONS: AssetClassOption[] = [
   "bdr",
   "crypto",
   "fixed_income",
-  "fixed_income_brl",
-  "fixed_income_usd",
   "custom",
 ];
+
+export const FIXED_INCOME_CURRENCIES = [
+  { value: "BRL", label: "Real brasileiro (BRL)" },
+  { value: "USD", label: "Dólar americano (USD)" },
+  { value: "EUR", label: "Euro (EUR)" },
+] as const;
 
 export const assetClassMeta: Record<
   AssetClass,
@@ -98,21 +99,7 @@ export const assetClassMeta: Record<
 export const assetClassOptionMeta: Record<
   AssetClassOption,
   (typeof assetClassMeta)[AssetClass]
-> = {
-  ...assetClassMeta,
-  fixed_income_brl: {
-    label: "Renda fixa em real",
-    shortLabel: "Renda fixa (R$)",
-    color: "#38bdf8",
-    icon: Landmark,
-  },
-  fixed_income_usd: {
-    label: "Renda fixa em dólar",
-    shortLabel: "Renda fixa (US$)",
-    color: "#818cf8",
-    icon: Landmark,
-  },
-};
+> = assetClassMeta;
 
 export const transactionLabels: Record<PortfolioTransactionType, string> = {
   buy: "Compra",

@@ -84,43 +84,20 @@ export const toAssetClass = (value: string | undefined): AssetClass => {
   return "custom";
 };
 
-export const currencyForAssetClass = (
-  assetClass: AssetClassOption,
-  currentCurrency = "BRL",
-) => {
-  if (assetClass === "fixed_income_brl") return "BRL";
-  if (assetClass === "fixed_income_usd") return "USD";
-  return currentCurrency;
-};
-
 export const toPersistedAssetClass = (
   assetClass: AssetClassOption,
-): AssetClass =>
-  assetClass === "fixed_income_brl" || assetClass === "fixed_income_usd"
-    ? "fixed_income"
-    : assetClass;
+): AssetClass => assetClass;
 
 export const assetMatchesClassOption = (
   asset: Pick<Asset, "class" | "currency">,
   assetClass: AssetClassOption,
 ) => {
-  if (assetClass === "fixed_income_brl") {
-    return asset.class === "fixed_income" && asset.currency.toUpperCase() === "BRL";
-  }
-  if (assetClass === "fixed_income_usd") {
-    return asset.class === "fixed_income" && asset.currency.toUpperCase() === "USD";
-  }
   return asset.class === assetClass;
 };
 
 export const classOptionForAsset = (
   asset: Pick<Asset, "class" | "currency">,
-): AssetClassOption => {
-  if (asset.class !== "fixed_income") return asset.class;
-  if (asset.currency.toUpperCase() === "USD") return "fixed_income_usd";
-  if (asset.currency.toUpperCase() === "BRL") return "fixed_income_brl";
-  return "fixed_income";
-};
+): AssetClassOption => asset.class;
 
 export const buildGroups = (positions: PortfolioPosition[]): PositionGroup[] => {
   const totalPortfolioValue = positions.reduce(

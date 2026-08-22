@@ -1,7 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { FormEvent, ReactNode } from "react";
+import { Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
 import Investments from "@/pages/Investments";
 import { InvestmentAssetSearchResult } from "@/types/finance";
+import type { AssetClassOption } from "@/features/investments/constants";
+import type { TransactionFormState } from "@/features/investments/types";
 
 const mocks = vi.hoisted(() => ({
   addAsset: { mutateAsync: vi.fn(), isPending: false },
@@ -70,11 +72,17 @@ vi.mock("@/features/investments/components", () => ({
   TransactionDialog: ({
     onCreateAssetFromSearch,
     onSubmit,
+    setAssetClass,
+    setAssetSearch,
+    setTransactionForm,
     transactionForm,
   }: {
     onCreateAssetFromSearch: (result: InvestmentAssetSearchResult) => void;
     onSubmit: (event: FormEvent) => void;
-    transactionForm: { unitPrice: string };
+    setAssetClass: (value: AssetClassOption) => void;
+    setAssetSearch: (value: string) => void;
+    setTransactionForm: Dispatch<SetStateAction<TransactionFormState>>;
+    transactionForm: TransactionFormState;
   }) => (
     <form onSubmit={onSubmit}>
       <button
@@ -96,6 +104,22 @@ vi.mock("@/features/investments/components", () => ({
       <output aria-label="Preço unitário selecionado">
         {transactionForm.unitPrice}
       </output>
+      <button
+        type="button"
+        onClick={() => {
+          setAssetClass("fixed_income");
+          setAssetSearch("Título europeu 2030");
+          setTransactionForm((current) => ({
+            ...current,
+            currency: "EUR",
+            fixedIncomeIndexer: "fixed",
+            fixedIncomeRate: "5",
+            totalAmount: "1000",
+          }));
+        }}
+      >
+        Preparar renda fixa em euro
+      </button>
       <button type="submit">Registrar evento de teste</button>
     </form>
   ),
@@ -143,6 +167,36 @@ describe("Investments asset selection", () => {
           currency: "BRL",
         },
       }),
+    );
+    expect(mocks.addAsset.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("persists EUR as the currency of a new fixed-income asset", async () => {
+    mocks.addTransaction.mutateAsync.mockResolvedValue({ id: "tx-eur" });
+    render(<Investments />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Preparar renda fixa em euro" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Registrar evento de teste" }),
+    );
+
+    await waitFor(() =>
+      expect(mocks.addTransaction.mutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assetId: undefined,
+          asset: {
+            ticker: "TITULO-EUROPEU-2030",
+            name: "Título europeu 2030",
+            class: "fixed_income",
+            currency: "EUR",
+            fixedIncomeIndexer: "fixed",
+            fixedIncomeRate: "5",
+          },
+          totalAmount: 1000,
+        }),
+      ),
     );
     expect(mocks.addAsset.mutateAsync).not.toHaveBeenCalled();
   });

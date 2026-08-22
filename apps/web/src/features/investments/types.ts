@@ -31,6 +31,7 @@ export type AssetFormState = {
 
 export type TransactionFormState = {
   assetId: string;
+  currency: string;
   type: PortfolioTransactionType;
   quantity: string;
   unitPrice: string;
