@@ -2,10 +2,7 @@ import { useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Currency, DEFAULT_CURRENCY, DEFAULT_LOCALE, Locale } from "@/lib/i18n";
 
-const normalizeLocale = (value?: string): Locale => {
-  if (value === "pt-BR") return "pt-BR";
-  return "en";
-};
+export const normalizeLocale = (_value?: string): Locale => "pt-BR";
 
 const normalizeCurrency = (value?: string): Currency => {
   if (value === "USD") return "USD";

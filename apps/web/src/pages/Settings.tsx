@@ -20,17 +20,15 @@ import { ChangePasswordDialog } from "@/components/auth/ChangePasswordDialog";
 export default function Settings() {
   const { user, loading, updateProfile } = useAuth();
   const { t } = useI18n();
-  const { locale, currency } = usePreferences();
+  const { currency } = usePreferences();
   const [name, setName] = useState("");
-  const [selectedLocale, setSelectedLocale] = useState(locale);
   const [selectedCurrency, setSelectedCurrency] = useState(currency);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setName(user?.name ?? "");
-    setSelectedLocale(locale);
     setSelectedCurrency(currency);
-  }, [user?.name, locale, currency]);
+  }, [user?.name, currency]);
 
   if (loading) {
     return null;
@@ -44,7 +42,7 @@ export default function Settings() {
     setSaving(true);
     const { error } = await updateProfile({
       name: name.trim() ? name.trim() : null,
-      locale: selectedLocale,
+      locale: "pt-BR",
       currency: selectedCurrency,
     });
     if (error) {
@@ -105,30 +103,6 @@ export default function Settings() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
-                  {t("settings.language")}
-                </label>
-                <Select
-                  value={selectedLocale}
-                  onValueChange={(value) =>
-                    setSelectedLocale(value as "en" | "pt-BR")
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">
-                      {t("settings.language.en")}
-                    </SelectItem>
-                    <SelectItem value="pt-BR">
-                      {t("settings.language.pt")}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
               <div className="space-y-2">
                 <label className="text-sm font-medium text-muted-foreground">
                   {t("settings.currency")}

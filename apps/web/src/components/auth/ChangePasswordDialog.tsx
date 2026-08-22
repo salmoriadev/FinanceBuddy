@@ -116,7 +116,7 @@ export function ChangePasswordDialog({
       if (message.toLowerCase().includes("current password")) {
         toast.error(t("password.invalidCurrent"));
       } else {
-        toast.error(message || t("password.updateError"));
+        toast.error(t("password.updateError"));
       }
       return;
     }

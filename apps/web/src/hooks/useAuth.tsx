@@ -174,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     currency?: string;
   }) => {
     if (!accessToken) {
-      return { error: new Error("User not authenticated") };
+      return { error: new Error("Sessão expirada. Entre novamente.") };
     }
     try {
       const response = await apiRequest<{ user: AuthUser }>("/auth/profile", {
@@ -197,7 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     newPassword: string,
   ) => {
     if (!accessToken) {
-      return { error: new Error("User not authenticated") };
+      return { error: new Error("Sessão expirada. Entre novamente.") };
     }
     try {
       await apiRequest("/auth/password", {

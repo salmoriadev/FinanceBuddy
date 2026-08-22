@@ -35,7 +35,7 @@ export function useSavingsGoals() {
       target_date?: string;
       color?: string;
     }) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       return apiRequest<ApiSavingsGoal>("/goals", {
         method: "POST",
         token,
@@ -62,7 +62,7 @@ export function useSavingsGoals() {
       target_date?: string | null;
       color?: string;
     }) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       const body: Record<string, unknown> = {};
       if (payload.name !== undefined) body.name = payload.name;
       if (payload.target_amount !== undefined) body.targetAmount = payload.target_amount;
@@ -83,7 +83,7 @@ export function useSavingsGoals() {
 
   const deleteGoal = useMutation({
     mutationFn: async (id: string) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       await apiRequest(`/goals/${id}`, {
         method: "DELETE",
         token,

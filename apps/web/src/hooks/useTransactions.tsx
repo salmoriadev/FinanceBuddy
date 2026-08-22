@@ -68,7 +68,7 @@ export function useTransactions() {
       date: string;
       is_recurring?: boolean;
     }) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       return apiRequest<ApiTransaction>("/transactions", {
         method: "POST",
         token,
@@ -95,7 +95,7 @@ export function useTransactions() {
       date?: string;
       is_recurring?: boolean;
     }) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       const body: Record<string, unknown> = {};
       if (transaction.description !== undefined) body.description = transaction.description;
       if (transaction.amount !== undefined) body.amount = transaction.amount;
@@ -115,7 +115,7 @@ export function useTransactions() {
 
   const deleteTransaction = useMutation({
     mutationFn: async (id: string) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       await apiRequest(`/transactions/${id}`, {
         method: "DELETE",
         token,

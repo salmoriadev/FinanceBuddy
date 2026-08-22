@@ -43,7 +43,7 @@ const trustItems = [
 
 const productAreas = [
   {
-    title: "Dashboard",
+    title: "Painel",
     description: "Saldo, entradas, saídas e taxa de poupança em uma leitura rápida.",
     icon: BarChart3,
   },
@@ -102,7 +102,7 @@ const securityItems = [
 ];
 
 const navPreviewItems = [
-  { label: "Dashboard", icon: LayoutDashboard, active: true },
+  { label: "Painel", icon: LayoutDashboard, active: true },
   { label: "Transações", icon: ArrowLeftRight },
   { label: "Orçamentos", icon: PiggyBank },
   { label: "Metas", icon: Goal },
@@ -197,7 +197,7 @@ function PlatformDashboardScreen({ compact = false }: { compact?: boolean }) {
       <div className="flex items-end justify-between gap-3 sm:gap-4">
         <div>
           <h2 className="font-serif text-2xl tracking-normal text-[#151514] sm:text-3xl">
-            Dashboard
+            Painel
           </h2>
           <p className="mt-1 text-xs text-[#706d66]">Resumo do mês atual</p>
         </div>
@@ -576,7 +576,7 @@ export default function Landing() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-7 flex flex-col justify-between gap-5 sm:mb-10 md:flex-row md:items-end">
             <div>
-              <p className={ledgerLabel}>Preview do produto</p>
+              <p className={ledgerLabel}>Prévia do produto</p>
               <h2 className={cn(sectionTitle, "mt-4 max-w-4xl")}>
                 Números importantes aparecem antes da ansiedade.
               </h2>

@@ -113,8 +113,8 @@ export function usePortfolioTransactions(portfolioId?: string | null) {
 
   const addTransaction = useMutation({
     mutationFn: async (transaction: CreatePortfolioTransactionPayload) => {
-      if (!user || !token) throw new Error("Sessao expirada. Entre novamente.");
-      if (!portfolioId) throw new Error("Carteira ainda nao carregada.");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
+      if (!portfolioId) throw new Error("Carteira ainda não carregada.");
       return apiRequest(`/portfolios/${portfolioId}/transactions`, {
         method: "POST",
         token,
@@ -142,8 +142,8 @@ export function usePortfolioQuoteRefresh(portfolioId?: string | null) {
 
   const refreshQuotes = useMutation({
     mutationFn: async () => {
-      if (!user || !token) throw new Error("Sessao expirada. Entre novamente.");
-      if (!portfolioId) throw new Error("Carteira ainda nao carregada.");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
+      if (!portfolioId) throw new Error("Carteira ainda não carregada.");
       return apiRequest<{
         portfolioId: string;
         updatedCount: number;
@@ -185,8 +185,8 @@ export function usePortfolioDividends(portfolioId?: string | null) {
 
   const createDividend = useMutation({
     mutationFn: async (payload: CreateDividendPayload) => {
-      if (!user || !token) throw new Error("Sessao expirada. Entre novamente.");
-      if (!portfolioId) throw new Error("Carteira ainda nao carregada.");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
+      if (!portfolioId) throw new Error("Carteira ainda não carregada.");
       const data = await apiRequest<ApiPortfolioDividendReceipt>(
         `/portfolios/${portfolioId}/dividends`,
         {
@@ -210,8 +210,8 @@ export function usePortfolioDividends(portfolioId?: string | null) {
 
   const receiveDividend = useMutation({
     mutationFn: async ({ receiptId, ...payload }: ReceiveDividendPayload) => {
-      if (!user || !token) throw new Error("Sessao expirada. Entre novamente.");
-      if (!portfolioId) throw new Error("Carteira ainda nao carregada.");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
+      if (!portfolioId) throw new Error("Carteira ainda não carregada.");
       const data = await apiRequest<ApiPortfolioDividendReceipt>(
         `/portfolios/${portfolioId}/dividends/${receiptId}/receive`,
         {

@@ -107,13 +107,14 @@ export function AssetClassGroup({
             <div>
               <p className="text-xl font-semibold">{meta.label}</p>
               <p className="text-sm text-muted-foreground">
-                {group.positions.length} ativos
+                {group.positions.length}{" "}
+                {group.positions.length === 1 ? "ativo" : "ativos"}
               </p>
             </div>
           </div>
           <GroupMetric label="Valor total" value={formatCurrency(group.totalValue)} />
           <GroupMetric
-            label="Variacao"
+            label="Variação"
             value={formatPercent(group.variation, 2)}
             tone={group.variation >= 0 ? "positive" : "negative"}
           />
@@ -132,14 +133,14 @@ export function AssetClassGroup({
             <TableRow>
               <TableHead>Ativo</TableHead>
               <TableHead className="text-right">Quant.</TableHead>
-              <TableHead className="text-right">Preco Medio</TableHead>
-              <TableHead className="text-right">Preco Atual</TableHead>
-              <TableHead className="text-right">Variacao</TableHead>
+              <TableHead className="text-right">Preço médio</TableHead>
+              <TableHead className="text-right">Preço atual</TableHead>
+              <TableHead className="text-right">Variação</TableHead>
               <TableHead className="text-right">Rentabilidade</TableHead>
               <TableHead className="text-right">Saldo</TableHead>
-              <TableHead className="text-right">% Carteira</TableHead>
-              <TableHead>Cotacao</TableHead>
-              <TableHead className="text-right">Opcoes</TableHead>
+              <TableHead className="text-right">% da carteira</TableHead>
+              <TableHead>Cotação</TableHead>
+              <TableHead className="text-right">Opções</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

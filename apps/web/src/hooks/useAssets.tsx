@@ -46,7 +46,7 @@ export function useAssets() {
 
   const addAsset = useMutation({
     mutationFn: async (asset: CreateAssetPayload) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       const data = await apiRequest<ApiAsset>("/assets", {
         method: "POST",
         token,
@@ -61,7 +61,7 @@ export function useAssets() {
 
   const addManualQuote = useMutation({
     mutationFn: async ({ assetId, ...quote }: AddManualQuotePayload) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       const data = await apiRequest<ApiQuote>(`/assets/${assetId}/quotes/manual`, {
         method: "POST",
         token,
@@ -80,7 +80,7 @@ export function useAssets() {
 
   const refreshAssetQuote = useMutation({
     mutationFn: async (assetId: string) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       return apiRequest<{
         assetId: string;
         status: "current" | "stale" | "manual" | "estimated" | "incomplete";
@@ -100,7 +100,7 @@ export function useAssets() {
 
   const lookupQuote = useMutation({
     mutationFn: async ({ assetId, date }: LookupQuotePayload) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       const params = new URLSearchParams();
       if (date) params.set("date", date);
       const suffix = params.toString() ? `?${params.toString()}` : "";

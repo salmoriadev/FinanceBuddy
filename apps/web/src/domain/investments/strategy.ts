@@ -77,7 +77,7 @@ const TYPE_KEYWORDS: Record<InvestmentType, string[]> = {
 
 class FixedIncomeStrategy implements InvestmentReturnStrategy {
   readonly type: InvestmentType = "fixed";
-  readonly label = "Fixed income";
+  readonly label = "Renda fixa";
 
   calculate(input: InvestmentReturnInput) {
     return buildSummary(this.type, this.label, input);
@@ -86,7 +86,7 @@ class FixedIncomeStrategy implements InvestmentReturnStrategy {
 
 class VariableIncomeStrategy implements InvestmentReturnStrategy {
   readonly type: InvestmentType = "variable";
-  readonly label = "Variable income";
+  readonly label = "Renda variável";
 
   calculate(input: InvestmentReturnInput) {
     return buildSummary(this.type, this.label, input);
@@ -95,7 +95,7 @@ class VariableIncomeStrategy implements InvestmentReturnStrategy {
 
 class CryptoStrategy implements InvestmentReturnStrategy {
   readonly type: InvestmentType = "crypto";
-  readonly label = "Crypto";
+  readonly label = "Criptomoedas";
 
   calculate(input: InvestmentReturnInput) {
     return buildSummary(this.type, this.label, input);
@@ -104,7 +104,7 @@ class CryptoStrategy implements InvestmentReturnStrategy {
 
 class CustomStrategy implements InvestmentReturnStrategy {
   readonly type: InvestmentType = "custom";
-  readonly label = "Custom";
+  readonly label = "Outros";
 
   calculate(input: InvestmentReturnInput) {
     return buildSummary(this.type, this.label, input);
@@ -165,7 +165,7 @@ export const calculatePortfolioSummary = (
     (sum, item) => sum + Number(item.current_value),
     0,
   );
-  return buildSummary("custom", "Portfolio", {
+  return buildSummary("custom", "Carteira", {
     investedAmount: invested,
     currentValue: current,
   });

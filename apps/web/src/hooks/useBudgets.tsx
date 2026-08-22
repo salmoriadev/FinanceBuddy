@@ -34,7 +34,7 @@ export function useBudgets() {
       month: number;
       year: number;
     }) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       return apiRequest<ApiBudget>("/budgets", {
         method: "POST",
         token,
@@ -59,7 +59,7 @@ export function useBudgets() {
       month?: number;
       year?: number;
     }) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       const body: Record<string, unknown> = {};
       if (payload.category_id !== undefined) body.categoryId = payload.category_id;
       if (payload.amount !== undefined) body.amount = payload.amount;
@@ -79,7 +79,7 @@ export function useBudgets() {
 
   const deleteBudget = useMutation({
     mutationFn: async (id: string) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       await apiRequest(`/budgets/${id}`, {
         method: "DELETE",
         token,

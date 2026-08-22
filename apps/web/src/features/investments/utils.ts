@@ -36,8 +36,44 @@ export const parseDecimal = (value: string) => {
 };
 
 export const getErrorMessage = (error: unknown, fallback: string) => {
-  if (error instanceof Error && error.message) return error.message;
-  if (typeof error === "string") return error;
+  const message =
+    error instanceof Error && error.message
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "";
+
+  const normalized = message.trim().toLowerCase();
+  if (normalized === "internal server error") {
+    return "Ocorreu um erro interno. Tente novamente.";
+  }
+  if (normalized === "not authenticated" || normalized === "unauthorized") {
+    return "Sua sessão expirou. Entre novamente.";
+  }
+  if (normalized === "forbidden" || normalized === "forbidden resource") {
+    return "Você não tem permissão para realizar esta ação.";
+  }
+  if (normalized === "asset not found") return "Ativo não encontrado.";
+  if (normalized === "portfolio not found") return "Carteira não encontrada.";
+  if (normalized === "dividend receipt is not pending") {
+    return "Este provento já foi processado.";
+  }
+  if (normalized === "sell quantity exceeds the available position") {
+    return "A quantidade da venda excede a posição disponível.";
+  }
+  if (normalized === "quantity is required for this transaction") {
+    return "Informe a quantidade para este evento.";
+  }
+  if (normalized === "total amount or quantity/unitprice is required") {
+    return "Informe o valor total ou a quantidade e o preço unitário.";
+  }
+  if (normalized === "quantity/amount per share or total amount is required") {
+    return "Informe a quantidade e o valor por cota ou o valor total.";
+  }
+  if (normalized === "month must use yyyy-mm") {
+    return "Selecione um mês válido.";
+  }
+
   return fallback;
 };
 

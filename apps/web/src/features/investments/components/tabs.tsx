@@ -47,11 +47,11 @@ export function AssetsTab({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Ticker</TableHead>
+                <TableHead>Código</TableHead>
                 <TableHead>Classe</TableHead>
                 <TableHead>Nome</TableHead>
-                <TableHead className="text-right">Cotacao</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Cotação</TableHead>
+                <TableHead>Situação</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -122,10 +122,10 @@ export function DividendsTab({
               <TableRow>
                 <TableHead>Ativo</TableHead>
                 <TableHead>Pagamento</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Situação</TableHead>
                 <TableHead className="text-right">Valor por cota</TableHead>
                 <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">Acao</TableHead>
+                <TableHead className="text-right">Ação</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -190,7 +190,7 @@ export function MonthlyReportTab({
     <div className="space-y-4">
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle>Relatorio mensal</CardTitle>
+          <CardTitle>Relatório mensal</CardTitle>
           <Input
             type="month"
             value={month}
@@ -204,7 +204,7 @@ export function MonthlyReportTab({
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : !report ? (
-            <EmptyPanel message="Selecione um mes para gerar o relatorio." />
+            <EmptyPanel message="Selecione um mês para gerar o relatório." />
           ) : (
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
@@ -230,7 +230,7 @@ export function MonthlyReportTab({
                 />
                 <ReportMetric
                   icon={PieChartIcon}
-                  label="Patrimonio"
+                  label="Patrimônio"
                   value={formatCurrency(report.portfolioValue)}
                 />
               </div>
@@ -244,8 +244,8 @@ export function MonthlyReportTab({
                   Dados pendentes
                 </div>
                 <div className="grid gap-3 text-sm text-muted-foreground md:grid-cols-3">
-                  <p>Cotacoes atrasadas: {report.pendingData.staleQuotes}</p>
-                  <p>Cotacoes ausentes: {report.pendingData.missingQuotes}</p>
+                  <p>Cotações atrasadas: {report.pendingData.staleQuotes}</p>
+                  <p>Cotações ausentes: {report.pendingData.missingQuotes}</p>
                   <p>Proventos pendentes: {report.pendingData.pendingDividends}</p>
                 </div>
               </div>

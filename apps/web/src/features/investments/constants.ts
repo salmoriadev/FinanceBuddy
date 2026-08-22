@@ -52,8 +52,8 @@ export const assetClassMeta: Record<
   }
 > = {
   stock: {
-    label: "Acoes",
-    shortLabel: "Acoes",
+    label: "Ações",
+    shortLabel: "Ações",
     color: "#6ee7a8",
     icon: BadgeDollarSign,
   },
@@ -134,7 +134,7 @@ export const quoteStatusLabels: Record<QuoteStatus, string> = {
   stale: "Atrasada",
   manual: "Manual",
   estimated: "Estimada",
-  incomplete: "Sem cotacao",
+  incomplete: "Sem cotação",
 };
 
 export const dividendStatusLabels: Record<PortfolioDividendReceipt["status"], string> = {

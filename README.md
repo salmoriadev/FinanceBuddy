@@ -4,7 +4,7 @@
 [![Security Checks](https://github.com/salmoriadev/FinanceBuddy/actions/workflows/security.yml/badge.svg)](https://github.com/salmoriadev/FinanceBuddy/actions/workflows/security.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-2ea44f.svg)](./LICENSE)
 
-FinanceBuddy is a full-stack personal finance app for recording day-to-day cash flow and following investments from the same account. It combines transactions, monthly budgets, savings goals, reports, and portfolio activity, with saved locale and display-currency preferences.
+FinanceBuddy is a full-stack personal finance app for recording day-to-day cash flow and following investments from the same account. It combines transactions, monthly budgets, savings goals, reports, and portfolio activity in a Brazilian Portuguese interface, with BRL and USD display-currency preferences.
 
 <p align="center">
   <img src="./apps/web/public/landing-ledger.png" alt="FinanceBuddy preview illustrating a personal finance summary and ledger" width="100%" />
@@ -33,7 +33,7 @@ The application is organized around the records people use to understand their f
 - **Savings goals:** track a target amount, the current amount, a deadline, and the progress toward the goal.
 - **Reports:** review yearly income, expenses, balance, savings rate, monthly trends, category distribution, and the change from the previous month.
 - **Investments:** register assets and portfolio transactions, refresh or enter quotes, inspect positions, record dividends, and view monthly portfolio summaries.
-- **Preferences:** save an English or Brazilian Portuguese locale and display monetary values in BRL or USD; supported dashboard copy, dates, and number formats follow that preference.
+- **Preferences:** display monetary values in BRL or USD while interface copy, dates, and number formats remain consistent with Brazilian Portuguese.
 
 Accounts are created inside FinanceBuddy. Registration also creates the user's default categories, so the dashboard is usable without seeding a shared database.
 

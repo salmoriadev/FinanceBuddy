@@ -133,9 +133,7 @@ export default function Auth() {
       if (error.status >= 500) {
         return t("auth.serviceUnavailable");
       }
-      if (error.message && error.message !== "API error") {
-        return error.message;
-      }
+      return t("auth.genericError");
     }
 
     const message = error.message?.toLowerCase() || "";

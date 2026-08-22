@@ -224,7 +224,7 @@ export default function Investments() {
         setResults(await searchAssets(query, toPersistedAssetClass(assetClass)));
       } catch (error) {
         setResults([]);
-        setError(getErrorMessage(error, "Nao foi possivel buscar ativos"));
+        setError(getErrorMessage(error, "Não foi possível buscar ativos"));
       } finally {
         setLoading(false);
       }
@@ -298,15 +298,15 @@ export default function Investments() {
   const handleRefreshQuotes = async () => {
     try {
       const result = await refreshQuotes.mutateAsync();
-      toast.success(`${result.updatedCount} cotacoes atualizadas`);
+      toast.success(`${result.updatedCount} cotações atualizadas`);
       if (result.staleCount > 0) {
-        toast.warning(`${result.staleCount} cotacoes continuam atrasadas`);
+        toast.warning(`${result.staleCount} cotações continuam atrasadas`);
       }
       if (result.incompleteCount > 0) {
-        toast.warning(`${result.incompleteCount} ativos seguem sem cotacao`);
+        toast.warning(`${result.incompleteCount} ativos seguem sem cotação`);
       }
     } catch (error) {
-      toast.error(getErrorMessage(error, "Nao foi possivel atualizar cotacoes"));
+      toast.error(getErrorMessage(error, "Não foi possível atualizar cotações"));
     }
   };
 
@@ -326,7 +326,7 @@ export default function Investments() {
     try {
       const result = await lookupQuote.mutateAsync({ assetId, date });
       if (!result.quote) {
-        toast.warning("Cotacao automatica nao encontrada para essa data");
+        toast.warning("Cotação automática não encontrada para essa data");
         return;
       }
       const price = result.quote.price;
@@ -341,20 +341,20 @@ export default function Investments() {
       });
       if (result.fallback) {
         toast.warning(
-          `Cotacao historica nao encontrada; usei ${
+          `Cotação histórica não encontrada; usei ${
             result.fallback === "cached"
-              ? "a ultima cotacao salva"
-              : "a cotacao mais recente"
+              ? "a última cotação salva"
+              : "a cotação mais recente"
           }: ${formatCurrency(price)}`,
         );
       } else {
-        toast.success(`Cotacao preenchida: ${formatCurrency(price)}`);
+        toast.success(`Cotação preenchida: ${formatCurrency(price)}`);
       }
     } catch (error) {
       toast.warning(
         getErrorMessage(
           error,
-          "Cotacao automatica indisponivel. Informe o preco manualmente.",
+          "Cotação automática indisponível. Informe o preço manualmente.",
         ),
       );
     } finally {
@@ -412,7 +412,7 @@ export default function Investments() {
       }
       toast.success(existing ? "Ativo selecionado" : "Ativo cadastrado");
     } catch (error) {
-      toast.error(getErrorMessage(error, "Nao foi possivel selecionar ativo"));
+      toast.error(getErrorMessage(error, "Não foi possível selecionar o ativo"));
     }
   };
 
@@ -457,7 +457,7 @@ export default function Investments() {
       setAssetDialogOpen(false);
       toast.success("Ativo cadastrado");
     } catch (error) {
-      toast.error(getErrorMessage(error, "Nao foi possivel cadastrar ativo"));
+      toast.error(getErrorMessage(error, "Não foi possível cadastrar o ativo"));
     }
   };
 
@@ -481,7 +481,7 @@ export default function Investments() {
       setTransactionDialogOpen(true);
       toast.success(existing ? "Ativo selecionado" : "Ativo cadastrado");
     } catch (error) {
-      toast.error(getErrorMessage(error, "Nao foi possivel cadastrar ativo"));
+      toast.error(getErrorMessage(error, "Não foi possível cadastrar o ativo"));
     }
   };
 
@@ -515,7 +515,7 @@ export default function Investments() {
       setDividendDialogOpen(false);
       toast.success("Provento cadastrado");
     } catch (error) {
-      toast.error(getErrorMessage(error, "Nao foi possivel cadastrar provento"));
+      toast.error(getErrorMessage(error, "Não foi possível cadastrar o provento"));
     }
   };
 
@@ -527,7 +527,7 @@ export default function Investments() {
       });
       toast.success("Provento marcado como recebido");
     } catch (error) {
-      toast.error(getErrorMessage(error, "Nao foi possivel receber provento"));
+      toast.error(getErrorMessage(error, "Não foi possível receber o provento"));
     }
   };
 
@@ -563,7 +563,7 @@ export default function Investments() {
       setTransactionDialogOpen(false);
       toast.success("Evento registrado");
     } catch (error) {
-      toast.error(getErrorMessage(error, "Nao foi possivel registrar evento"));
+      toast.error(getErrorMessage(error, "Não foi possível registrar o evento"));
     }
   };
 
@@ -571,10 +571,10 @@ export default function Investments() {
   const portfolioStatusMessage = portfoliosLoading
     ? "Carregando carteira"
     : portfoliosError
-      ? getErrorMessage(portfoliosError, "Nao foi possivel carregar carteira")
+      ? getErrorMessage(portfoliosError, "Não foi possível carregar a carteira")
       : defaultPortfolio
         ? null
-        : "Carteira indisponivel";
+        : "Carteira indisponível";
 
   return (
     <AppLayout>
@@ -599,7 +599,7 @@ export default function Investments() {
               ) : (
                 <RefreshCw className="mr-2 h-4 w-4" />
               )}
-              Atualizar cotacoes
+              Atualizar cotações
             </Button>
             <AssetDialog
               open={assetDialogOpen}
@@ -661,14 +661,14 @@ export default function Investments() {
             <TabsTrigger value="portfolio">Carteira</TabsTrigger>
             <TabsTrigger value="assets">Ativos</TabsTrigger>
             <TabsTrigger value="dividends">Proventos</TabsTrigger>
-            <TabsTrigger value="reports">Relatorios</TabsTrigger>
+            <TabsTrigger value="reports">Relatórios</TabsTrigger>
           </TabsList>
 
           <TabsContent value="portfolio" className="space-y-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
             icon={WalletCards}
-            label="Patrimonio total"
+            label="Patrimônio total"
             value={formatCurrency(portfolioSummary.totalValue)}
             detail={`Valor investido ${formatCurrency(portfolioSummary.totalCost)}`}
             accent={portfolioSummary.gain >= 0 ? "positive" : "negative"}
@@ -692,7 +692,7 @@ export default function Investments() {
             icon={TrendingUp}
             label="Rentabilidade"
             value={formatPercent(portfolioSummary.profitability, 2)}
-            detail={`Variacao ${formatPercent(portfolioSummary.variation, 2)}`}
+            detail={`Variação ${formatPercent(portfolioSummary.variation, 2)}`}
             accent={portfolioSummary.profitability >= 0 ? "positive" : "negative"}
           />
         </div>
@@ -700,12 +700,12 @@ export default function Investments() {
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.25fr_0.85fr]">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-3">
-              <CardTitle>Evolucao por classe</CardTitle>
+              <CardTitle>Evolução por classe</CardTitle>
               <Badge variant="outline">Carteira atual</Badge>
             </CardHeader>
             <CardContent>
               {barData.length === 0 ? (
-                <EmptyPanel message="Registre uma compra para visualizar a evolucao da carteira." />
+                <EmptyPanel message="Registre uma compra para visualizar a evolução da carteira." />
               ) : (
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
@@ -738,7 +738,7 @@ export default function Investments() {
             </CardHeader>
             <CardContent>
               {allocationData.length === 0 ? (
-                <EmptyPanel message="A alocacao aparece quando houver posicoes." />
+                <EmptyPanel message="A alocação aparece quando houver posições." />
               ) : (
                 <div className="grid min-h-80 grid-cols-1 items-center gap-4 md:grid-cols-[1fr_0.9fr] xl:grid-cols-1 2xl:grid-cols-[1fr_0.9fr]">
                   <div className="h-64">
@@ -791,9 +791,11 @@ export default function Investments() {
           <CardHeader>
             <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <CardTitle>Meus Ativos</CardTitle>
+                <CardTitle>Meus ativos</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  {positions.length} ativos em {groups.length} classes
+                  {positions.length}{" "}
+                  {positions.length === 1 ? "ativo" : "ativos"} em{" "}
+                  {groups.length} {groups.length === 1 ? "classe" : "classes"}
                 </p>
               </div>
               <Badge variant="secondary">

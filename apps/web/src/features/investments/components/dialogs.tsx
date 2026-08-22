@@ -98,7 +98,7 @@ function SearchResultsPanel({
     <div className="space-y-2">
       {hasFallback && (
         <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-700 dark:text-yellow-400">
-          Resultado de fallback. Confira ticker e preco antes de registrar.
+          Resultado alternativo. Confira o código e o preço antes de registrar.
         </div>
       )}
       <div className="max-h-52 space-y-2 overflow-auto rounded-lg border border-border p-2">
@@ -173,7 +173,7 @@ export function AssetDialog({
             <Input
               value={assetSearch}
               onChange={(event) => setAssetSearch(event.target.value.slice(0, 32))}
-              placeholder="Buscar ticker, nome ou cripto"
+              placeholder="Buscar código, nome ou criptomoeda"
             />
             <Button
               type="button"
@@ -208,7 +208,7 @@ export function AssetDialog({
                     ticker: event.target.value,
                   }))
                 }
-                placeholder="Ticker"
+                placeholder="Código do ativo"
                 required
               />
               <Input
@@ -270,7 +270,7 @@ export function AssetDialog({
               onChange={(event) =>
                 setAssetForm((current) => ({ ...current, notes: event.target.value }))
               }
-              placeholder="Notas"
+              placeholder="Observações"
             />
             <Button type="submit" disabled={isCreating}>
               {isCreating ? (
@@ -480,7 +480,7 @@ export function TransactionDialog({
                 })
               }
               inputMode="decimal"
-              placeholder="Preco unitario"
+              placeholder="Preço unitário"
             />
             <Input
               value={transactionForm.totalAmount}
@@ -530,7 +530,7 @@ export function TransactionDialog({
                 notes: event.target.value,
               }))
             }
-            placeholder="Notas"
+            placeholder="Observações"
           />
           <div className="flex flex-wrap items-center gap-3">
             <Button
@@ -548,7 +548,7 @@ export function TransactionDialog({
             {quoteLoading && (
               <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Buscando cotacao da data
+                Buscando cotação da data
               </span>
             )}
           </div>
@@ -717,7 +717,7 @@ export function DividendDialog({
                 notes: event.target.value,
               }))
             }
-            placeholder="Notas"
+            placeholder="Observações"
           />
           <Button type="submit" disabled={isSubmitting || !dividendForm.assetId}>
             {isSubmitting ? (
@@ -762,7 +762,7 @@ export function CalculationDialog({
             <div className="grid grid-cols-2 gap-3">
               <Detail label="Quantidade" value={formatNumber(position.quantity)} />
               <Detail
-                label="Preco medio"
+                label="Preço médio"
                 value={formatCurrency(position.averagePrice)}
               />
               <Detail label="Custo" value={formatCurrency(position.costBasis)} />
@@ -780,14 +780,14 @@ export function CalculationDialog({
               />
             </div>
             <div className="rounded-lg border border-border p-4">
-              <p className="font-medium">Cotacao</p>
+              <p className="font-medium">Cotação</p>
               <p className="text-muted-foreground">
-                Fonte: {position.audit.quoteSource ?? "sem fonte"} / Status:{" "}
+                Fonte: {position.audit.quoteSource ?? "sem fonte"} / Situação:{" "}
                 {quoteStatusLabels[position.audit.quoteStatus]}
               </p>
               {position.audit.quotedAt && (
                 <p className="text-muted-foreground">
-                  Horario: {formatDate(position.audit.quotedAt)}
+                  Horário: {formatDate(position.audit.quotedAt)}
                 </p>
               )}
             </div>

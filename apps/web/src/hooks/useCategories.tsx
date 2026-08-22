@@ -55,7 +55,7 @@ export function useCategories() {
       icon: string;
       type: TransactionType;
     }) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       return apiRequest<ApiCategory>("/categories", {
         method: "POST",
         token,

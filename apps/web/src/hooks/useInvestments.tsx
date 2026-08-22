@@ -84,7 +84,7 @@ export function useInvestments() {
 
   const addInvestment = useMutation({
     mutationFn: async (investment: CreateInvestmentPayload) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       return apiRequest<ApiInvestment>("/investments", {
         method: "POST",
         token,
@@ -98,7 +98,7 @@ export function useInvestments() {
 
   const updateInvestment = useMutation({
     mutationFn: async ({ id, ...updates }: UpdateInvestmentPayload) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       await apiRequest(`/investments/${id}`, {
         method: "PATCH",
         token,
@@ -112,7 +112,7 @@ export function useInvestments() {
 
   const deleteInvestment = useMutation({
     mutationFn: async (id: string) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       await apiRequest(`/investments/${id}`, {
         method: "DELETE",
         token,
@@ -125,7 +125,7 @@ export function useInvestments() {
 
   const refreshMarketData = useMutation({
     mutationFn: async (ids?: string[]) => {
-      if (!user || !token) throw new Error("Not authenticated");
+      if (!user || !token) throw new Error("Sessão expirada. Entre novamente.");
       return apiRequest<{
         updatedCount: number;
         updated: ApiInvestment[];
