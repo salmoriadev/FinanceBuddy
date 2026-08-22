@@ -7,6 +7,86 @@ import {
 
 const dec = (value: string | number) => new Prisma.Decimal(value);
 
+describe("PortfoliosRepository legacy investment compatibility", () => {
+  it("falls back to the base investment schema after a missing-column error", async () => {
+    const missingColumn = new Prisma.PrismaClientKnownRequestError(
+      "The column investments.asset_symbol does not exist",
+      {
+        code: "P2022",
+        clientVersion: "5.22.0",
+        meta: { modelName: "Investment", column: "investments.asset_symbol" },
+      },
+    );
+    const baseInvestment = {
+      id: "investment-1",
+      userId: "user-1",
+      name: "Reserva",
+      category: "Renda fixa",
+      investedAmount: dec(1000),
+      currentValue: dec(1050),
+      startDate: new Date("2026-01-01T00:00:00.000Z"),
+      notes: null,
+      createdAt: new Date("2026-01-01T10:00:00.000Z"),
+    };
+    const findMany = jest
+      .fn()
+      .mockRejectedValueOnce(missingColumn)
+      .mockResolvedValue([baseInvestment]);
+    const prisma = {
+      investment: { findMany },
+    } as unknown as PrismaService;
+    const repository = new PortfoliosRepository(prisma);
+
+    await expect(repository.findLegacyInvestments("user-1")).resolves.toEqual([
+      {
+        ...baseInvestment,
+        assetSymbol: null,
+        quantity: null,
+        averagePrice: null,
+        marketPrice: null,
+        marketValue: null,
+        quoteProvider: null,
+        quoteCurrency: null,
+        quoteUpdatedAt: null,
+      },
+    ]);
+    await repository.findLegacyInvestments("user-1");
+
+    expect(findMany).toHaveBeenNthCalledWith(1, {
+      where: { userId: "user-1" },
+      orderBy: { createdAt: "asc" },
+    });
+    expect(findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: { userId: "user-1" },
+        select: expect.objectContaining({
+          id: true,
+          investedAmount: true,
+          currentValue: true,
+        }),
+      }),
+    );
+    expect(findMany).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({ select: expect.any(Object) }),
+    );
+  });
+
+  it("does not hide non-schema database failures", async () => {
+    const failure = new Prisma.PrismaClientKnownRequestError(
+      "Database constraint failed",
+      { code: "P2004", clientVersion: "5.22.0" },
+    );
+    const prisma = {
+      investment: { findMany: jest.fn().mockRejectedValue(failure) },
+    } as unknown as PrismaService;
+    const repository = new PortfoliosRepository(prisma);
+
+    await expect(repository.findLegacyInvestments("user-1")).rejects.toBe(failure);
+  });
+});
+
 const pendingReceipt = {
   id: "receipt-1",
   userId: "user-1",

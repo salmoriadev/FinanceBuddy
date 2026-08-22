@@ -65,6 +65,8 @@ const portfolioTransactionQuantityChange = (
 
 @Injectable()
 export class PortfoliosRepository {
+  private hasExtendedLegacyInvestmentSchema: boolean | null = null;
+
   constructor(private readonly prisma: PrismaService) {}
 
   findAllByUser(userId: string) {
@@ -106,11 +108,59 @@ export class PortfoliosRepository {
     return this.create(userId, { name: "Carteira principal", isDefault: true });
   }
 
-  findLegacyInvestments(userId: string) {
-    return this.prisma.investment.findMany({
+  async findLegacyInvestments(userId: string) {
+    if (this.hasExtendedLegacyInvestmentSchema === false) {
+      return this.findBaseLegacyInvestments(userId);
+    }
+
+    try {
+      const investments = await this.prisma.investment.findMany({
+        where: { userId },
+        orderBy: { createdAt: "asc" },
+      });
+      this.hasExtendedLegacyInvestmentSchema = true;
+      return investments;
+    } catch (error) {
+      if (
+        !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+        error.code !== "P2022"
+      ) {
+        throw error;
+      }
+
+      this.hasExtendedLegacyInvestmentSchema = false;
+      return this.findBaseLegacyInvestments(userId);
+    }
+  }
+
+  private async findBaseLegacyInvestments(userId: string) {
+    const investments = await this.prisma.investment.findMany({
       where: { userId },
       orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        userId: true,
+        name: true,
+        category: true,
+        investedAmount: true,
+        currentValue: true,
+        startDate: true,
+        notes: true,
+        createdAt: true,
+      },
     });
+
+    return investments.map((investment) => ({
+      ...investment,
+      assetSymbol: null,
+      quantity: null,
+      averagePrice: null,
+      marketPrice: null,
+      marketValue: null,
+      quoteProvider: null,
+      quoteCurrency: null,
+      quoteUpdatedAt: null,
+    }));
   }
 
   findLegacyMigration(userId: string, legacyInvestmentId: string) {
