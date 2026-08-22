@@ -30,6 +30,27 @@ describe("production environment validation", () => {
     expect(validateEnvironment(environment)).toBe(environment);
   });
 
+  it("accepts high-entropy hexadecimal secrets", () => {
+    const environment = {
+      ...productionEnvironment(),
+      AUTH_JWT_SECRET:
+        "7f4c2a91e63bd5080ac957e41d2fb6389c05a74e186d3f29b80ce1645a97d23f",
+      PASSWORD_PEPPER:
+        "d91a06f4c2e7853b8a40fd169c32e7b5f08a26dc71e493b6c5f4d820ab739e16",
+    };
+
+    expect(validateEnvironment(environment)).toBe(environment);
+  });
+
+  it("rejects low-entropy hexadecimal secrets", () => {
+    expect(() =>
+      validateEnvironment({
+        ...productionEnvironment(),
+        AUTH_JWT_SECRET: "a".repeat(64),
+      }),
+    ).toThrow("AUTH_JWT_SECRET");
+  });
+
   it.each([
     ["public JWT placeholder", { AUTH_JWT_SECRET: "change-me" }, "AUTH_JWT_SECRET"],
     ["missing issuer", { AUTH_JWT_ISSUER: "" }, "AUTH_JWT_ISSUER"],

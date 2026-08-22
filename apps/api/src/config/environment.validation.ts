@@ -47,11 +47,12 @@ const assertStrongSecret = (value: string, key: string, minLength: number) => {
   const characterClasses = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter(
     (pattern) => pattern.test(value),
   ).length;
+  const isHexEncoded = /^[a-f0-9]+$/i.test(value);
   const uniqueCharacters = new Set(value).size;
   if (
     value.length < minLength ||
     PLACEHOLDER_PATTERN.test(value) ||
-    characterClasses < 3 ||
+    (!isHexEncoded && characterClasses < 3) ||
     uniqueCharacters < 12
   ) {
     throw new Error(`${key} must be a strong, unique secret`);
