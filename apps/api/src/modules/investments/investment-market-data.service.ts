@@ -73,13 +73,22 @@ type BrapiHistoricalPrice = {
   adjustedClose?: number | string;
 };
 
-type BrapiCryptoResult = {
-  coin?: string;
-  coinName?: string;
-  currency?: string;
-  regularMarketPrice?: number | string;
-  regularMarketChangePercent?: number | string;
-  regularMarketTime?: string;
+type CoinGeckoSearchCoin = {
+  id?: string;
+  name?: string;
+  symbol?: string;
+  market_cap_rank?: number | null;
+  thumb?: string;
+};
+
+type CoinGeckoSimplePrice = {
+  brl?: number;
+  brl_24h_change?: number | null;
+  last_updated_at?: number;
+};
+
+type CoinGeckoMarketChart = {
+  prices?: [number, number][];
 };
 
 const MOCK_ASSETS: InvestmentAssetSearchResult[] = [
@@ -159,6 +168,9 @@ const parseHistoricalDate = (value: number | string | undefined) => {
 };
 
 const isCryptoClass = (assetClass?: string | null) => assetClass === "crypto";
+const isManualQuoteClass = (assetClass?: string | null) =>
+  assetClass === "fixed_income" ||
+  assetClass === "custom";
 const CRYPTO_SYMBOLS = new Set(["BTC", "ETH", "SOL", "USDT", "BNB", "XRP", "ADA"]);
 const isCryptoSymbol = (symbol: string) => CRYPTO_SYMBOLS.has(symbol);
 
@@ -196,12 +208,14 @@ const mapAssetClassToBrapiListType = (assetClass?: string) => {
 export class InvestmentMarketDataService implements MarketDataProvider {
   private readonly logger = new Logger(InvestmentMarketDataService.name);
   private readonly baseUrl = "https://brapi.dev";
+  private readonly coinGeckoBaseUrl = "https://api.coingecko.com/api/v3";
 
   constructor(private readonly configService: ConfigService) {}
 
   async searchAssets(query: string, type?: string) {
     const search = query.trim();
     if (search.length < 2) return [];
+    if (isManualQuoteClass(type)) return [];
 
     try {
       if (isCryptoClass(type)) {
@@ -255,6 +269,7 @@ export class InvestmentMarketDataService implements MarketDataProvider {
   ) {
     const normalized = normalizeSymbol(symbol);
     if (!normalized) return null;
+    if (isManualQuoteClass(assetClass)) return null;
 
     try {
       if (isCryptoClass(assetClass) || (!assetClass && isCryptoSymbol(normalized))) {
@@ -275,6 +290,7 @@ export class InvestmentMarketDataService implements MarketDataProvider {
   ) {
     const normalized = normalizeSymbol(symbol);
     if (!normalized) return null;
+    if (isManualQuoteClass(assetClass)) return null;
 
     const targetDate = endOfUtcDay(date);
     if (isSameUtcDay(targetDate, new Date()) || targetDate > new Date()) {
@@ -283,7 +299,7 @@ export class InvestmentMarketDataService implements MarketDataProvider {
 
     try {
       if (isCryptoClass(assetClass) || (!assetClass && isCryptoSymbol(normalized))) {
-        return this.getCryptoQuote(normalized);
+        return this.getCryptoHistoricalQuote(normalized, targetDate);
       }
       return this.getB3HistoricalQuote(normalized, targetDate);
     } catch (error) {
@@ -325,20 +341,23 @@ export class InvestmentMarketDataService implements MarketDataProvider {
   }
 
   private async searchCryptoAssets(query: string) {
-    const params = new URLSearchParams({ search: query });
-    this.addTokenParam(params);
-    const payload = await this.fetchJson<{ coins?: string[] }>(
-      `/api/v2/crypto/available?${params.toString()}`,
+    const params = new URLSearchParams({ query });
+    const payload = await this.fetchCoinGeckoJson<{ coins?: CoinGeckoSearchCoin[] }>(
+      `/search?${params.toString()}`,
     );
 
-    return (payload.coins ?? []).slice(0, 12).map((coin) => ({
-      symbol: normalizeSymbol(coin),
-      name: normalizeSymbol(coin),
-      type: "crypto",
-      exchange: "crypto",
-      currency: "BRL",
-      provider: "brapi",
-    }));
+    return (payload.coins ?? [])
+      .filter((coin) => Boolean(coin.symbol && coin.name))
+      .slice(0, 12)
+      .map((coin) => ({
+        symbol: normalizeSymbol(coin.symbol ?? ""),
+        name: coin.name ?? normalizeSymbol(coin.symbol ?? ""),
+        type: "crypto",
+        exchange: "crypto",
+        currency: "BRL",
+        provider: "coingecko",
+        logoUrl: coin.thumb ?? null,
+      }));
   }
 
   private async getB3Quote(symbol: string) {
@@ -415,29 +434,83 @@ export class InvestmentMarketDataService implements MarketDataProvider {
 
   private async getCryptoQuote(symbol: string) {
     const params = new URLSearchParams({
-      coin: symbol,
-      currency: "BRL",
+      symbols: symbol.toLowerCase(),
+      vs_currencies: "brl",
+      include_24hr_change: "true",
+      include_last_updated_at: "true",
     });
-    this.addTokenParam(params);
-    const payload = await this.fetchJson<{ coins?: BrapiCryptoResult[] }>(
-      `/api/v2/crypto?${params.toString()}`,
+    const payload = await this.fetchCoinGeckoJson<Record<string, CoinGeckoSimplePrice>>(
+      `/simple/price?${params.toString()}`,
     );
-    const item = payload.coins?.find(
-      (result) => normalizeSymbol(result.coin ?? "") === symbol,
-    );
-    const price = toFiniteNumber(item?.regularMarketPrice);
+    const item = payload[symbol.toLowerCase()];
+    const price = toFiniteNumber(item?.brl);
     if (!item || price === null) return null;
 
     return {
       symbol,
-      name: item.coinName || symbol,
+      name: symbol,
       price,
-      currency: item.currency || "BRL",
-      provider: "brapi",
+      currency: "BRL",
+      provider: "coingecko",
       exchange: "crypto",
-      updatedAt: item.regularMarketTime ? new Date(item.regularMarketTime) : new Date(),
-      changePercent: toFiniteNumber(item.regularMarketChangePercent),
+      updatedAt: item.last_updated_at
+        ? new Date(item.last_updated_at * 1000)
+        : new Date(),
+      changePercent: toFiniteNumber(item.brl_24h_change),
     };
+  }
+
+  private async getCryptoHistoricalQuote(symbol: string, targetDate: Date) {
+    const coin = await this.resolveCoinGeckoCoin(symbol);
+    if (!coin?.id) return null;
+
+    const startDate = startOfUtcDay(
+      new Date(targetDate.getTime() - 7 * 24 * 60 * 60 * 1000),
+    );
+    const params = new URLSearchParams({
+      vs_currency: "brl",
+      from: String(toUnixSeconds(startDate)),
+      to: String(toUnixSeconds(targetDate)),
+      precision: "full",
+    });
+    const payload = await this.fetchCoinGeckoJson<CoinGeckoMarketChart>(
+      `/coins/${encodeURIComponent(coin.id)}/market_chart/range?${params.toString()}`,
+    );
+    const targetTime = targetDate.getTime();
+    const closest = (payload.prices ?? [])
+      .map(([timestamp, price]) => ({
+        quotedAt: new Date(timestamp),
+        price: toFiniteNumber(price),
+      }))
+      .filter(
+        (entry): entry is { quotedAt: Date; price: number } =>
+          entry.price !== null &&
+          !Number.isNaN(entry.quotedAt.getTime()) &&
+          entry.quotedAt.getTime() <= targetTime,
+      )
+      .sort((left, right) => right.quotedAt.getTime() - left.quotedAt.getTime())[0];
+    if (!closest) return null;
+
+    return {
+      symbol,
+      name: coin.name || symbol,
+      price: closest.price,
+      currency: "BRL",
+      provider: "coingecko",
+      exchange: "crypto",
+      updatedAt: closest.quotedAt,
+      changePercent: null,
+    };
+  }
+
+  private async resolveCoinGeckoCoin(symbol: string) {
+    const params = new URLSearchParams({ query: symbol });
+    const payload = await this.fetchCoinGeckoJson<{ coins?: CoinGeckoSearchCoin[] }>(
+      `/search?${params.toString()}`,
+    );
+    return (payload.coins ?? []).find(
+      (coin) => normalizeSymbol(coin.symbol ?? "") === symbol,
+    );
   }
 
   private getMockQuote(symbol: string): InvestmentQuote {
@@ -462,6 +535,19 @@ export class InvestmentMarketDataService implements MarketDataProvider {
 
     if (!response.ok) {
       throw new Error(`Brapi returned ${response.status}`);
+    }
+
+    return response.json() as Promise<T>;
+  }
+
+  private async fetchCoinGeckoJson<T>(path: string): Promise<T> {
+    const response = await fetch(`${this.coinGeckoBaseUrl}${path}`, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(8_000),
+    });
+
+    if (!response.ok) {
+      throw new Error(`CoinGecko returned ${response.status}`);
     }
 
     return response.json() as Promise<T>;

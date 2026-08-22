@@ -50,13 +50,15 @@ flowchart LR
   Prisma[Prisma Client]
   DB[(Supabase PostgreSQL)]
   Brapi[brapi.dev]
+  CoinGecko[CoinGecko]
 
   Browser --> Web
   Web -->|JSON over /api/v1| API
   API --> Domain
   Domain --> Prisma
   Prisma --> DB
-  Domain -. optional quotes .-> Brapi
+  Domain -. B3 quotes .-> Brapi
+  Domain -. crypto quotes .-> CoinGecko
 ```
 
 The web app never talks directly to PostgreSQL. Supabase provides the managed PostgreSQL instance, while registration, login, authorization, business rules, reports, and persistence remain in the NestJS API; the project does not use Supabase Auth in the browser.
@@ -193,7 +195,9 @@ The pull-request workflow runs the same test, lint, typecheck, and build gate. A
 
 ## Market data
 
-Investment quotes and asset search use [brapi.dev](https://brapi.dev/) through the API. `BRAPI_TOKEN` is optional for endpoints supported without a token.
+Brazilian stocks, FIIs, ETFs, and BDRs use [brapi.dev](https://brapi.dev/) for search and quotes. Cryptocurrency search and prices use the public [CoinGecko API](https://docs.coingecko.com/reference/introduction). `BRAPI_TOKEN` is optional for Brapi endpoints supported without a token.
+
+The interface distinguishes generic, BRL-denominated, and USD-denominated fixed income while storing currency separately from asset class. Their prices remain manual because the value depends on product-specific terms that a ticker quote cannot represent reliably.
 
 When `MARKET_DATA_ENABLE_MOCK_FALLBACK=true`, an unavailable market-data request may return deterministic mock quotes. Fallback responses identify their provider as `mock`, and quote records created from them use the `estimated` status; they are suitable for local development, not real portfolio decisions. Production startup requires this setting to be explicitly `false`.
 

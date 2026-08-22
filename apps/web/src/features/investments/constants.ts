@@ -25,6 +25,23 @@ export const ASSET_CLASSES: AssetClass[] = [
   "custom",
 ];
 
+export type AssetClassOption =
+  | AssetClass
+  | "fixed_income_brl"
+  | "fixed_income_usd";
+
+export const ASSET_CLASS_OPTIONS: AssetClassOption[] = [
+  "stock",
+  "fii",
+  "etf",
+  "bdr",
+  "crypto",
+  "fixed_income",
+  "fixed_income_brl",
+  "fixed_income_usd",
+  "custom",
+];
+
 export const assetClassMeta: Record<
   AssetClass,
   {
@@ -65,8 +82,8 @@ export const assetClassMeta: Record<
     icon: Bitcoin,
   },
   fixed_income: {
-    label: "Renda Fixa",
-    shortLabel: "Renda Fixa",
+    label: "Renda fixa",
+    shortLabel: "Renda fixa",
     color: "#60a5fa",
     icon: Landmark,
   },
@@ -75,6 +92,25 @@ export const assetClassMeta: Record<
     shortLabel: "Outros",
     color: "#a78bfa",
     icon: WalletCards,
+  },
+};
+
+export const assetClassOptionMeta: Record<
+  AssetClassOption,
+  (typeof assetClassMeta)[AssetClass]
+> = {
+  ...assetClassMeta,
+  fixed_income_brl: {
+    label: "Renda fixa em real",
+    shortLabel: "Renda fixa (R$)",
+    color: "#38bdf8",
+    icon: Landmark,
+  },
+  fixed_income_usd: {
+    label: "Renda fixa em dólar",
+    shortLabel: "Renda fixa (US$)",
+    color: "#818cf8",
+    icon: Landmark,
   },
 };
 

@@ -1,9 +1,17 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  assetMatchesClassOption,
+  classOptionForAsset,
+  currencyForAssetClass,
   currentMonth,
   parseDecimal,
   today,
+  toPersistedAssetClass,
 } from "@/features/investments/utils";
+import {
+  ASSET_CLASS_OPTIONS,
+  assetClassOptionMeta,
+} from "@/features/investments/constants";
 import { toPlainDecimalString } from "@/lib/number";
 
 describe("investment decimal parsing", () => {
@@ -60,6 +68,43 @@ describe("investment decimal parsing", () => {
       expect(parseDecimal(input)).toBe(0);
     },
   );
+});
+
+describe("investment asset classes", () => {
+  it("exposes ETF, crypto and all fixed-income choices", () => {
+    expect(ASSET_CLASS_OPTIONS).toEqual(
+      expect.arrayContaining([
+        "etf",
+        "crypto",
+        "fixed_income",
+        "fixed_income_brl",
+        "fixed_income_usd",
+      ]),
+    );
+    expect(assetClassOptionMeta.fixed_income.label).toBe("Renda fixa");
+    expect(assetClassOptionMeta.fixed_income_brl.label).toBe("Renda fixa em real");
+    expect(assetClassOptionMeta.fixed_income_usd.label).toBe("Renda fixa em dólar");
+  });
+
+  it("sets the currency implied by fixed-income classes", () => {
+    expect(currencyForAssetClass("fixed_income_brl", "USD")).toBe("BRL");
+    expect(currencyForAssetClass("fixed_income_usd", "BRL")).toBe("USD");
+    expect(currencyForAssetClass("etf", "USD")).toBe("USD");
+    expect(toPersistedAssetClass("fixed_income_brl")).toBe("fixed_income");
+    expect(toPersistedAssetClass("fixed_income_usd")).toBe("fixed_income");
+  });
+
+  it("filters fixed income by its persisted currency", () => {
+    const brlAsset = { class: "fixed_income" as const, currency: "BRL" };
+    const usdAsset = { class: "fixed_income" as const, currency: "usd" };
+
+    expect(assetMatchesClassOption(brlAsset, "fixed_income_brl")).toBe(true);
+    expect(assetMatchesClassOption(brlAsset, "fixed_income_usd")).toBe(false);
+    expect(assetMatchesClassOption(usdAsset, "fixed_income_usd")).toBe(true);
+    expect(assetMatchesClassOption(usdAsset, "fixed_income")).toBe(true);
+    expect(classOptionForAsset(brlAsset)).toBe("fixed_income_brl");
+    expect(classOptionForAsset(usdAsset)).toBe("fixed_income_usd");
+  });
 });
 
 describe("investment local calendar defaults", () => {

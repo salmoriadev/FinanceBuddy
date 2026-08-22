@@ -39,7 +39,6 @@ import {
 } from "@/hooks/usePortfolios";
 import type {
   Asset,
-  AssetClass,
   InvestmentAssetSearchResult,
   PortfolioDividendReceipt,
   PortfolioPosition,
@@ -59,14 +58,17 @@ import {
   TransactionDialog,
 } from "@/features/investments/components";
 import { assetClassMeta, pricedTransactionTypes } from "@/features/investments/constants";
+import type { AssetClassOption } from "@/features/investments/constants";
 import type { AssetFormState, DividendFormState, TransactionFormState } from "@/features/investments/types";
 import {
   buildGroups,
+  classOptionForAsset,
   currentMonth,
   getErrorMessage,
   parseDecimal,
   today,
   toAssetClass,
+  toPersistedAssetClass,
 } from "@/features/investments/utils";
 
 export default function Investments() {
@@ -109,7 +111,7 @@ export default function Investments() {
   const [assetSearchLoading, setAssetSearchLoading] = useState(false);
   const [assetSearchError, setAssetSearchError] = useState<string | null>(null);
   const [transactionAssetClass, setTransactionAssetClass] =
-    useState<AssetClass>("stock");
+    useState<AssetClassOption>("stock");
   const [transactionAssetSearch, setTransactionAssetSearch] = useState("");
   const [transactionAssetSearchLocked, setTransactionAssetSearchLocked] =
     useState(false);
@@ -125,7 +127,7 @@ export default function Investments() {
   const [assetForm, setAssetForm] = useState<AssetFormState>({
     ticker: "",
     name: "",
-    class: "stock" as AssetClass,
+    class: "stock",
     sector: "",
     currency: "BRL",
     notes: "",
@@ -206,7 +208,7 @@ export default function Investments() {
   const runAssetSearch = useCallback(
     async (
       query: string,
-      assetClass: AssetClass,
+      assetClass: AssetClassOption,
       setResults: (results: InvestmentAssetSearchResult[]) => void,
       setLoading: (loading: boolean) => void,
       setError: (message: string | null) => void,
@@ -219,7 +221,7 @@ export default function Investments() {
       setLoading(true);
       setError(null);
       try {
-        setResults(await searchAssets(query, assetClass));
+        setResults(await searchAssets(query, toPersistedAssetClass(assetClass)));
       } catch (error) {
         setResults([]);
         setError(getErrorMessage(error, "Nao foi possivel buscar ativos"));
@@ -374,7 +376,7 @@ export default function Investments() {
   const handleSelectTransactionAsset = async (asset: Asset) => {
     setTransactionAssetSearch(`${asset.ticker} - ${asset.name}`);
     setTransactionAssetSearchLocked(true);
-    setTransactionAssetClass(asset.class);
+    setTransactionAssetClass(classOptionForAsset(asset));
     setTransactionAssetResults([]);
     setTransactionAssetSearchError(null);
     setTransactionForm((current) => ({ ...current, assetId: asset.id }));
@@ -401,7 +403,7 @@ export default function Investments() {
 
       setTransactionAssetSearch(`${asset.ticker} - ${asset.name}`);
       setTransactionAssetSearchLocked(true);
-      setTransactionAssetClass(asset.class);
+      setTransactionAssetClass(classOptionForAsset(asset));
       setTransactionAssetResults([]);
       setTransactionAssetSearchError(null);
       setTransactionForm((current) => ({ ...current, assetId: asset.id }));
@@ -438,7 +440,7 @@ export default function Investments() {
       const asset = await addAsset.mutateAsync({
         ticker: assetForm.ticker,
         name: assetForm.name,
-        class: assetForm.class,
+        class: toPersistedAssetClass(assetForm.class),
         sector: assetForm.sector || null,
         currency: assetForm.currency || "BRL",
         notes: assetForm.notes || null,

@@ -22,7 +22,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { Asset, PortfolioDividendReceipt, PortfolioMonthlyReport } from "@/types/finance";
-import { assetClassMeta, dividendStatusLabels } from "../constants";
+import { assetClassOptionMeta, dividendStatusLabels } from "../constants";
+import { classOptionForAsset } from "../utils";
 import { EmptyPanel, QuoteBadge } from "./shared";
 
 export function AssetsTab({
@@ -57,7 +58,9 @@ export function AssetsTab({
               {assets.map((asset) => (
                 <TableRow key={asset.id}>
                   <TableCell className="font-semibold">{asset.ticker}</TableCell>
-                  <TableCell>{assetClassMeta[asset.class].label}</TableCell>
+                  <TableCell>
+                    {assetClassOptionMeta[classOptionForAsset(asset)].label}
+                  </TableCell>
                   <TableCell>{asset.name}</TableCell>
                   <TableCell className="text-right">
                     {asset.latest_quote

@@ -22,7 +22,8 @@ flowchart LR
   Auth --> Prisma[Prisma client]
   Domain --> Prisma
   Prisma --> DB[(Supabase PostgreSQL)]
-  Domain -. optional market data .-> Brapi[brapi.dev]
+  Domain -. B3 market data .-> Brapi[brapi.dev]
+  Domain -. crypto market data .-> CoinGecko[CoinGecko]
 ```
 
 Key boundaries:
@@ -30,7 +31,7 @@ Key boundaries:
 - The browser is untrusted. It does not receive database credentials or connect directly to Supabase tables.
 - The API is the authorization boundary for financial resources and administrative security events.
 - PostgreSQL stores credentials, session state, user-owned finance records, portfolio events, and audit/security metadata.
-- brapi.dev is an external data source. Quote data is treated as provider data, not an authorization source.
+- brapi.dev and CoinGecko are external data sources. Quote data is treated as provider data, not an authorization source.
 - CI dependencies and npm packages are part of the software supply-chain boundary.
 
 ## Primary threats
@@ -86,7 +87,7 @@ Automated checks provide regression evidence for the committed source tree. They
 - **No MFA:** Password and session controls are implemented, but a compromised primary credential is not protected by a second factor.
 - **Live-browser compromise:** Keeping access tokens in memory avoids persistent browser storage, but an active XSS compromise could still access application state or make authenticated requests.
 - **Process-local rate limits:** The repository does not configure a distributed throttling store. Multi-instance deployments must verify that aggregate limits remain effective.
-- **External market data:** Availability, correctness, and rate limits of brapi.dev remain external dependencies. Mock fallback data remains clearly identified and production startup requires it to be disabled.
+- **External market data:** Availability, correctness, and rate limits of brapi.dev and CoinGecko remain external dependencies. Mock fallback data remains clearly identified and production startup requires it to be disabled.
 - **Deployment-dependent cookies and origins:** Correct `SameSite`, HTTPS, CORS, and trusted-proxy behavior depends on the final web/API topology.
 - **Operational security events:** Events are persisted and reviewable, but the repository does not supply a production alerting pipeline, retention job, or incident-response integration.
 - **Supply-chain snapshots:** Versioned actions and a clean npm audit reduce known risk at review time; new advisories and compromised upstreams remain possible.

@@ -88,6 +88,65 @@ describe("InvestmentMarketDataService", () => {
     expect(fetchMock.mock.calls[0][0]).toContain("type=fund");
   });
 
+  it("returns ETF results when class filter is etf", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        stocks: [{ stock: "IVVB11", name: "iShares S&P 500 ETF", type: "fund" }],
+      }),
+    } as Response);
+
+    await expect(service.searchAssets("IVVB11", "etf")).resolves.toEqual([
+      expect.objectContaining({
+        symbol: "IVVB11",
+        type: "etf",
+        provider: "brapi",
+      }),
+    ]);
+    expect(fetchMock.mock.calls[0][0]).toContain("type=fund");
+  });
+
+  it("searches cryptocurrencies through the keyless CoinGecko API", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        coins: [
+          {
+            id: "bitcoin",
+            name: "Bitcoin",
+            symbol: "btc",
+            market_cap_rank: 1,
+            thumb: "https://coin-images.example/bitcoin.png",
+          },
+        ],
+      }),
+    } as Response);
+
+    await expect(service.searchAssets("bitcoin", "crypto")).resolves.toEqual([
+      {
+        symbol: "BTC",
+        name: "Bitcoin",
+        type: "crypto",
+        exchange: "crypto",
+        currency: "BRL",
+        provider: "coingecko",
+        logoUrl: "https://coin-images.example/bitcoin.png",
+      },
+    ]);
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      "https://api.coingecko.com/api/v3/search?query=bitcoin",
+    );
+  });
+
+  it.each(["fixed_income", "custom"])(
+    "keeps %s assets on manual quotes",
+    async (assetClass) => {
+      await expect(service.searchAssets("treasury", assetClass)).resolves.toEqual([]);
+      await expect(service.getQuote("TREASURY", assetClass)).resolves.toBeNull();
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
   it("maps Brapi quotes to internal quote payloads", async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
@@ -117,6 +176,35 @@ describe("InvestmentMarketDataService", () => {
       exchange: "B3",
       updatedAt: new Date("2026-05-26T12:00:00.000Z"),
       changePercent: 1.2,
+    });
+  });
+
+  it("maps CoinGecko prices without requiring a Brapi token", async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        btc: {
+          brl: 396_017,
+          brl_24h_change: -0.99,
+          last_updated_at: 1_787_412_930,
+        },
+      }),
+    } as Response);
+
+    const quote = await service.getQuote("btc", "crypto");
+
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      "https://api.coingecko.com/api/v3/simple/price?",
+    );
+    expect(quote).toEqual({
+      symbol: "BTC",
+      name: "BTC",
+      price: 396_017,
+      currency: "BRL",
+      provider: "coingecko",
+      exchange: "crypto",
+      updatedAt: new Date(1_787_412_930_000),
+      changePercent: -0.99,
     });
   });
 
@@ -155,6 +243,46 @@ describe("InvestmentMarketDataService", () => {
       provider: "brapi",
       exchange: "B3",
       updatedAt: new Date("2026-05-20T00:00:00.000Z"),
+      changePercent: null,
+    });
+  });
+
+  it("uses the closest CoinGecko price for historical crypto transactions", async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          coins: [{ id: "bitcoin", name: "Bitcoin", symbol: "btc" }],
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          prices: [
+            [Date.parse("2026-05-20T10:00:00.000Z"), 350_000],
+            [Date.parse("2026-05-20T20:00:00.000Z"), 352_500],
+          ],
+        }),
+      } as Response);
+
+    const quote = await service.getQuoteAt(
+      "btc",
+      "crypto",
+      new Date("2026-05-20T12:00:00.000Z"),
+    );
+
+    expect(fetchMock.mock.calls[0][0]).toContain("/search?query=BTC");
+    expect(fetchMock.mock.calls[1][0]).toContain(
+      "/coins/bitcoin/market_chart/range?",
+    );
+    expect(quote).toEqual({
+      symbol: "BTC",
+      name: "Bitcoin",
+      price: 352_500,
+      currency: "BRL",
+      provider: "coingecko",
+      exchange: "crypto",
+      updatedAt: new Date("2026-05-20T20:00:00.000Z"),
       changePercent: null,
     });
   });

@@ -28,19 +28,25 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type {
   Asset,
-  AssetClass,
   InvestmentAssetSearchResult,
   PortfolioPosition,
   PortfolioTransactionType,
 } from "@/types/finance";
 import {
-  ASSET_CLASSES,
+  ASSET_CLASS_OPTIONS,
   assetClassMeta,
+  assetClassOptionMeta,
   quoteStatusLabels,
   transactionLabels,
 } from "../constants";
+import type { AssetClassOption } from "../constants";
 import type { AssetFormState, DividendFormState, TransactionFormState } from "../types";
-import { parseDecimal, toAssetClass } from "../utils";
+import {
+  assetMatchesClassOption,
+  currencyForAssetClass,
+  parseDecimal,
+  toAssetClass,
+} from "../utils";
 
 function SearchResultsPanel({
   query,
@@ -217,20 +223,22 @@ export function AssetDialog({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Select
                 value={assetForm.class}
-                onValueChange={(value) =>
+                onValueChange={(value) => {
+                  const assetClass = value as AssetClassOption;
                   setAssetForm((current) => ({
                     ...current,
-                    class: value as AssetClass,
-                  }))
-                }
+                    class: assetClass,
+                    currency: currencyForAssetClass(assetClass, current.currency),
+                  }));
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ASSET_CLASSES.map((assetClass) => (
+                  {ASSET_CLASS_OPTIONS.map((assetClass) => (
                     <SelectItem key={assetClass} value={assetClass}>
-                      {assetClassMeta[assetClass].label}
+                      {assetClassOptionMeta[assetClass].label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -251,6 +259,10 @@ export function AssetDialog({
                   }))
                 }
                 placeholder="Moeda"
+                readOnly={
+                  assetForm.class === "fixed_income_brl" ||
+                  assetForm.class === "fixed_income_usd"
+                }
               />
             </div>
             <Textarea
@@ -303,8 +315,8 @@ export function TransactionDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assets: Asset[];
-  assetClass: AssetClass;
-  setAssetClass: (value: AssetClass) => void;
+  assetClass: AssetClassOption;
+  setAssetClass: (value: AssetClassOption) => void;
   assetSearch: string;
   assetSearchLocked: boolean;
   setAssetSearch: (value: string) => void;
@@ -324,7 +336,9 @@ export function TransactionDialog({
   canSubmit: boolean;
   portfolioStatusMessage: string | null;
 }) {
-  const filteredAssets = assets.filter((asset) => asset.class === assetClass);
+  const filteredAssets = assets.filter((asset) =>
+    assetMatchesClassOption(asset, assetClass),
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -343,7 +357,7 @@ export function TransactionDialog({
             <Select
               value={assetClass}
               onValueChange={(value) => {
-                setAssetClass(value as AssetClass);
+                setAssetClass(value as AssetClassOption);
                 setTransactionForm((current) => ({ ...current, assetId: "" }));
               }}
             >
@@ -351,9 +365,9 @@ export function TransactionDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {ASSET_CLASSES.map((currentClass) => (
+                {ASSET_CLASS_OPTIONS.map((currentClass) => (
                   <SelectItem key={currentClass} value={currentClass}>
-                    {assetClassMeta[currentClass].label}
+                    {assetClassOptionMeta[currentClass].label}
                   </SelectItem>
                 ))}
               </SelectContent>

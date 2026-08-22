@@ -36,7 +36,7 @@ Baseado no benchmark publico do Investidor10/Investidor10 Pro em 2026-05-24 e no
 | ID | Requisito | Prioridade | Aceite minimo |
 | --- | --- | --- | --- |
 | INV-ATI-001 | Criar cadastro canonico de ativos. | must-have | Ticker, nome, classe, mercado, moeda, status e fonte ficam normalizados. |
-| INV-ATI-002 | Suportar inicialmente acoes, FIIs, ETFs, BDRs, renda fixa manual e cripto manual. | must-have | Cada classe tem campos minimos e validacoes proprias. |
+| INV-ATI-002 | Suportar acoes, FIIs, ETFs, BDRs, criptomoedas e renda fixa generica, em real ou em dolar. | must-have | Classes de bolsa e cripto usam cotacao externa; renda fixa preserva entrada manual e a moeda declarada. |
 | INV-ATI-003 | Atualizar cotacoes por provedor externo com cache. | must-have | Cotacao mostra data/hora, fonte e flag stale. |
 | INV-ATI-004 | Persistir historico de cotacoes. | should-have | Sistema consulta serie historica para graficos e rentabilidade. |
 | INV-ATI-005 | Permitir fallback manual de cotacao. | should-have | Usuario pode inserir valor manual marcado como manual/estimado. |

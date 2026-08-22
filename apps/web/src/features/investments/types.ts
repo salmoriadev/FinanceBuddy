@@ -3,6 +3,7 @@ import type {
   PortfolioPosition,
   PortfolioTransactionType,
 } from "@/types/finance";
+import type { AssetClassOption } from "./constants";
 
 export type PositionGroup = {
   class: AssetClass;
@@ -19,7 +20,7 @@ export type PositionGroup = {
 export type AssetFormState = {
   ticker: string;
   name: string;
-  class: AssetClass;
+  class: AssetClassOption;
   sector: string;
   currency: string;
   notes: string;
