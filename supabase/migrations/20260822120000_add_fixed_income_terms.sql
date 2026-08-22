@@ -1,3 +1,5 @@
+BEGIN;
+
 CREATE TYPE public.fixed_income_indexer AS ENUM ('fixed', 'cdi', 'ipca');
 
 ALTER TABLE public.assets
@@ -28,3 +30,5 @@ COMMENT ON COLUMN public.assets.fixed_income_rate IS
   'For fixed/IPCA: annual percentage rate. For CDI: percentage of the CDI benchmark.';
 COMMENT ON COLUMN public.assets.fixed_income_base_date IS
   'Date on which the fixed-income unit index equals 1. Set by the first portfolio event.';
+
+COMMIT;
