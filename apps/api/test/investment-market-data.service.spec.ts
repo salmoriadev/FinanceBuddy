@@ -49,6 +49,8 @@ describe("InvestmentMarketDataService", () => {
         currency: "BRL",
         provider: "brapi",
         logoUrl: null,
+        price: null,
+        quotedAt: expect.any(Date),
       },
       {
         symbol: "HGLG11",
@@ -58,6 +60,8 @@ describe("InvestmentMarketDataService", () => {
         currency: "BRL",
         provider: "brapi",
         logoUrl: null,
+        price: null,
+        quotedAt: expect.any(Date),
       },
       {
         symbol: "IVVB11",
@@ -67,6 +71,8 @@ describe("InvestmentMarketDataService", () => {
         currency: "BRL",
         provider: "brapi",
         logoUrl: null,
+        price: null,
+        quotedAt: expect.any(Date),
       },
     ]);
   });
@@ -106,21 +112,74 @@ describe("InvestmentMarketDataService", () => {
     expect(fetchMock.mock.calls[0][0]).toContain("type=fund");
   });
 
-  it("searches cryptocurrencies through the keyless CoinGecko API", async () => {
+  it("trusts an explicit ETF filter when Brapi omits fund subtype metadata", async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        coins: [
+        requestedAt: "2026-08-22T12:00:00.000Z",
+        stocks: [
           {
-            id: "bitcoin",
-            name: "Bitcoin",
-            symbol: "btc",
-            market_cap_rank: 1,
-            thumb: "https://coin-images.example/bitcoin.png",
+            stock: "AUPO11",
+            name: "AUPO11",
+            type: "fund",
+            subType: null,
+            close: 109.25,
           },
         ],
       }),
     } as Response);
+
+    await expect(service.searchAssets("AUPO11", "etf")).resolves.toEqual([
+      expect.objectContaining({
+        symbol: "AUPO11",
+        type: "etf",
+        price: 109.25,
+        quotedAt: new Date("2026-08-22T12:00:00.000Z"),
+      }),
+    ]);
+  });
+
+  it("retries common letter-one ticker confusion", async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ stocks: [] }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          stocks: [{ stock: "AUPO11", name: "AUPO11", type: "fund" }],
+        }),
+      } as Response);
+
+    await expect(service.searchAssets("aupol1", "etf")).resolves.toEqual([
+      expect.objectContaining({ symbol: "AUPO11", type: "etf" }),
+    ]);
+    expect(fetchMock.mock.calls[1][0]).toContain("search=AUPO11");
+  });
+
+  it("searches cryptocurrencies through the keyless CoinGecko API", async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          coins: [
+            {
+              id: "bitcoin",
+              name: "Bitcoin",
+              symbol: "btc",
+              market_cap_rank: 1,
+              thumb: "https://coin-images.example/bitcoin.png",
+            },
+          ],
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          bitcoin: { brl: 396_017, last_updated_at: 1_787_412_930 },
+        }),
+      } as Response);
 
     await expect(service.searchAssets("bitcoin", "crypto")).resolves.toEqual([
       {
@@ -131,11 +190,35 @@ describe("InvestmentMarketDataService", () => {
         currency: "BRL",
         provider: "coingecko",
         logoUrl: "https://coin-images.example/bitcoin.png",
+        price: 396_017,
+        quotedAt: new Date(1_787_412_930_000),
       },
     ]);
     expect(fetchMock.mock.calls[0][0]).toContain(
       "https://api.coingecko.com/api/v3/search?query=bitcoin",
     );
+    expect(fetchMock.mock.calls[1][0]).toContain(
+      "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin",
+    );
+  });
+
+  it("keeps cryptocurrency search results when price enrichment is unavailable", async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          coins: [{ id: "bitcoin", name: "Bitcoin", symbol: "btc" }],
+        }),
+      } as Response)
+      .mockResolvedValueOnce({ ok: false, status: 429 } as Response);
+
+    await expect(service.searchAssets("bitcoin", "crypto")).resolves.toEqual([
+      expect.objectContaining({
+        symbol: "BTC",
+        price: null,
+        quotedAt: null,
+      }),
+    ]);
   });
 
   it.each(["fixed_income", "custom"])(
@@ -176,6 +259,42 @@ describe("InvestmentMarketDataService", () => {
       exchange: "B3",
       updatedAt: new Date("2026-05-26T12:00:00.000Z"),
       changePercent: 1.2,
+      fallback: null,
+    });
+  });
+
+  it("uses the public quote-list closing price when detailed quotes require a token", async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          requestedAt: "2026-08-22T12:00:00.000Z",
+          stocks: [
+            {
+              stock: "HGLG11",
+              name: "HGLG11",
+              type: "fund",
+              subType: "fii",
+              close: 147.21,
+            },
+          ],
+        }),
+      } as Response);
+
+    await expect(service.getQuote("HGLG11", "fii")).resolves.toEqual({
+      symbol: "HGLG11",
+      name: "HGLG11",
+      price: 147.21,
+      currency: "BRL",
+      provider: "brapi",
+      exchange: "B3",
+      updatedAt: new Date("2026-08-22T12:00:00.000Z"),
+      changePercent: null,
+      fallback: "latest",
     });
   });
 

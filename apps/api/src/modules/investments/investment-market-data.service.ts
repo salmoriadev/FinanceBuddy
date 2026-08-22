@@ -9,6 +9,8 @@ export type InvestmentAssetSearchResult = {
   currency: string;
   provider: string;
   logoUrl?: string | null;
+  price?: number | null;
+  quotedAt?: Date | null;
 };
 
 export type InvestmentQuote = {
@@ -20,6 +22,7 @@ export type InvestmentQuote = {
   exchange?: string | null;
   updatedAt: Date;
   changePercent?: number | null;
+  fallback?: "latest" | null;
 };
 
 export type InvestmentAssetClass =
@@ -53,7 +56,14 @@ type BrapiListResult = {
   name?: string;
   sector?: string;
   type?: string;
+  subType?: string | null;
   logo?: string;
+  close?: number | string | null;
+};
+
+type BrapiListResponse = {
+  stocks?: BrapiListResult[];
+  requestedAt?: string;
 };
 
 type BrapiQuoteResult = {
@@ -176,12 +186,19 @@ const isCryptoSymbol = (symbol: string) => CRYPTO_SYMBOLS.has(symbol);
 
 const mapBrapiListTypeToAssetClass = (
   type: string | undefined,
+  subType: string | null | undefined,
   symbol: string,
   name: string,
+  requestedClass?: string,
 ): InvestmentAssetClass => {
+  if (subType === "etf") return "etf";
+  if (subType === "fii") return "fii";
   if (type === "bdr") return "bdr";
   if (type === "stock") return "stock";
   if (type === "fund") {
+    if (requestedClass === "etf" || requestedClass === "fii") {
+      return requestedClass;
+    }
     const text = `${symbol} ${name}`.toUpperCase();
     if (
       text.includes("ETF") ||
@@ -202,6 +219,13 @@ const mapAssetClassToBrapiListType = (assetClass?: string) => {
   if (assetClass === "bdr") return "bdr";
   if (assetClass === "fii" || assetClass === "etf") return "fund";
   return undefined;
+};
+
+const correctCommonTickerConfusion = (query: string) => {
+  const normalized = normalizeSymbol(query);
+  return /[LI][1LI]$/.test(normalized)
+    ? `${normalized.slice(0, -2)}11`
+    : normalized;
 };
 
 @Injectable()
@@ -230,9 +254,19 @@ export class InvestmentMarketDataService implements MarketDataProvider {
       if (brapiType) params.set("type", brapiType);
       this.addTokenParam(params);
 
-      const payload = await this.fetchJson<{ stocks?: BrapiListResult[] }>(
+      let payload = await this.fetchJson<BrapiListResponse>(
         `/api/quote/list?${params.toString()}`,
       );
+
+      const correctedSearch = correctCommonTickerConfusion(search);
+      if ((payload.stocks?.length ?? 0) === 0 && correctedSearch !== normalizeSymbol(search)) {
+        params.set("search", correctedSearch);
+        payload = await this.fetchJson<BrapiListResponse>(
+          `/api/quote/list?${params.toString()}`,
+        );
+      }
+
+      const quotedAt = payload.requestedAt ? new Date(payload.requestedAt) : new Date();
 
       return (payload.stocks ?? [])
         .map((item): InvestmentAssetSearchResult | null => {
@@ -241,8 +275,10 @@ export class InvestmentMarketDataService implements MarketDataProvider {
           const name = item.name || symbol;
           const assetClass = mapBrapiListTypeToAssetClass(
             item.type,
+            item.subType,
             symbol,
             name,
+            type,
           );
           if (type && type !== assetClass && type !== item.type) return null;
           return {
@@ -253,6 +289,8 @@ export class InvestmentMarketDataService implements MarketDataProvider {
             currency: "BRL",
             provider: "brapi",
             logoUrl: item.logo ?? null,
+            price: toFiniteNumber(item.close),
+            quotedAt: Number.isNaN(quotedAt.getTime()) ? null : quotedAt,
           };
         })
         .filter((item): item is InvestmentAssetSearchResult => Boolean(item));
@@ -266,7 +304,7 @@ export class InvestmentMarketDataService implements MarketDataProvider {
   async getQuote(
     symbol: string,
     assetClass?: InvestmentAssetClass | string | null,
-  ) {
+  ): Promise<InvestmentQuote | null> {
     const normalized = normalizeSymbol(symbol);
     if (!normalized) return null;
     if (isManualQuoteClass(assetClass)) return null;
@@ -287,7 +325,7 @@ export class InvestmentMarketDataService implements MarketDataProvider {
     symbol: string,
     assetClass: InvestmentAssetClass | string | null | undefined,
     date: Date,
-  ) {
+  ): Promise<InvestmentQuote | null> {
     const normalized = normalizeSymbol(symbol);
     if (!normalized) return null;
     if (isManualQuoteClass(assetClass)) return null;
@@ -303,6 +341,16 @@ export class InvestmentMarketDataService implements MarketDataProvider {
       }
       return this.getB3HistoricalQuote(normalized, targetDate);
     } catch (error) {
+      if (!isCryptoClass(assetClass) && !isCryptoSymbol(normalized)) {
+        try {
+          const latest = await this.getB3ListQuote(normalized);
+          if (latest) return latest;
+        } catch (fallbackError) {
+          this.logger.warn(
+            `Public Brapi fallback unavailable for ${normalized}: ${String(fallbackError)}`,
+          );
+        }
+      }
       if (!this.shouldUseMockFallback()) throw error;
       this.logger.warn(
         `Using mock historical quote fallback for ${normalized}: ${String(error)}`,
@@ -346,42 +394,103 @@ export class InvestmentMarketDataService implements MarketDataProvider {
       `/search?${params.toString()}`,
     );
 
-    return (payload.coins ?? [])
+    const coins = (payload.coins ?? [])
       .filter((coin) => Boolean(coin.symbol && coin.name))
-      .slice(0, 12)
-      .map((coin) => ({
-        symbol: normalizeSymbol(coin.symbol ?? ""),
-        name: coin.name ?? normalizeSymbol(coin.symbol ?? ""),
-        type: "crypto",
-        exchange: "crypto",
-        currency: "BRL",
-        provider: "coingecko",
-        logoUrl: coin.thumb ?? null,
-      }));
+      .slice(0, 12);
+    if (coins.length === 0) return [];
+
+    const priceParams = new URLSearchParams({
+      ids: coins.map((coin) => coin.id).filter(Boolean).join(","),
+      vs_currencies: "brl",
+      include_last_updated_at: "true",
+    });
+    let prices: Record<string, CoinGeckoSimplePrice> = {};
+    if (priceParams.get("ids")) {
+      try {
+        prices = await this.fetchCoinGeckoJson<
+          Record<string, CoinGeckoSimplePrice>
+        >(`/simple/price?${priceParams.toString()}`);
+      } catch (error) {
+        this.logger.warn(
+          `CoinGecko price enrichment unavailable during search: ${String(error)}`,
+        );
+      }
+    }
+
+    return coins.map((coin) => ({
+      symbol: normalizeSymbol(coin.symbol ?? ""),
+      name: coin.name ?? normalizeSymbol(coin.symbol ?? ""),
+      type: "crypto",
+      exchange: "crypto",
+      currency: "BRL",
+      provider: "coingecko",
+      logoUrl: coin.thumb ?? null,
+      price: toFiniteNumber(coin.id ? prices[coin.id]?.brl : null),
+      quotedAt:
+        coin.id && prices[coin.id]?.last_updated_at
+          ? new Date(prices[coin.id].last_updated_at * 1000)
+          : null,
+    }));
   }
 
   private async getB3Quote(symbol: string) {
-    const params = new URLSearchParams();
+    try {
+      const params = new URLSearchParams();
+      this.addTokenParam(params);
+      const suffix = params.toString() ? `?${params.toString()}` : "";
+      const payload = await this.fetchJson<{ results?: BrapiQuoteResult[] }>(
+        `/api/quote/${encodeURIComponent(symbol)}${suffix}`,
+      );
+      const item = payload.results?.find(
+        (result) => normalizeSymbol(result.symbol ?? "") === symbol,
+      );
+      const price = toFiniteNumber(item?.regularMarketPrice);
+      if (!item || price === null) return this.getB3ListQuote(symbol);
+
+      return {
+        symbol,
+        name: item.longName || item.shortName || symbol,
+        price,
+        currency: item.currency || "BRL",
+        provider: "brapi",
+        exchange: item.exchangeName ?? "B3",
+        updatedAt: item.regularMarketTime
+          ? new Date(item.regularMarketTime)
+          : new Date(),
+        changePercent: toFiniteNumber(item.regularMarketChangePercent),
+        fallback: null,
+      };
+    } catch (error) {
+      this.logger.warn(
+        `Detailed Brapi quote unavailable for ${symbol}; using quote list: ${String(error)}`,
+      );
+      return this.getB3ListQuote(symbol);
+    }
+  }
+
+  private async getB3ListQuote(symbol: string): Promise<InvestmentQuote | null> {
+    const params = new URLSearchParams({ search: symbol, limit: "12" });
     this.addTokenParam(params);
-    const suffix = params.toString() ? `?${params.toString()}` : "";
-    const payload = await this.fetchJson<{ results?: BrapiQuoteResult[] }>(
-      `/api/quote/${encodeURIComponent(symbol)}${suffix}`,
+    const payload = await this.fetchJson<BrapiListResponse>(
+      `/api/quote/list?${params.toString()}`,
     );
-    const item = payload.results?.find(
-      (result) => normalizeSymbol(result.symbol ?? "") === symbol,
+    const item = payload.stocks?.find(
+      (result) => normalizeSymbol(result.stock ?? "") === symbol,
     );
-    const price = toFiniteNumber(item?.regularMarketPrice);
+    const price = toFiniteNumber(item?.close);
     if (!item || price === null) return null;
 
+    const requestedAt = payload.requestedAt ? new Date(payload.requestedAt) : new Date();
     return {
       symbol,
-      name: item.longName || item.shortName || symbol,
+      name: item.name || symbol,
       price,
-      currency: item.currency || "BRL",
+      currency: "BRL",
       provider: "brapi",
-      exchange: item.exchangeName ?? "B3",
-      updatedAt: item.regularMarketTime ? new Date(item.regularMarketTime) : new Date(),
-      changePercent: toFiniteNumber(item.regularMarketChangePercent),
+      exchange: "B3",
+      updatedAt: Number.isNaN(requestedAt.getTime()) ? new Date() : requestedAt,
+      changePercent: null,
+      fallback: "latest",
     };
   }
 
