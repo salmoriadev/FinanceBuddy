@@ -10,7 +10,7 @@ import { SecurityEventService } from "../src/modules/security/security-event.ser
 const hashRefreshToken = (token: string) =>
   crypto.createHash("sha256").update(token).digest("hex");
 
-describe("AuthService", () => {
+describe.each(["browser", "mobile"])("AuthService (%s transport)", (transport) => {
   const repository = {
     findUserByEmail: jest.fn(),
     findRefreshTokenByHash: jest.fn(),
@@ -54,6 +54,14 @@ describe("AuthService", () => {
       ip: "127.0.0.1",
     }) as unknown as Request;
 
+  const refresh = (request: Request) =>
+    transport === "browser"
+      ? service.refresh(request)
+      : service.refreshWithToken(request.cookies.refresh_token, {
+          ...request,
+          cookies: { refresh_token: "unrelated-browser-session" },
+        } as unknown as Request);
+
   it("records failed login attempts without storing raw email addresses", async () => {
     repository.findUserByEmail.mockResolvedValue(null);
 
@@ -96,7 +104,7 @@ describe("AuthService", () => {
     });
     repository.revokeTokenFamily.mockResolvedValue({ count: 2 });
     await expect(
-      service.refresh(requestWithRefreshToken(rawToken)),
+      refresh(requestWithRefreshToken(rawToken)),
     ).rejects.toBeInstanceOf(UnauthorizedException);
 
     expect(repository.findRefreshTokenByHash).toHaveBeenCalledWith(
@@ -124,7 +132,7 @@ describe("AuthService", () => {
     repository.findRefreshTokenByHash.mockResolvedValue(null);
 
     await expect(
-      service.refresh(requestWithRefreshToken("unknown-refresh-token")),
+      refresh(requestWithRefreshToken("unknown-refresh-token")),
     ).rejects.toBeInstanceOf(UnauthorizedException);
 
     expect(repository.revokeUserTokens).not.toHaveBeenCalled();
@@ -152,7 +160,7 @@ describe("AuthService", () => {
       .mockImplementation(() => undefined);
 
     await expect(
-      service.refresh(requestWithRefreshToken(rawToken)),
+      refresh(requestWithRefreshToken(rawToken)),
     ).rejects.toBeInstanceOf(UnauthorizedException);
 
     expect(repository.revokeTokenFamily).toHaveBeenCalledWith(
@@ -219,7 +227,7 @@ describe("AuthService", () => {
       return undefined;
     });
 
-    const result = await service.refresh(request);
+    const result = await refresh(request);
 
     expect(result.accessToken).toEqual(expect.any(String));
     expect(result.refreshToken).toEqual(expect.any(String));
@@ -297,8 +305,8 @@ describe("AuthService", () => {
     const request = requestWithRefreshToken(rawToken);
 
     const results = await Promise.allSettled([
-      service.refresh(request),
-      service.refresh(request),
+      refresh(request),
+      refresh(request),
     ]);
 
     expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
@@ -340,7 +348,7 @@ describe("AuthService", () => {
     });
 
     await expect(
-      service.refresh(requestWithRefreshToken(winningRefreshToken)),
+      refresh(requestWithRefreshToken(winningRefreshToken)),
     ).resolves.toEqual(
       expect.objectContaining({
         accessToken: expect.any(String),
@@ -355,5 +363,76 @@ describe("AuthService", () => {
       }),
     );
     expect(repository.revokeTokenFamily).not.toHaveBeenCalled();
+  });
+
+  it("revokes and audits the supplied session on logout", async () => {
+    const rawToken = "a".repeat(96);
+    const stored = {
+      id: "native-token-id",
+      userId: "user-id",
+      tokenHash: hashRefreshToken(rawToken),
+      familyId: "native-family-id",
+      replacedByTokenId: null,
+      userAgent: "test-agent",
+      ipAddress: "127.0.0.1",
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+    };
+    repository.findRefreshTokenByHash.mockResolvedValue(stored);
+    const request = requestWithRefreshToken(
+      transport === "browser" ? rawToken : "unrelated-browser-session",
+    );
+
+    if (transport === "browser") {
+      await service.logout(request);
+    } else {
+      await service.logoutWithToken(rawToken, request);
+    }
+
+    expect(repository.findRefreshTokenByHash).toHaveBeenCalledWith(
+      hashRefreshToken(rawToken),
+    );
+    expect(repository.revokeRefreshToken).toHaveBeenCalledWith(stored.id);
+    expect(securityEvents.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: stored.userId,
+        type: "logout",
+        metadata: { refreshTokenId: stored.id, familyId: stored.familyId },
+      }),
+    );
+  });
+
+  it("rejects expired refresh tokens without rotating them", async () => {
+    const rawToken = "a".repeat(96);
+    repository.findRefreshTokenByHash.mockResolvedValue({
+      id: "expired-token-id",
+      userId: "user-id",
+      tokenHash: hashRefreshToken(rawToken),
+      familyId: "family-id",
+      replacedByTokenId: null,
+      userAgent: "test-agent",
+      ipAddress: "127.0.0.1",
+      createdAt: new Date(Date.now() - 120_000),
+      expiresAt: new Date(Date.now() - 60_000),
+      revokedAt: null,
+    });
+
+    await expect(refresh(requestWithRefreshToken(rawToken))).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+
+    expect(repository.rotateRefreshToken).not.toHaveBeenCalled();
+    expect(securityEvents.record).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "refresh_token_expired", userId: "user-id" }),
+    );
+  });
+
+  it("does not use a browser cookie when an explicit refresh token is missing", async () => {
+    await expect(
+      service.refreshWithToken(null, requestWithRefreshToken("a".repeat(96))),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(repository.findRefreshTokenByHash).not.toHaveBeenCalled();
   });
 });

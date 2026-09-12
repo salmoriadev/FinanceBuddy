@@ -9,6 +9,27 @@ import { runUpdateAndFind } from "../../database/repository-helpers";
 import { DEFAULT_TRANSACTIONS_LIMIT } from "./transactions.constants";
 import { TransactionCursor } from "./transactions-pagination";
 
+type ImportedTransaction = {
+  description: string;
+  amount: number;
+  type: "income" | "expense";
+  categoryId?: string | null;
+  date: Date;
+};
+
+const normalizedImportKey = (transaction: {
+  description: string;
+  amount: number;
+  type: "income" | "expense";
+  date: Date;
+}) =>
+  [
+    transaction.date.toISOString().slice(0, 10),
+    transaction.type,
+    Number(transaction.amount).toFixed(2),
+    transaction.description.trim().replace(/\s+/g, " ").toLowerCase(),
+  ].join("\u001f");
+
 @Injectable()
 export class TransactionsRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -69,6 +90,68 @@ export class TransactionsRepository {
         userId,
       },
       include: { category: true },
+    });
+  }
+
+  importMany(userId: string, transactions: ImportedTransaction[]) {
+    return this.prisma.$transaction(async (database) => {
+      const dates = [
+        ...new Map(
+          transactions.map((transaction) => [
+            transaction.date.toISOString().slice(0, 10),
+            transaction.date,
+          ]),
+        ).values(),
+      ];
+      const existing = await database.transaction.findMany({
+        where: {
+          userId,
+          date: { in: dates },
+          isRecurring: false,
+          recurrenceParentId: null,
+        },
+        select: {
+          description: true,
+          amount: true,
+          type: true,
+          date: true,
+        },
+      });
+      const remainingExisting = new Map<string, number>();
+      existing.forEach((transaction) => {
+        const key = normalizedImportKey({
+          ...transaction,
+          amount: Number(transaction.amount),
+        });
+        remainingExisting.set(key, (remainingExisting.get(key) ?? 0) + 1);
+      });
+
+      let skipped = 0;
+      const pending = transactions.filter((transaction) => {
+        const key = normalizedImportKey(transaction);
+        const count = remainingExisting.get(key) ?? 0;
+        if (count === 0) return true;
+        remainingExisting.set(key, count - 1);
+        skipped += 1;
+        return false;
+      });
+
+      const result =
+        pending.length === 0
+          ? { count: 0 }
+          : await database.transaction.createMany({
+              data: pending.map((transaction) => ({
+                userId,
+                description: transaction.description.trim(),
+                amount: transaction.amount,
+                type: transaction.type,
+                categoryId: transaction.categoryId ?? null,
+                date: transaction.date,
+                isRecurring: false,
+              })),
+            });
+
+      return { created: result.count, skipped };
     });
   }
 

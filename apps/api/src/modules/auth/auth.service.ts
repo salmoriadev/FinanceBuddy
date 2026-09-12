@@ -117,6 +117,10 @@ export class AuthService {
 
   async refresh(req: Request) {
     const refreshToken = this.getRefreshTokenFromRequest(req);
+    return this.refreshWithToken(refreshToken, req);
+  }
+
+  async refreshWithToken(refreshToken: string | null, req: Request) {
     if (!refreshToken) {
       throw new UnauthorizedException("Refresh token missing");
     }
@@ -198,6 +202,10 @@ export class AuthService {
 
   async logout(req: Request) {
     const refreshToken = this.getRefreshTokenFromRequest(req);
+    return this.logoutWithToken(refreshToken, req);
+  }
+
+  async logoutWithToken(refreshToken: string | null, req: Request) {
     if (!refreshToken) return;
     const tokenHash = this.hashRefreshToken(refreshToken);
     const stored = await this.repository.findRefreshTokenByHash(tokenHash);

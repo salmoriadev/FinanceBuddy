@@ -16,6 +16,7 @@ import { TransactionsService } from "./transactions.service";
 import { CreateTransactionDto } from "./dto/create-transaction.dto";
 import { UpdateTransactionDto } from "./dto/update-transaction.dto";
 import { TransactionsQueryDto } from "./dto/transactions-query.dto";
+import { ImportTransactionsDto } from "./dto/import-transactions.dto";
 
 @ApiTags("transactions")
 @ApiBearerAuth()
@@ -35,6 +36,11 @@ export class TransactionsController {
   @Post()
   create(@User() user: { id: string }, @Body() dto: CreateTransactionDto) {
     return this.service.create(user.id, dto);
+  }
+
+  @Post("import")
+  import(@User() user: { id: string }, @Body() dto: ImportTransactionsDto) {
+    return this.service.import(user.id, dto);
   }
 
   @Patch(":id")

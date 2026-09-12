@@ -18,6 +18,7 @@ import {
   decodeTransactionCursor,
   encodeTransactionCursor,
 } from "./transactions-pagination";
+import { ImportTransactionsDto } from "./dto/import-transactions.dto";
 
 type TransactionCreateData = {
   description: string;
@@ -98,6 +99,32 @@ export class TransactionsService {
       await assertCategoryAccess(this.repository, userId, dto.categoryId);
     }
     return this.repository.create(userId, toCreateTransactionData(dto));
+  }
+
+  async import(userId: string, dto: ImportTransactionsDto) {
+    const categoryIds = [
+      ...new Set(
+        dto.transactions
+          .map((transaction) => transaction.categoryId)
+          .filter((categoryId): categoryId is string => Boolean(categoryId)),
+      ),
+    ];
+    await Promise.all(
+      categoryIds.map((categoryId) =>
+        assertCategoryAccess(this.repository, userId, categoryId),
+      ),
+    );
+
+    return this.repository.importMany(
+      userId,
+      dto.transactions.map((transaction) => ({
+        description: transaction.description,
+        amount: transaction.amount,
+        type: transaction.type,
+        categoryId: transaction.categoryId ?? null,
+        date: new Date(transaction.date),
+      })),
+    );
   }
 
   async update(userId: string, id: string, dto: UpdateTransactionDto) {
